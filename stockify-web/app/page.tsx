@@ -28,7 +28,7 @@ export default function Home() {
           <div className="w-[550px] flex flex-col gap-9 shrink-0">
             
             {/* Headers */}
-            <div className="flex flex-col gap-4 pl-3">
+            <div className="flex flex-col gap-4 pl-3 pt-8">
               <h1 className="text-[#F7B71D] text-5xl font-semibold font-fredoka leading-[1.1]">
                 Your inventory should work even when you’re not.
               </h1>
