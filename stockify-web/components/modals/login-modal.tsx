@@ -2,6 +2,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -9,12 +11,15 @@ interface LoginModalProps {
 }
 
 export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+  
   const router = useRouter();
-  const supabase = createClient();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  const supabase = createClient();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,7 +42,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     setLoading(false);
 
@@ -45,10 +50,22 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setError(error.message);
       return;
     }
+   
 
-    onClose();
-    router.push("/dashboard"); // ← redirect after login
-    router.refresh();          // ← refresh server components
+    if (data?.user) {
+    const businessName = await getBusinessNameByUserId(data.user.id);
+    
+    setLoading(false); // Stop loading after the hook finishes
+
+    if (businessName) {
+      onClose();
+      router.push(`/admin/${businessName}/dashboard/`);
+      router.refresh();   
+    } else {
+      setError("Could not find your business name. Please contact support.");
+    }
+  }
+           
   };
 
   return (
