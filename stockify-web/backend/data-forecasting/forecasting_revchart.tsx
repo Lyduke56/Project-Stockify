@@ -19,7 +19,7 @@ import {
   type DataPoint,
   type ForecastPoint,
 } from "../../backend/data-forecasting/forecasting_algorithm";
-import styles from "./RevenueForecastChart.module.css";
+import styles from "../../backend/data-forecasting/forecasting_chart.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
