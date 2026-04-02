@@ -5,7 +5,7 @@ import React from "react";
 // 1. Add 'style' to the interface here
 interface StockifyButtonProps {
   label: string;
-  //onClick?: () => void;
+  onClick?: () => void;
   variant?: "primary" | "secondary";
   //type?: "button" | "submit" | "reset";
   className?: string;
