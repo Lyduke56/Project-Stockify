@@ -18,6 +18,7 @@ export default function NavbarLandingPage() {
             src="/stockify-logo.svg"
             alt="Stockify Icon"
             className="h-10 w-auto"
+            onClick={() => router.push("/")}
           />
         </div>
         <div className="text-[#385E31] text-3xl font-bold font-fredoka">
