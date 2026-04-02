@@ -8,8 +8,6 @@ export default function AdminDashboard() {
 
     <div className="w-full min-h-screen bg-[#385E31]">
 
-
-
       <NavbarLandingPage />
 
       <p>Admin Dashboard</p>

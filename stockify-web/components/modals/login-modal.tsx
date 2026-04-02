@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { getUserData } from "@/backend/hooks/getUserData";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 
 interface LoginModalProps {
@@ -53,18 +53,32 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
    
 
     if (data?.user) {
-    const businessName = await getBusinessNameByUserId(data.user.id);
-    
-    setLoading(false); // Stop loading after the hook finishes
+      const shopName = await getBusinessNameByUserId(data.user.id);
+      const userRole = await getUserData(data.user.id); // This returns "Superadmin", "Admin", etc.
+      
+      setLoading(false);
 
-    if (businessName) {
-      onClose();
-      router.push(`/admin/${businessName}/dashboard/`);
-      router.refresh();   
-    } else {
-      setError("Could not find your business name. Please contact support.");
+      if (userRole === "Superadmin") {
+        onClose();
+        router.push(`/superadmin/dashboard`);
+        router.refresh();
+        return; 
+      }
+
+      if (shopName) {
+        onClose();
+        
+        if (userRole === "Administrator") {
+          router.push(`/${shopName}/administrator/dashboard`); 
+        } else {
+          router.push(`/${shopName}/employee/dashboard`);
+        }
+        
+        router.refresh();   
+      } else {
+        setError("Could not find your business name. Please contact support.");
+      }
     }
-  }
            
   };
 
