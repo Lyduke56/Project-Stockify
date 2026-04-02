@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Stockify — Small Business Supply-Chain Manager
 
-## Getting Started
+Stockify is a multi-tenant SaaS inventory management engine tailored for small enterprises. It empowers business owners — from solo operators to small teams — to make data-driven restocking decisions through automated stock monitoring and alert generation.
 
-First, run the development server:
+## The Problem
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Small businesses lose sales every day due to stock-outs. Without real-time visibility into inventory levels and demand trends, owners are left reacting instead of planning. Spreadsheets don't scale, and enterprise ERPs are overkill. Stockify fills that gap.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Features
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Super Admin**
+- Manage tenant accounts (register, approve, suspend, terminate)
+- Monitor platform health and resource utilization across all tenants
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Business Admin**
+- Customize the customer-facing storefront (colors, logos, banners, layouts)
+- Manage employee accounts with Role-Based Access Control (RBAC)
+- View real-time sales analytics and annual projections *(requires 6+ months of data)*
 
-## Learn More
+**Employees**
+- Manage inventory with full CRUD, category assignment, and restock threshold configuration
+- Update order fulfillment status in real time (Processing → Out for Delivery → Received)
 
-To learn more about Next.js, take a look at the following resources:
+**Customers**
+- Browse and filter products without an account
+- Checkout via QR code payment or Cash-on-Delivery (COD)
+- Track orders and submit feedback and ratings
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Language & Framework:** TypeScript with Next.js
+- **Backend & Database:** Supabase
+- **Authentication:** Supabase Authentication
