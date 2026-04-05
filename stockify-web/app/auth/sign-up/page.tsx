@@ -5,7 +5,6 @@ import { useState, useRef, ChangeEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavbarLandingPage from "@/components/navbars/navbar-landing-page";
 
-
 interface OwnerForm {
   lastName: string;
   firstName: string;
@@ -35,7 +34,6 @@ interface BusinessForm {
   businessPermitName: string;
 }
 
-
 async function uploadFile(
   supabase: ReturnType<typeof createClient>,
   bucket: string,
@@ -52,7 +50,6 @@ async function uploadFile(
   return data.publicUrl;
 }
 
-
 function SectionCard({
   icon,
   title,
@@ -63,14 +60,18 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[20px] bg-[#385E31] border border-[#4a7a3a] p-6 shadow-lg">
-      <div className="flex items-center gap-3 mb-5">
-        <span className="text-[#F7B71D] text-3xl">{icon}</span>
-        <h2 className="font-['Fredoka'] font-semibold text-[26px] text-[#F5F0C8]">
+    <div className="w-full px-6 sm:px-9 pt-4 pb-9 bg-[#3A6131] rounded-[10px] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col gap-4">
+      <div className="flex justify-start items-center gap-3">
+        <div className="w-18 h-18 flex justify-center items-center text-[#FFF9D7]">
+          {icon}
+        </div>
+        <div className="flex-1 text-[#FFF9D7] text-2xl sm:text-3xl lg:text-4xl font-bold font-['Inter']">
           {title}
-        </h2>
+        </div>
       </div>
-      <div className="bg-[#F5EFB8] rounded-[14px] p-5">{children}</div>
+      <div className="w-full p-6 bg-[#FFF9D7] rounded-[5px] flex flex-col gap-7">
+        {children}
+      </div>
     </div>
   );
 }
@@ -97,7 +98,7 @@ function InputField({
       value={value}
       onChange={onChange}
       required={required}
-      className={`bg-[#EEBB46] placeholder-[#7a5c00] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-4 py-2.5 rounded-full outline-none focus:ring-2 focus:ring-[#385E31] transition w-full ${className}`}
+      className={`bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-medium text-base px-5 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 focus:outline-2 focus:outline-offset-0 focus:outline-[#3A6131] transition w-full ${className}`}
     />
   );
 }
@@ -116,21 +117,28 @@ function SelectField({
   required?: boolean;
 }) {
   return (
-    <select
-      value={value}
-      onChange={onChange}
-      required={required}
-      className="bg-[#EEBB46] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-4 py-2.5 rounded-full outline-none focus:ring-2 focus:ring-[#385E31] transition w-full appearance-none cursor-pointer"
-    >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {options.map((opt) => (
-        <option key={opt} value={opt}>
-          {opt}
+    <div className="relative w-full">
+      <select
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="bg-[#FFD980] text-[#3A6131] font-medium text-base px-5 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 focus:outline-2 focus:outline-offset-0 focus:outline-[#3A6131] transition w-full appearance-none cursor-pointer pr-10"
+      >
+        <option value="" disabled>
+          {placeholder}
         </option>
-      ))}
-    </select>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#3A6131]">
+        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+        </svg>
+      </div>
+    </div>
   );
 }
 
@@ -144,17 +152,17 @@ function UploadButton({
   onClick: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 w-full">
+    <div className="flex items-center gap-2 w-full h-full relative">
       <input
-        value={fileName || label}
+        value={fileName || ""}
         readOnly
         placeholder={label}
-        className="bg-[#EEBB46] placeholder-[#7a5c00] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-2.5 rounded-full outline-none w-full truncate cursor-default"
+        className="bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-medium text-base px-5 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 w-full truncate cursor-default pr-24"
       />
       <button
         type="button"
         onClick={onClick}
-        className="shrink-0 bg-[#385E31] text-[#F7B71D] font-['Fredoka'] font-semibold text-[13px] px-4 py-2.5 rounded-full hover:bg-[#2D4B24] transition"
+        className="absolute right-2 shrink-0 bg-[#3A6131] text-[#FFD980] font-semibold text-sm px-4 py-1.5 rounded-[3px] hover:bg-[#2D4B24] transition"
       >
         Upload
       </button>
@@ -162,11 +170,8 @@ function UploadButton({
   );
 }
 
-
 export default function SignUp() {
-
-  const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const router = useRouter();
   const supabase = createClient();
 
@@ -209,7 +214,6 @@ export default function SignUp() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-
   const setOwnerField = <K extends keyof OwnerForm>(key: K, val: OwnerForm[K]) =>
     setOwner((p) => ({ ...p, [key]: val }));
 
@@ -217,7 +221,6 @@ export default function SignUp() {
     key: K,
     val: BusinessForm[K]
   ) => setBusiness((p) => ({ ...p, [key]: val }));
-
 
   const handleProfilePic = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -247,12 +250,9 @@ export default function SignUp() {
     setBusinessField("businessPermitName", file.name);
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (loading) return;
-
     setError("");
 
     if (owner.password !== owner.confirmPassword) {
@@ -269,17 +269,15 @@ export default function SignUp() {
     }
 
     setLoading(true);
-    console.log("Redirect URL:", `${siteUrl}/auth/callback`);
 
     try {
-      const { data: authData, error: authError } =
-        await supabase.auth.signUp({
-          email: owner.email,
-          password: owner.password,
-          options: {
-            emailRedirectTo: `${siteUrl}/auth/callback`,
-          },
-        });
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: owner.email,
+        password: owner.password,
+        options: {
+          emailRedirectTo: `${siteUrl}/auth/callback`,
+        },
+      });
 
       if (authError) throw new Error(authError.message);
       const authUserId = authData.user?.id;
@@ -347,7 +345,7 @@ export default function SignUp() {
         user_id: authUserId,
         tenant_id: tenantId,
         email: owner.email,
-        role: "Administrator", // owner of the tenant
+        role: "Administrator",
         display_name: `${owner.firstName} ${owner.lastName}`,
         first_name: owner.firstName,
         last_name: owner.lastName,
@@ -358,11 +356,10 @@ export default function SignUp() {
         address: owner.address || null,
         citizenship: owner.citizenship || null,
         profile_picture_url: profilePictureUrl || null,
-        is_active: false, 
+        is_active: false,
       });
 
       if (userError) throw new Error(userError.message);
-
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -371,185 +368,174 @@ export default function SignUp() {
     }
   };
 
-
   if (success) {
     return (
-      <div className="w-full min-h-screen bg-[#FFFCEB] flex flex-col">
-        <NavbarLandingPage />
-        <div className="flex flex-1 items-center justify-center px-4 py-16">
-          <div className="bg-[#385E31] rounded-[24px] border border-[#F7B71D] px-12 py-14 text-center max-w-md shadow-xl">
-            <div className="text-6xl mb-5">🎉</div>
-            <h2 className="font-['Fredoka'] font-bold text-[32px] text-[#F7B71D] mb-3">
-              Registration Submitted!
-            </h2>
-            <p className="font-['Fredoka'] text-[16px] text-[#F5F0C8] mb-6 leading-relaxed">
-              Thank you for registering with Stockify. Our team will review your
-              application and notify you via email once your account is approved.
-            </p>
-            <button
-              onClick={() => router.push("/")}
-              className="bg-[#F7B71D] text-[#2D4B24] font-['Fredoka'] font-bold text-[18px] px-8 py-3 rounded-full hover:opacity-90 transition"
-            >
-              Back to Home
-            </button>
+      <div className="w-full min-h-screen bg-[#FFFCEB] flex flex-col items-center relative">
+        {/* Same wrapper alignment as the landing page */}
+        <div className="w-full max-w-[1268px] flex flex-col h-full px-8 pt-5">
+          <div className="w-full flex justify-center shrink-0">
+            <NavbarLandingPage />
+          </div>
+          <div className="flex flex-1 items-center justify-center py-16">
+            <div className="bg-[#3A6131] rounded-[10px] px-12 py-14 text-center max-w-md shadow-lg">
+              <div className="text-6xl mb-5">🎉</div>
+              <h2 className="font-bold text-[32px] text-[#FFD980] mb-3 font-['Inter']">
+                Registration Submitted!
+              </h2>
+              <p className="text-[16px] text-[#FFF9D7] mb-6 leading-relaxed font-['Inter']">
+                Thank you for registering. Our team will review your application
+                and notify you via email once your account is approved.
+              </p>
+              <button
+                onClick={() => router.push("/")}
+                className="bg-[#FFD980] text-[#3A6131] font-bold text-[18px] px-8 py-3 rounded-[5px] hover:opacity-90 transition w-full font-['Inter']"
+              >
+                Back to Home
+              </button>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-
   return (
-    <div className="w-full min-h-screen bg-[#FFFCEB]">
-      <NavbarLandingPage />
-
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="font-['Fredoka'] font-bold text-[30px] text-[#2D4B24]">
-            Get Started with Stockify
-          </h1>
-          <p className="font-['Fredoka'] text-[15px] text-[#555]">
-            Fill out the details below to submit your registration for approval
-            by our team.
-          </p>
+    <div className="w-full min-h-screen bg-[#FFFCEB] flex flex-col items-center relative">
+      
+      <div className="w-full max-w-[1268px] flex flex-col h-full px-8 pt-5 pb-16">
+        
+        {/* Navbar Section */}
+        <div className="w-full flex justify-center shrink-0">
+          <NavbarLandingPage />
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* Section 1: Business Owner */}
-          <SectionCard
-            icon={
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
-                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-              </svg>
-            }
-            title="Business Owner's Information"
-          >
-            <div className="flex gap-4">
-              {/* Profile Picture */}
-              <div className="flex flex-col items-center gap-2 shrink-0">
-                <div
-                  onClick={() => profilePicInputRef.current?.click()}
-                  className="w-[110px] h-[110px] rounded-[10px] bg-[#EEBB46] flex items-center justify-center overflow-hidden cursor-pointer border-2 border-[#c49800] hover:opacity-90 transition"
-                >
-                  {owner.profilePicturePreview ? (
-                    <img
-                      src={owner.profilePicturePreview}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="#7a5c00"
-                      className="w-14 h-14 opacity-60"
-                    >
-                      <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z" />
-                    </svg>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => profilePicInputRef.current?.click()}
-                  className="bg-[#385E31] text-[#F7B71D] font-['Fredoka'] text-[12px] font-semibold px-3 py-1 rounded-full hover:bg-[#2D4B24] transition"
-                >
-                  Upload 2×2
-                </button>
-                <input
-                  ref={profilePicInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleProfilePic}
+        {/* Form Container */}
+        <div className="w-full max-w-5xl mx-auto pt-13 font-['Inter']">
+          <div className="text-center mb-7">
+            <h1 className="font-extrabold font-Inter text-4xl text-[#3A6131]">
+              Get Started with Stockify
+            </h1>
+            <p className="text-lg font-medium text-[#3A6131] mt-1">
+              Fill out the details below to submit your registration for approval.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-10">
+            
+            {/* Section 1: Business Owner */}
+            <SectionCard 
+              icon={<img src="/business-owner.svg" alt="Business Owner" className="w-full h-full object-contain" />} 
+              title="Business Owner’s Information"
+            >
+              
+              {/* Top Row: Name Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 w-full">
+                <InputField
+                  placeholder="Last Name *"
+                  value={owner.lastName}
+                  onChange={(e) => setOwnerField("lastName", e.target.value)}
+                  required
+                />
+                <InputField
+                  placeholder="First Name *"
+                  value={owner.firstName}
+                  onChange={(e) => setOwnerField("firstName", e.target.value)}
+                  required
+                />
+                <InputField
+                  placeholder="Middle Name *"
+                  value={owner.middleName}
+                  onChange={(e) => setOwnerField("middleName", e.target.value)}
+                  required
+                />
+                <InputField
+                  placeholder="Suffix"
+                  value={owner.suffix}
+                  onChange={(e) => setOwnerField("suffix", e.target.value)}
                 />
               </div>
 
-              {/* Owner Fields */}
-              <div className="flex-1 flex flex-col gap-3">
-                {/* Row 1: Name fields */}
-                <div className="grid grid-cols-4 gap-2">
-                  <InputField
-                    placeholder="Last Name *"
-                    value={owner.lastName}
-                    onChange={(e) => setOwnerField("lastName", e.target.value)}
-                    required
-                  />
-                  <InputField
-                    placeholder="First Name *"
-                    value={owner.firstName}
-                    onChange={(e) => setOwnerField("firstName", e.target.value)}
-                    required
-                  />
-                  <InputField
-                    placeholder="Middle Name"
-                    value={owner.middleName}
-                    onChange={(e) =>
-                      setOwnerField("middleName", e.target.value)
-                    }
-                  />
-                  <InputField
-                    placeholder="Suffix"
-                    value={owner.suffix}
-                    onChange={(e) => setOwnerField("suffix", e.target.value)}
-                  />
+              {/* Bottom Section: Profile Picture + Details Right Aligned */}
+              <div className="flex flex-col md:flex-row gap-5 items-stretch w-full">
+                
+                {/* Left Column: Profile Picture Box (Exactly mimicking proportions) */}
+                <div className="w-full md:w-[220px] shrink-0">
+                  <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
+                    {owner.profilePicturePreview ? (
+                      <img
+                        src={owner.profilePicturePreview}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center mb-6">
+                        <img src="/business-owner.svg" alt="Upload Owner Picture" className="w-40 h-40 object-contain opacity-70" />
+                      </div>
+                    )}
+                    {/* Floating Upload Button Inside the Box */}
+                    <button
+                      type="button"
+                      onClick={() => profilePicInputRef.current?.click()}
+                      className="absolute bottom-4 bg-[#3A6131] text-white text-xs font-semibold px-4 py-1.5 rounded-full hover:bg-[#2D4B24] transition z-10"
+                    >
+                      Upload 2×2 Picture
+                    </button>
+                    <input
+                      ref={profilePicInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProfilePic}
+                    />
+                  </div>
                 </div>
 
-                {/* Row 2: Gender + Email */}
-                <div className="grid grid-cols-2 gap-2">
-                  <SelectField
-                    placeholder="Gender *"
-                    value={owner.gender}
-                    onChange={(e) => setOwnerField("gender", e.target.value)}
-                    options={["Male", "Female", "Non-binary", "Prefer not to say"]}
-                    required
-                  />
-                  <InputField
-                    placeholder="Email *"
-                    type="email"
-                    value={owner.email}
-                    onChange={(e) => setOwnerField("email", e.target.value)}
-                    required
-                  />
+                {/* Right Column: 3 Rows matching the height of the Picture box */}
+                <div className="flex-1 flex flex-col justify-between gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <SelectField
+                      placeholder="Gender *"
+                      value={owner.gender}
+                      onChange={(e) => setOwnerField("gender", e.target.value)}
+                      options={["Male", "Female", "Non-binary", "Prefer not to say"]}
+                      required
+                    />
+                    <InputField
+                      placeholder="Email *"
+                      type="email"
+                      value={owner.email}
+                      onChange={(e) => setOwnerField("email", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <SelectField
+                      placeholder="Citizenship *"
+                      value={owner.citizenship}
+                      onChange={(e) => setOwnerField("citizenship", e.target.value)}
+                      options={["Filipino", "American", "Chinese", "Japanese", "Korean", "Other"]}
+                      required
+                    />
+                    <InputField
+                      placeholder="Contact No. *"
+                      value={owner.contactNumber}
+                      onChange={(e) => setOwnerField("contactNumber", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="w-full">
+                    <InputField
+                      placeholder="Address *"
+                      value={owner.address}
+                      onChange={(e) => setOwnerField("address", e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
+              </div>
 
-                {/* Row 3: Citizenship + Contact */}
-                <div className="grid grid-cols-2 gap-2">
-                  <SelectField
-                    placeholder="Citizenship *"
-                    value={owner.citizenship}
-                    onChange={(e) =>
-                      setOwnerField("citizenship", e.target.value)
-                    }
-                    options={[
-                      "Filipino",
-                      "American",
-                      "Chinese",
-                      "Japanese",
-                      "Korean",
-                      "Other",
-                    ]}
-                    required
-                  />
-                  <InputField
-                    placeholder="Contact No. *"
-                    value={owner.contactNumber}
-                    onChange={(e) =>
-                      setOwnerField("contactNumber", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                {/* Row 4: Address */}
-                <InputField
-                  placeholder="Address *"
-                  value={owner.address}
-                  onChange={(e) => setOwnerField("address", e.target.value)}
-                  required
-                />
-
-                {/* Row 5: Password */}
-                <div className="grid grid-cols-2 gap-2">
+              {/* Password Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full">
                   <InputField
                     placeholder="Password *"
                     type="password"
@@ -561,187 +547,159 @@ export default function SignUp() {
                     placeholder="Confirm Password *"
                     type="password"
                     value={owner.confirmPassword}
-                    onChange={(e) =>
-                      setOwnerField("confirmPassword", e.target.value)
-                    }
+                    onChange={(e) => setOwnerField("confirmPassword", e.target.value)}
                     required
                   />
+              </div>
+            </SectionCard>
+
+            {/* Section 2: Business Details */}
+            <SectionCard 
+              icon={<img src="/business-details.svg" alt="Business Details" className="w-full h-full object-contain" />} 
+              title="Business Details"
+            >
+              <div className="flex flex-col md:flex-row gap-5 items-start">
+                
+                {/* Logo Upload Box */}
+                <div className="w-full md:w-[220px] shrink-0 relative">
+                  <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
+                    {business.logoPreview ? (
+                      <img
+                        src={business.logoPreview}
+                        alt="Logo"
+                        className="w-full h-full object-contain bg-white"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center mb-6">
+                        <img src="/business-details.svg" alt="Upload Business Logo" className="w-40 h-40 object-contain opacity-70" />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="absolute bottom-4 bg-[#3A6131] text-white text-xs font-semibold px-4 py-1.5 rounded-full hover:bg-[#2D4B24] transition z-10"
+                    >
+                      Upload Logo
+                    </button>
+                  </div>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleLogo}
+                  />
+                </div>
+
+                {/* Detail Fields */}
+                <div className="flex-1 w-full flex flex-col gap-5">
+                  <div className="w-full">
+                    <InputField
+                      placeholder="Business Name *"
+                      value={business.businessName}
+                      onChange={(e) => setBusinessField("businessName", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <SelectField
+                      placeholder="Business Type *"
+                      value={business.businessType}
+                      onChange={(e) => setBusinessField("businessType", e.target.value)}
+                      options={["Food & Beverage", "Non-Food & Beverage"]}
+                      required
+                    />
+                    <InputField
+                      placeholder="Owner Full Name (as on permit) *"
+                      value={business.ownerFullName}
+                      onChange={(e) => setBusinessField("ownerFullName", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <UploadButton
+                        label="Owner's Valid ID *"
+                        fileName={business.ownerValidIdName}
+                        onClick={() => validIdInputRef.current?.click()}
+                      />
+                      <input
+                        ref={validIdInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={handleValidId}
+                      />
+                    </div>
+                    <div>
+                      <UploadButton
+                        label="Business Permit *"
+                        fileName={business.businessPermitName}
+                        onClick={() => permitInputRef.current?.click()}
+                      />
+                      <input
+                        ref={permitInputRef}
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={handlePermit}
+                      />
+                    </div>
+                  </div>
+                  <div className="w-full">
+                    <InputField
+                      placeholder="Business/Warehouse Address *"
+                      value={business.businessWarehouseAddress}
+                      onChange={(e) =>
+                        setBusinessField("businessWarehouseAddress", e.target.value)
+                      }
+                      required
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
 
-          {/* Section 2: Business Details */}
-          <SectionCard
-            icon={
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
-                <path d="M3 9l1-6h16l1 6H3zm0 0v11h18V9H3zm7 2h4v4h-4v-4z" />
-              </svg>
-            }
-            title="Business Details"
-          >
-            <div className="flex gap-4">
-              {/* Logo */}
-              <div className="flex flex-col items-center gap-2 shrink-0">
-                <div
-                  onClick={() => logoInputRef.current?.click()}
-                  className="w-[110px] h-[110px] rounded-[10px] bg-[#EEBB46] flex items-center justify-center overflow-hidden cursor-pointer border-2 border-[#c49800] hover:opacity-90 transition"
-                >
-                  {business.logoPreview ? (
-                    <img
-                      src={business.logoPreview}
-                      alt="Logo"
-                      className="w-full h-full object-contain p-2"
-                    />
-                  ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="#7a5c00"
-                      className="w-14 h-14 opacity-60"
-                    >
-                      <path d="M3 9l1-6h16l1 6H3zm0 0v11h18V9H3zm7 2h4v4h-4v-4z" />
-                    </svg>
-                  )}
-                </div>
+            {/* Error Message */}
+            {error && (
+              <p className="text-red-700 bg-red-100 border border-red-300 px-5 py-3 rounded-[5px] text-center font-medium">
+                {error}
+              </p>
+            )}
+
+            {/* Terms & Submit */}
+            <div className="flex flex-col items-center gap-2 mt-4 pb-12">
+              <p className="font-semibold font-Inter text-[#3A6131] text-lg">
+                Before submitting, please read our{" "}
                 <button
                   type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  className="bg-[#385E31] text-[#F7B71D] font-['Fredoka'] text-[12px] font-semibold px-3 py-1 rounded-full hover:bg-[#2D4B24] transition"
+                  onClick={() => router.push("/terms")}
+                  className="font-bold font-Inter text-x1 text-[#F7B71D] underline hover:opacity-75 transition"
                 >
-                  Upload Logo
+                  Terms and Conditions.
                 </button>
+              </p>
+
+              <label className="flex items-center gap-2 cursor-pointer text-[#3A6131] text-sm font-medium">
                 <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleLogo}
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="w-4 h-4 accent-[#3A6131] cursor-pointer"
                 />
-              </div>
+                I have read and agree with the Terms and Conditions.
+              </label>
 
-              {/* Business Fields */}
-              <div className="flex-1 flex flex-col gap-3">
-                {/* Business Name */}
-                <InputField
-                  placeholder="Business Name *"
-                  value={business.businessName}
-                  onChange={(e) =>
-                    setBusinessField("businessName", e.target.value)
-                  }
-                  required
-                />
-
-                {/* Business Type + Owner Full Name */}
-                <div className="grid grid-cols-2 gap-2">
-                  <SelectField
-                    placeholder="Business Type *"
-                    value={business.businessType}
-                    onChange={(e) =>
-                      setBusinessField("businessType", e.target.value)
-                    }
-                    options={[
-                      "Food & Beverage",
-                      "Non-Food & Beverage",
-                    ]}
-                    required
-                  />
-                  <InputField
-                    placeholder="Full Name (as on permit) *"
-                    value={business.ownerFullName}
-                    onChange={(e) =>
-                      setBusinessField("ownerFullName", e.target.value)
-                    }
-                    required
-                  />
-                </div>
-
-                {/* Valid ID + Business Permit uploads */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <UploadButton
-                      label="Owner's Valid ID *"
-                      fileName={business.ownerValidIdName}
-                      onClick={() => validIdInputRef.current?.click()}
-                    />
-                    <input
-                      ref={validIdInputRef}
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      onChange={handleValidId}
-                    />
-                  </div>
-                  <div>
-                    <UploadButton
-                      label="Business Permit *"
-                      fileName={business.businessPermitName}
-                      onClick={() => permitInputRef.current?.click()}
-                    />
-                    <input
-                      ref={permitInputRef}
-                      type="file"
-                      accept="image/*,application/pdf"
-                      className="hidden"
-                      onChange={handlePermit}
-                    />
-                  </div>
-                </div>
-
-                {/* Business/Warehouse Address */}
-                <InputField
-                  placeholder="Business/Warehouse Address *"
-                  value={business.businessWarehouseAddress}
-                  onChange={(e) =>
-                    setBusinessField(
-                      "businessWarehouseAddress",
-                      e.target.value
-                    )
-                  }
-                  required
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Error */}
-          {error && (
-            <p className="font-['Fredoka'] text-[14px] text-red-700 bg-red-100 border border-red-300 px-5 py-3 rounded-xl text-center">
-              {error}
-            </p>
-          )}
-
-          {/* Terms + Submit */}
-          <div className="flex flex-col items-center gap-4 mt-2">
-            <p className="font-['Fredoka'] text-[14px] text-[#3A3A3A]">
-              Before submitting, please read our{" "}
               <button
-                type="button"
-                onClick={() => router.push("/terms")}
-                className="text-[#385E31] font-semibold underline hover:opacity-75 transition"
+                type="submit"
+                disabled={loading || !agreed}
+                className="bg-[#F7B71D] text-[#3A6131] font-bold text-xl px-16 py-3.5 rounded-[30px] hover:bg-[#2D4B24] hover:text-[#F7B71D] transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed mt-7 w-full sm:w-auto"
               >
-                Terms and Conditions.
+                {loading ? "Submitting..." : "Submit for Approval"}
               </button>
-            </p>
-
-            <label className="flex items-center gap-2 cursor-pointer font-['Fredoka'] text-[14px] text-[#3A3A3A]">
-              <input
-                type="checkbox"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="w-4 h-4 accent-[#385E31] cursor-pointer"
-              />
-              I have read and agree with the Terms and Conditions.
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading || !agreed}
-              className="bg-[#EEBB46] text-[#2D4B24] font-['Fredoka'] font-bold text-[20px] px-16 py-3 rounded-full hover:bg-[#F7B71D] hover:scale-[1.02] active:scale-95 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Submitting..." : "Submit for Approval"}
-            </button>
-          </div>
-        </form>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
