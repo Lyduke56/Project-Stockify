@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import NavbarLandingPage from "@/components/navbars/navbar-landing-page";
 import LandingPageInfoCard from "@/components/cards/landing-page-info-card";
 import LandingPageObjectiveCard from "@/components/cards/landing-page-objective-card"; 
-// IMPORTANT: Verify this import path matches your project structure!
 import StockifyButton from "@/components/buttons/button-get-started"; 
 
 export default function Home() {
@@ -16,7 +15,7 @@ export default function Home() {
     // Note: I removed `items-center` from the root div so we can manage full-width sections easier
     <div className="w-full h-screen bg-[#FFFCEB] flex flex-col relative overflow-y-auto">
       
-      {/* --- TOP SECTION (Off-White Background) --- */}
+      {/* Top */}
       <div className="w-full flex justify-center">
         <div className="w-full max-w-[1268px] flex flex-col px-8 pt-8 pb-16">
           
@@ -86,14 +85,14 @@ export default function Home() {
 
         </div>
       </div>
-      {/* --- END TOP SECTION --- */}
+      {/* End of Top */}
 
 
-      {/* --- THE OBJECTIVES SECTION (Full-Width Yellow Background) --- */}
+      {/* Objectives */}
       <div className="w-full bg-[#F7B71D] py-16 flex justify-center">
         <div className="w-full max-w-[1268px] px-8">
           
-          <h2 className="text-[#3B5418] text-3xl md:text-4xl font-bold font-['Inter'] mb-8">
+          <h2 className="text-[#3B5418] text-3xl md:text-4xl font-bold font-['Fredoka'] mb-8">
             The Objectives
           </h2>
 
@@ -103,17 +102,17 @@ export default function Home() {
             {/* The 3 Cards */}
             <div className="flex flex-row flex-wrap lg:flex-nowrap justify-start gap-6">
               <LandingPageObjectiveCard 
-                image_path="/dashboard-icons/icon-stocks.svg" 
+                image_path="/icon-stocks.png" 
                 title="Eliminate Loss in Sales and Revenue"
                 description="We aim to prevent revenue loss caused by inventory stock-outs, a common issue that disrupts small business growth."
               />
               <LandingPageObjectiveCard 
-                image_path="/dashboard-icons/icon-automation.svg" 
+                image_path="/icon-automation.png" 
                 title="Automate Stock Monitoring"
                 description="The system is designed to automate stock monitoring and to alert generation, ensuring you are always aware of your inventory levels without manual tracking."
               />
               <LandingPageObjectiveCard 
-                image_path="/dashboard-icons/icon-decision.svg" 
+                image_path="/icon-decision.png" 
                 title="Drive Data-Based Decisions"
                 description="We provide business insights and analytics to assist owners in making restocking decisions and optimizing their overall inventory strategy."
               />
@@ -129,10 +128,10 @@ export default function Home() {
           </div>
         </div>
       </div>
-      {/* --- END THE OBJECTIVES SECTION --- */}
+      {/* End of Objectives */}
 
 
-      {/* --- BOTTOM CALL TO ACTION SECTION --- */}
+      {/* Bottom Section */}
       <div className="w-full flex justify-center py-24">
         <div className="flex flex-col items-center justify-center text-center w-full max-w-5xl px-4">
           
@@ -147,7 +146,10 @@ export default function Home() {
               alt="Stockify Box Icon" 
             />
             <h2 className="text-[#3B5418] text-3xl md:text-5xl font-bold font-['Fredoka'] tracking-wide">
-              STOCKIFY now!
+              STOCKIFY 
+            </h2>
+            <h2 className="text-[#3B5418] text-3xl md:text-5xl font-bold font-['Inter']">
+              now!
             </h2>
           </div>
 
@@ -160,7 +162,7 @@ export default function Home() {
 
         </div>
       </div>
-      {/* --- END BOTTOM CALL TO ACTION SECTION --- */}
+      {/* End of Bottom Section */}
 
     </div>
   );
