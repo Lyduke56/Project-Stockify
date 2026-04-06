@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import LogoutModal from "../modals/logout-modal";
 
-// --- Types ---
 interface NavItemProps {
   label: string;
   iconFileName: string;
@@ -11,7 +11,6 @@ interface NavItemProps {
   onClick: () => void;
 }
 
-// --- NavItem Component (Matches your team's design) ---
 function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   return (
     <div
@@ -24,7 +23,7 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
         <img
-          src={`/Dashboard Icons/${encodeURI(iconFileName)}.svg`}
+          src={iconFileName}
           alt={label}
           className="w-full h-full object-contain"
           style={
@@ -41,28 +40,40 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   );
 }
 
-// --- Main Admin Sidebar Component ---
-export default function SidebarAdmin() {
+export default function SidebarSuperAdmin() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Admin-specific navigation links
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const adminNavItems = [
-    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/admin/dashboard" },
-    { label: "User Administration", iconFileName: "icon-user-admin", path: "/admin/users" },
-    { label: "Storefront", iconFileName: "icon-storefront", path: "/admin/storefront" },
-    { label: "Store Settings", iconFileName: "icon-store-settings", path: "/admin/settings" },
-    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/admin/billing" },
+    { label: "Dashboard", iconFileName: "/dashboard-icons/icon-dashboard.svg", path: "/superadmin/dashboard" },
+    { label: "Store Settings", iconFileName: "/dashboard-icons/icon-store-settings.svg", path: "/superadmin/store-settings" },
+    { label: "Tenant Management", iconFileName: "/dashboard-icons/icon-tenant-management.svg", path: "/superadmin/tenant-management" },
+    { label: "Subscription Billing", iconFileName: "/dashboard-icons/icon-subscription-billing.svg", path: "/superadmin/subscription-billing" },
+    { label: "Audit Logs", iconFileName: "/dashboard-icons/icon-audit-logs.svg", path: "/superadmin/audit-logs" },
+    { label: "Transactions", iconFileName: "/dashboard-icons/icon-transactions.svg", path: "/superadmin/transactions" },
   ];
 
   const bottomItems = [
-    { label: "Settings", iconFileName: "icon-settings", path: "/admin/profile-settings" },
-    { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
+    { label: "Settings", iconFileName: "/dashboard-icons/icon-settings.svg", path: "/superadmin/settings" },
+    { label: "Logout", iconFileName: "/dashboard-icons/icon-logout.svg", path: "/logout" },
   ];
 
-  const handleNavigation = (label: string, path: string) => {
-    router.push(path);
-  };
+    const handleNavigation = (label: string, path: string) => {
+      if (label === "Logout") {
+        setShowLogoutModal(true);
+        return;
+      }
+
+      router.push(path);
+    };
+
+    const handleLogout = () => {
+      localStorage.removeItem("token"); 
+      setShowLogoutModal(false);
+      router.push("/");
+    };
 
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-between shrink-0 sticky top-0 overflow-y-auto">
@@ -95,7 +106,12 @@ export default function SidebarAdmin() {
           ))}
         </div>
       </div>
-
+      
+      <LogoutModal
+          isOpen={showLogoutModal}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
     </div>
   );
 }

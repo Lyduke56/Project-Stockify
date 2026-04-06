@@ -1,5 +1,6 @@
+"use client";
 
-export default function StoreSettings() {
+export default function SuperAdminStoreSettings() {
 
   return (
 
