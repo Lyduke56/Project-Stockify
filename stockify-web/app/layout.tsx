@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-// 1. Added Raleway to the import list
 import { Geist, Geist_Mono, Inter, Fredoka, Raleway } from "next/font/google"; 
 import "./globals.css";
 

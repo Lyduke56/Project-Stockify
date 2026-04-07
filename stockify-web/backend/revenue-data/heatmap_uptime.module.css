@@ -1,0 +1,167 @@
+/* SystemUptimeHeatmap.module.css */
+
+.wrapper {
+  display: flex;
+  background: #2d4a1e;
+  border-radius: 10px;
+  overflow: hidden;
+  font-family: "DM Sans", sans-serif;
+  width: 100%;
+  position: relative;
+}
+
+/* ── Left panel ── */
+.left {
+  min-width: 180px;
+  max-width: 200px;
+  background: #f7f9f0;
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pct {
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #2d4a1e;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.desc {
+  margin: 0;
+  font-size: 0.7rem;
+  color: #4a6b35;
+  line-height: 1.55;
+}
+
+/* ── Right panel ── */
+.right {
+  flex: 1;
+  padding: 1rem 1.25rem 0.75rem;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #d4f0a0;
+  letter-spacing: 0.02em;
+}
+
+/* ── Table ── */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 3px;
+  width: max-content;
+}
+
+.cornerTh {
+  min-width: 28px;
+}
+
+.dayTh {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: #a8d080;
+  text-align: center;
+  min-width: 18px;
+  padding: 0 0 3px;
+}
+
+.monthLabel {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #c8e8a0;
+  padding-right: 8px;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: right;
+}
+
+.cellTd {
+  padding: 0;
+  vertical-align: middle;
+}
+
+.cell {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.cell:hover {
+  opacity: 0.72;
+}
+
+.cellEmpty {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legendDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  font-size: 0.65rem;
+  color: #a8d080;
+  font-weight: 500;
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  position: fixed;
+  background: #1a2e10;
+  border-radius: 6px;
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  z-index: 999;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltipDate {
+  font-size: 0.68rem;
+  color: #a8d080;
+  font-weight: 500;
+}
+
+.tooltipStatus {
+  font-size: 0.72rem;
+  color: #d4f0a0;
+  font-weight: 700;
+}

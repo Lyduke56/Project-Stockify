@@ -5,12 +5,12 @@ import SidebarAdmin from "@/components/navbars/sidebar-admin";
 
 export default function AdminDashboard() {
   return (
-    <div className="flex min-h-screen bg-[#FFF9D7]">
+    <div className="flex min-h-screen bg-[#FFFCF0]">
       {/* 1. Sidebar on the left */}
       <SidebarAdmin />
 
       {/* 2. Main content area on the right */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-full overflow-y-auto px-20 pt-5 pb-12">
         {/* Navbar at the top */}
         <NavbarAdmin />
 
