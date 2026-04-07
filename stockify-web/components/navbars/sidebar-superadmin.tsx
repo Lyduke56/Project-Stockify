@@ -11,7 +11,7 @@ interface NavItemProps {
   onClick: () => void;
 }
 
-// --- NavItem Component (Matches your team's design) ---
+// --- NavItem Component ---
 function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   return (
     <div
@@ -24,7 +24,7 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
         <img
-          src={`/Dashboard Icons/${encodeURI(iconFileName)}.svg`}
+          src={`/${iconFileName}.svg`}
           alt={label}
           className="w-full h-full object-contain"
           style={
@@ -46,17 +46,16 @@ export default function SidebarAdmin() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Admin-specific navigation links
+  // FIX: Updated all paths from "/admin/..." to "/superadmin/..." to match your folder structure
   const adminNavItems = [
-    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/admin/dashboard" },
-    { label: "User Administration", iconFileName: "icon-user-admin", path: "/admin/users" },
-    { label: "Storefront", iconFileName: "icon-storefront", path: "/admin/storefront" },
-    { label: "Store Settings", iconFileName: "icon-store-settings", path: "/admin/settings" },
-    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/admin/billing" },
+    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/superadmin/dashboard" },
+    { label: "Tenant Management", iconFileName: "icon-tenant-management", path: "/superadmin/tenant-management" },
+    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/superadmin/billing" },
+    { label: "Audit Logs", iconFileName: "icon-audit-logs", path: "/superadmin/audit-logs" },
   ];
 
   const bottomItems = [
-    { label: "Settings", iconFileName: "icon-settings", path: "/admin/profile-settings" },
+    { label: "Settings", iconFileName: "icon-settings", path: "/superadmin/profile-settings" },
     { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
   ];
 
@@ -74,7 +73,7 @@ export default function SidebarAdmin() {
             key={item.label}
             label={item.label}
             iconFileName={item.iconFileName}
-            isActive={pathname === item.path}
+            isActive={pathname === item.path} // This will now correctly match the current URL
             onClick={() => handleNavigation(item.label, item.path)}
           />
         ))}
