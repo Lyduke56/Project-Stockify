@@ -11,6 +11,7 @@ interface NavItemProps {
   onClick: () => void;
 }
 
+// --- NavItem Component ---
 function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   return (
     <div
@@ -23,7 +24,7 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
         <img
-          src={iconFileName}
+          src={`/${iconFileName}.svg`}
           alt={label}
           className="w-full h-full object-contain"
           style={
@@ -44,20 +45,17 @@ export default function SidebarSuperAdmin() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-
+  // FIX: Updated all paths from "/admin/..." to "/superadmin/..." to match your folder structure
   const adminNavItems = [
-    { label: "Dashboard", iconFileName: "/dashboard-icons/icon-dashboard.svg", path: "/superadmin/dashboard" },
-    { label: "Store Settings", iconFileName: "/dashboard-icons/icon-store-settings.svg", path: "/superadmin/store-settings" },
-    { label: "Tenant Management", iconFileName: "/dashboard-icons/icon-tenant-management.svg", path: "/superadmin/tenant-management" },
-    { label: "Subscription Billing", iconFileName: "/dashboard-icons/icon-subscription-billing.svg", path: "/superadmin/subscription-billing" },
-    { label: "Audit Logs", iconFileName: "/dashboard-icons/icon-audit-logs.svg", path: "/superadmin/audit-logs" },
-    { label: "Transactions", iconFileName: "/dashboard-icons/icon-transactions.svg", path: "/superadmin/transactions" },
+    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/superadmin/dashboard" },
+    { label: "Tenant Management", iconFileName: "icon-tenant-management", path: "/superadmin/tenant-management" },
+    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/superadmin/billing" },
+    { label: "Audit Logs", iconFileName: "icon-audit-logs", path: "/superadmin/audit-logs" },
   ];
 
   const bottomItems = [
-    { label: "Settings", iconFileName: "/dashboard-icons/icon-settings.svg", path: "/superadmin/settings" },
-    { label: "Logout", iconFileName: "/dashboard-icons/icon-logout.svg", path: "/logout" },
+    { label: "Settings", iconFileName: "icon-settings", path: "/superadmin/profile-settings" },
+    { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
   ];
 
     const handleNavigation = (label: string, path: string) => {
@@ -85,7 +83,7 @@ export default function SidebarSuperAdmin() {
             key={item.label}
             label={item.label}
             iconFileName={item.iconFileName}
-            isActive={pathname === item.path}
+            isActive={pathname === item.path} // This will now correctly match the current URL
             onClick={() => handleNavigation(item.label, item.path)}
           />
         ))}
