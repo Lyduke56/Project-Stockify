@@ -11,14 +11,14 @@ interface NavItemProps {
   onClick: () => void;
 }
 
-// --- NavItem Component (Matches your team's design) ---
+// --- NavItem Component ---
 function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   return (
     <div
       onClick={onClick}
       className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${
         isActive
-          ? "bg-[#E5AD24] text-[#385E31] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.25)] font-bold"
+          ? "bg-[#E5AD24] text-[#385E31] shadow-md font-bold"
           : "bg-transparent text-[#FFF9D7] hover:bg-[#368028] font-semibold"
       }`}
     >
@@ -27,11 +27,6 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
           src={`/Dashboard Icons/${encodeURI(iconFileName)}.svg`}
           alt={label}
           className="w-full h-full object-contain"
-          style={
-            isActive
-              ? { filter: "brightness(0) saturate(100%) invert(32%) sepia(16%) saturate(1553%) hue-rotate(69deg) brightness(97%) contrast(85%)" }
-              : {}
-          }
         />
       </div>
       <div className="text-base font-['Inter'] whitespace-nowrap">
@@ -48,11 +43,11 @@ export default function SidebarAdmin() {
 
   // Admin-specific navigation links
   const adminNavItems = [
-    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/admin/dashboard" },
-    { label: "User Administration", iconFileName: "icon-user-admin", path: "/admin/users" },
-    { label: "Storefront", iconFileName: "icon-storefront", path: "/admin/storefront" },
-    { label: "Store Settings", iconFileName: "icon-store-settings", path: "/admin/settings" },
-    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/admin/billing" },
+    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/administrator/dashboard" },
+    { label: "User Administration", iconFileName: "icon-user-admin", path: "/administrator/user-admin" },
+    { label: "Storefront", iconFileName: "icon-storefront", path: "/administrator/storefront" },
+    { label: "Store Settings", iconFileName: "icon-store-settings", path: "/administrator/store-settings" },
+    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/administrator/subscription-billing" },
   ];
 
   const bottomItems = [
