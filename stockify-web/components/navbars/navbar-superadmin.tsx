@@ -11,7 +11,6 @@ export default function NavbarApp() {
       {/* LEFT SIDE: Logo and Brand Name */}
       <div 
         className="flex items-center gap-1.5 cursor-pointer select-none" 
-        onClick={() => router.push("/")}
       >
         <div className="w-12 h-12 flex items-center justify-center">
           <img
@@ -30,7 +29,7 @@ export default function NavbarApp() {
         
         {/* Home Icon */}
         <button
-          onClick={() => router.push("/dashboard")} 
+          onClick={() => router.push("/superadmin/dashboard")} 
           className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
           title="Home"
         >

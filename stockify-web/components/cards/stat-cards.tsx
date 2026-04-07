@@ -22,7 +22,7 @@ export default function StatCard({
       className={`w-80 p-5 bg-[#385E31] rounded-[10px] flex flex-col gap-3 shadow-md ${className}`}
     >
       {/* Title */}
-      <div className="text-[#FFFCEB] text-[22px] font-bold font-['Inter']">
+      <div className="text-[#FFFCEB] text-[18px] font-bold font-['Inter']">
         {title}
       </div>
 
@@ -31,7 +31,7 @@ export default function StatCard({
         
         {/* Icon & Value Row */}
         <div className="flex items-center justify-center gap-3">
-          <div className="w-18 h-18 text-[#385E31] shrink-0 flex items-center justify-center">
+          <div className="w-16 h-16 text-[#385E31] shrink-0 flex items-center justify-center">
             {icon ? (
               icon
             ) : svgName ? (
@@ -61,7 +61,7 @@ export default function StatCard({
             )}
           </div>
 
-          <div className="text-[#385E31] text-[4.2rem] leading-none font-black font-['Inter'] tracking-tight">
+          <div className="text-[#385E31] text-[3.8rem] leading-none font-black font-['Inter'] tracking-tight">
             {value}
           </div>
         </div>
