@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import LogoutModal from "../modals/logout-modal";
 
-// --- Types ---
 interface NavItemProps {
   label: string;
   iconFileName: string;
@@ -41,8 +41,7 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   );
 }
 
-// --- Main Admin Sidebar Component ---
-export default function SidebarAdmin() {
+export default function SidebarSuperAdmin() {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -59,9 +58,20 @@ export default function SidebarAdmin() {
     { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
   ];
 
-  const handleNavigation = (label: string, path: string) => {
-    router.push(path);
-  };
+    const handleNavigation = (label: string, path: string) => {
+      if (label === "Logout") {
+        setShowLogoutModal(true);
+        return;
+      }
+
+      router.push(path);
+    };
+
+    const handleLogout = () => {
+      localStorage.removeItem("token"); 
+      setShowLogoutModal(false);
+      router.push("/");
+    };
 
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-between shrink-0 sticky top-0 overflow-y-auto">
@@ -94,7 +104,12 @@ export default function SidebarAdmin() {
           ))}
         </div>
       </div>
-
+      
+      <LogoutModal
+          isOpen={showLogoutModal}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
     </div>
   );
 }

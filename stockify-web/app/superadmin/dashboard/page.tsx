@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import StatCard from "@/components/cards/stat-cards";
+import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
 
 // Data for the Heatmap (MOCK RA NI HA)
 type StatusType = 'outage' | 'partial' | 'normal';
@@ -74,7 +74,7 @@ export default function SuperadminDashboard() {
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
       
       {/* LEFT SIDE: Fixed Sidebar */}
-      <Sidebar />
+      <SidebarSuperAdmin />
 
       {/* RIGHT SIDE: Main Content ehey*/}
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-20 pt-5 pb-12">
