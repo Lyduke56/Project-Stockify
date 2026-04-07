@@ -18,8 +18,8 @@ import {
   generateMockData,
   type DataPoint,
   type ForecastPoint,
-} from "../../backend/data-forecasting/forecasting_algorithm";
-import styles from "../../backend/data-forecasting/forecasting_chart.module.css";
+} from "./forecasting_algorithm";
+import styles from "../../backend/revenue-data/forecasting_chart.module.css";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,122 @@
+/* PaymentBreakdownChart.module.css */
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: #f7f9f2;
+  border: 1px solid #dde8d0;
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  width: fit-content;
+  font-family: "DM Sans", sans-serif;
+}
+
+/* ── Donut ── */
+.chartWrap {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  flex-shrink: 0;
+}
+
+/* Center text overlay */
+.center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 2px;
+}
+
+.centerLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7a8c6e;
+}
+
+.centerValue {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #2a3d1e;
+  letter-spacing: -0.02em;
+}
+
+/* ── Legend ── */
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 200px;
+}
+
+.legendTitle {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #2a3d1e;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.legendDot {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legendName {
+  font-size: 0.85rem;
+  color: #3a4d2e;
+  font-weight: 500;
+  flex: 1;
+}
+
+.legendPct {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #2a3d1e;
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  background: #2a3d1e;
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.tooltipLabel {
+  font-size: 0.7rem;
+  color: #a8c890;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tooltipValue {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tooltipPct {
+  font-size: 0.75rem;
+  color: #c8e0a8;
+  font-weight: 500;
+}
