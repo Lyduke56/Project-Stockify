@@ -20,31 +20,10 @@ export default function DashboardHome() {
         <p className="text-stone-400 font-medium">Shop Name Corporation, Inc.</p>
 
         <div className="flex justify-center">
-          <div className="justify-center align-center grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl">
-          <StatCard 
-           title="Active New Customers"
-           value="58"
-           trendText="↑ 12% from last month"
-           svgName="SalesIcon"
-           icon="📊"
-           className = ""
-          />
-          <StatCard 
-           title="Monthly Revenue"
-           value="62.3k"
-           trendText="↑ 5% from last month"
-           svgName="CustomersIcon"
-           icon="👥"
-           className = ""
-          />
-          <StatCard 
-           title="Total Orders"
-           value="143"
-           trendText="↓ 2% from last month"
-           svgName="ProductsIcon" 
-           icon="📦"
-           className = ""
-          />
+          <div className="justify-center align-center grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard title="Active New Customers" value="58" className="w-full" svgName="icon-upward" />
+          <StatCard title="Monthly Revenue" value="₱ 62.3k" className="w-full" svgName="icon-upward" />
+          <StatCard title="Total Orders" value="143" className="w-full" svgName="icon-downward" />
           </div>
         </div>
 

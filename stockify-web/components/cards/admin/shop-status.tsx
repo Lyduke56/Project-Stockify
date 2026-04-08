@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import StockifyButton from "@/components/buttons/button-get-started"; // adjust import path
+import StockifyButton from "@/components/buttons/button-get-started";
 
 interface ShopStatusProps {
   shopName?: string;

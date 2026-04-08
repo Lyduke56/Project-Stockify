@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { createClient } from "@/lib/supabase/client";
-import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page"; // adjust import path
+import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page";
 
 interface NavItemProps {
   label: string;
@@ -53,7 +53,7 @@ export default function SidebarAdmin({ activeSection, setActiveSection }: Sideba
 
   const adminNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
     { label: "Dashboard",             iconFileName: "icon-dashboard",             section: "dashboard" },
-    { label: "User Administration",   iconFileName: "icon-user-admin",            section: "user-admin" },
+    { label: "User Administration",   iconFileName: "icon-user-administration",            section: "user-admin" },
     { label: "Storefront",            iconFileName: "icon-storefront",            section: "storefront" },
     { label: "Store Settings",        iconFileName: "icon-store-settings",        section: "store-settings" },
     { label: "Subscription Billing",  iconFileName: "icon-subscription-billing",  section: "subscription-billing" },
