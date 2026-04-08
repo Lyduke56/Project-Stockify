@@ -1,8 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+// Import useRouter for navigation
+import { useRouter } from "next/navigation"; 
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
+// 1. IMPORT THE NEW MODAL
+import TenantActionModal from "@/components/modals/confimation-modal";
 
 // --- MOCK DATA ---
 const tenantData = [
@@ -116,12 +120,57 @@ function StatCard({ title, value, trendText, className = "", svgName }: StatCard
 
 // --- MAIN COMPONENT ---
 export default function TenantManagement() {
+  const router = useRouter(); // Initialize router
+
   const [activeTab, setActiveTab] = useState("Active");
-  
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+
+  // 2. ADD STATE FOR MODALS AND SELECTED TENANT
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showTerminateModal, setShowTerminateModal] = useState(false);
 
   const toggleDropdown = (id: number) => {
     setOpenDropdownId(prevId => (prevId === id ? null : id));
+  };
+
+  // NAVIGATION HANDLER
+  const handleViewTenant = (tenantId: number) => {
+    // Adjust this path based on where your TenantProfile page actually lives in your app directory
+    router.push(`/superadmin/tenant-review/${tenantId}`); 
+  };
+
+  // 3. ADD CLICK HANDLERS
+  const handleSuspendClick = (tenant: any) => {
+    setSelectedTenant(tenant);
+    setOpenDropdownId(null); // Close dropdown
+    setShowSuspendModal(true);
+  };
+
+  const handleTerminateClick = (tenant: any) => {
+    setSelectedTenant(tenant);
+    setOpenDropdownId(null); // Close dropdown
+    setShowTerminateModal(true);
+  };
+
+  const handleConfirmSuspend = () => {
+    console.log(`Suspending tenant: ${selectedTenant?.name}`);
+    // Add your API call to suspend the tenant here
+    setShowSuspendModal(false);
+    setSelectedTenant(null);
+  };
+
+  const handleConfirmTerminate = () => {
+    console.log(`Terminating tenant: ${selectedTenant?.name}`);
+    // Add your API call to terminate the tenant here
+    setShowTerminateModal(false);
+    setSelectedTenant(null);
+  };
+
+  const handleCloseModal = () => {
+    setShowSuspendModal(false);
+    setShowTerminateModal(false);
+    setSelectedTenant(null);
   };
 
   return (
@@ -260,7 +309,7 @@ export default function TenantManagement() {
                   <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Subscription</div>
                   <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Balance</div>
                   <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Actions</div>
-                </>
+                </  >
               )}
               
               {(activeTab === "Pending" || activeTab === "Suspended") && (
@@ -283,7 +332,12 @@ export default function TenantManagement() {
                   <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                       {/* Clickable Business Name */}
-                      <span className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors">{row.name}</span>
+                      <span 
+                        onClick={() => handleViewTenant(row.id)}
+                        className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
+                      >
+                        {row.name}
+                      </span>
                     </div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
@@ -308,10 +362,28 @@ export default function TenantManagement() {
 
                       {isDropdownOpen && (
                         <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                          <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">View Tenant</button>
+                          
+                          {/* UPDATED VIEW TENANT BUTTON */}
+                          <button 
+                            onClick={() => handleViewTenant(row.id)}
+                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                          >
+                            View Tenant
+                          </button>
+                          
                           <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Send Notification</button>
-                          <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Suspend Tenant</button>
-                          <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Terminate Tenant</button>
+                          <button 
+                            onClick={() => handleSuspendClick(row)}
+                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                          >
+                            Suspend Tenant
+                          </button>
+                          <button 
+                            onClick={() => handleTerminateClick(row)}
+                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                          >
+                            Terminate Tenant
+                          </button>
                         </div>
                       )}
                     </div>
@@ -326,13 +398,22 @@ export default function TenantManagement() {
                 return (
                   <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                      <span className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors">{row.name}</span>
+                      {/* Clickable Business Name */}
+                      <span 
+                        onClick={() => handleViewTenant(row.id)}
+                        className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
+                      >
+                        {row.name}
+                      </span>
                     </div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
                     
                     <div className="flex-1 flex justify-center items-center">
-                      <button className="bg-[#385E31] text-[#FFFCEB] px-6 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 transition-colors">
+                      <button 
+                        onClick={() => handleViewTenant(row.id)}
+                        className="bg-[#385E31] text-[#FFFCEB] px-6 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 transition-colors"
+                      >
                         Review
                       </button>
                     </div>
@@ -348,7 +429,13 @@ export default function TenantManagement() {
                 return (
                   <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                      <span className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors">{row.name}</span>
+                      {/* Clickable Business Name */}
+                      <span 
+                        onClick={() => handleViewTenant(row.id)}
+                        className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
+                      >
+                        {row.name}
+                      </span>
                     </div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
@@ -365,7 +452,15 @@ export default function TenantManagement() {
 
                       {isDropdownOpen && (
                         <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                          <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">View Tenant</button>
+                          
+                          {/* UPDATED VIEW TENANT BUTTON */}
+                          <button 
+                            onClick={() => handleViewTenant(row.id)}
+                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                          >
+                            View Tenant
+                          </button>
+
                           <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Send Notification</button>
                           <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Restore Tenant</button>
                           <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Terminate Tenant</button>
@@ -383,7 +478,13 @@ export default function TenantManagement() {
                 return (
                   <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                      <span className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors">{row.name}</span>
+                      {/* Clickable Business Name */}
+                      <span 
+                        onClick={() => handleViewTenant(row.id)}
+                        className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
+                      >
+                        {row.name}
+                      </span>
                     </div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
@@ -403,6 +504,23 @@ export default function TenantManagement() {
 
         </div>
       </div>
+
+      {/* 5. RENDER THE MODALS */}
+      <TenantActionModal
+        isOpen={showSuspendModal}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmSuspend}
+        tenantName={selectedTenant?.name || ""}
+        actionType="suspend"
+      />
+
+      <TenantActionModal
+        isOpen={showTerminateModal}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmTerminate}
+        tenantName={selectedTenant?.name || ""}
+        actionType="terminate"
+      />
     </div>
   );
 }
