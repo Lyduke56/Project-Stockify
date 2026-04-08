@@ -53,6 +53,10 @@ export default function SidebarAdmin({ activeSection, setActiveSection }: Sideba
 
   const adminNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
     { label: "Dashboard",             iconFileName: "icon-dashboard",             section: "dashboard" },
+    { label: "User Administration",   iconFileName: "icon-user-admin",            section: "user-admin" },
+    { label: "Storefront",            iconFileName: "icon-storefront",            section: "storefront" },
+    { label: "Store Settings",        iconFileName: "icon-store-settings",        section: "store-settings" },
+    { label: "Subscription Billing",  iconFileName: "icon-subscription-billing",  section: "subscription-billing" },
   ];
 
   const bottomItems = [
