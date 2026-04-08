@@ -18,13 +18,31 @@ export default function EmployeeDashboard() {
         <NavbarEmployee />
 
         {/* Header */}
-        <div className="w-full flex flex-col items-center mt-10 mb-8">
+        <div className="w-full flex flex-col items-center mt-10 mb-4">
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             Employee Dashboard
           </h1>
           <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
         </div>
-        
+
+        {/* Date Filter */}
+        <div className="w-full flex justify-start mb-4">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-xl">
+            
+            <span className="text-[#385E31] font-semibold">
+              Data from:
+            </span>
+
+            <select className="bg-transparent border border-[#385E31] text-[#385E31] font-semibold px-4 py-1.5 rounded-lg outline-none cursor-pointer">
+              <option>Last 7 days</option>
+              <option>Last 30 days</option>
+              <option>Last 3 months</option>
+              <option>Last year</option>
+            </select>
+
+          </div>
+        </div>
+
         {/* stat cards */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <StatCard title="Total Revenue" value="₱ 32k" trendText="Total revenue as of mm/yy" className="w-full" svgName="employee-icons/piggybank" />
