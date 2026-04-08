@@ -45,6 +45,8 @@ export default function SidebarSuperAdmin() {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   // FIX: Updated all paths from "/admin/..." to "/superadmin/..." to match your folder structure
   const adminNavItems = [
     { label: "Dashboard", iconFileName: "icon-dashboard", path: "/superadmin/dashboard" },
