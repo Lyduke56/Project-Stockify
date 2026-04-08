@@ -1,3 +1,8 @@
+"use client";
+
+import NavbarAdmin from "@/components/navbars/navbar-admin";
+import SidebarAdmin from "@/components/navbars/sidebar-admin";
+
 export default function ClientNotifications() {
 
   return (
