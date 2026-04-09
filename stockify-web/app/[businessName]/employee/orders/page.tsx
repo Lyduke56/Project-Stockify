@@ -1,5 +1,6 @@
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
+import OrdersTable from "@/components/tables/order-table";
 
 export default function EmployeeOrders() {
 
@@ -21,6 +22,8 @@ export default function EmployeeOrders() {
                   </h1>
                   <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
                 </div>
+
+              <OrdersTable />
 
               </div>
         </div>
