@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 
 type SidebarClientProps = {
-  active?: "dashboard" | "analytics" | "billing" | "settings";
+  active?: "dashboard" | "billing" | "settings";
 };
 
 export default function SidebarClient({ active = "dashboard" }: SidebarClientProps) {
@@ -11,7 +11,7 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
   const go = (href: string) => router.push(href);
 
   return (
-    <div className="w-64 h-screen sticky top-0 pt-20 pb-2.5 bg-amber-400 shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-7">
+    <div className="w-64 h-screen fixed left-0 pt-20 pb-2.5 bg-amber-400 shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-7 overflow-hidden">
         <div data-showaccounts="true" data-showanalytics="true" data-showaudit="false" data-showdashboard="true" data-showinventory="false" data-showorders="false" data-showrestockalert="false" data-showstockifyhub="false" data-showstorefront="false" data-showstoresettings="false" data-showsubscriptionbilling="true" data-showtenantmanagement="false" data-showuseradmin="false" className="self-stretch h-[563px] flex flex-col justify-start items-center gap-2.5 overflow-hidden">
             <button
               type="button"
