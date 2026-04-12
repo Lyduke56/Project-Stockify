@@ -1,5 +1,6 @@
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
+import OrdersTable from "@/components/tables/order-table";
 
 export default function EmployeeOrders() {
 
@@ -15,12 +16,14 @@ export default function EmployeeOrders() {
                 <NavbarEmployee />
         
                 {/* Header */}
-                <div className="w-full flex flex-col items-center mt-10 mb-8">
+                <div className="w-full flex flex-col items-center mt-10 mb-10">
                   <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
                     Orders
                   </h1>
                   <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
                 </div>
+
+              <OrdersTable />
 
               </div>
         </div>

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Product } from "@/types/product";
-import ProductModal from "./modals/product-modal";
-import DeleteModal from "./modals/delete-modals";
-import ManageCategoriesModal from "./modals/manage-categories-modal";
+import ProductModal from "./inventory-modals/product-modal";
+import DeleteModal from "./inventory-modals/delete-modals";
+import ManageCategoriesModal from "./inventory-modals/manage-categories-modal";
 
 const INITIAL_PRODUCTS: Product[] = [
   { id: 1, name: "Espresso",   img: null, sku: "ESP-01", category: "Coffee", price: 120, stock: 15, stockUnit: "kg", alertLimit: "<= 5kg", visible: true },
