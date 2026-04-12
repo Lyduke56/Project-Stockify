@@ -18,7 +18,7 @@ export default function EmployeeDashboard() {
         <NavbarEmployee />
 
         {/* Header */}
-        <div className="w-full flex flex-col items-center mt-10 mb-4">
+        <div className="w-full flex flex-col items-center mt-10 mb-10">
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             Employee Dashboard
           </h1>

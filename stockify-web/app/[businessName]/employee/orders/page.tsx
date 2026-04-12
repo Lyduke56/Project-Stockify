@@ -16,7 +16,7 @@ export default function EmployeeOrders() {
                 <NavbarEmployee />
         
                 {/* Header */}
-                <div className="w-full flex flex-col items-center mt-10 mb-8">
+                <div className="w-full flex flex-col items-center mt-10 mb-10">
                   <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
                     Orders
                   </h1>
