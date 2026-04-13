@@ -49,7 +49,9 @@ export default function StorefrontSection() {
             ) : (
               <input type="text" defaultValue={item.val} className="flex-1 p-2.5 rounded-lg bg-[#FDE68A]/50 border border-[#F7B71D]/30 text-[#385E31] text-xs font-bold" />
             )}
-            <div className="w-10 h-10 rounded-md shadow-sm bg-[#FF7272] border border-black/5" />
+            {item.type === "color" && (
+              <div className="w-10 h-10 rounded-md shadow-sm bg-[#FF7272] border border-black/5" />
+            )}
           </div>
         ))}
       </div>

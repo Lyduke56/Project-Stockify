@@ -1,4 +1,9 @@
+import SubscriptionStatus from "@/components/cards/admin/subscription-status";
+import PaymentMethod from "@/components/cards/admin/payment-method";
+
 export default function SubscriptionBilling() {
+
+
   return (
     <>
       <header className="mb-8 text-center">
@@ -8,17 +13,22 @@ export default function SubscriptionBilling() {
         <div className="w-full h-1 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
       </header>
 
-      <div className="flex flex-col gap-6">
-        <h2 className="text-[#385E31] text-4xl font-bold font-['Inter']">
-          Hello, Client!
-        </h2>
-        <p className="text-stone-400 font-medium">Shop Name Corporation, Inc.</p>
+      <div className="flex items-start gap-8">
+      <SubscriptionStatus
+        status="Subscribed"
+        pricePerMonth="₱000.00"
+        inventoryItems={67}
+        inventoryLimit="Unlimited"
+        teamUsed={3}
+        teamTotal={3}
+        nextBilling="April 1, 2026"
+        onUnsubscribe={() => console.log("unsubscribe")}
+        onPayment={() => console.log("payment")}
+      />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-          <div className="h-40 bg-[#385E31] rounded-xl shadow-lg border-b-8 border-[#F7B71D]" />
-          <div className="h-40 bg-[#385E31] rounded-xl shadow-lg border-b-8 border-[#F7B71D]" />
-          <div className="h-40 bg-[#385E31] rounded-xl shadow-lg border-b-8 border-[#F7B71D]" />
-        </div>
+      <PaymentMethod
+       onProofOfPayment={() => console.log("proof of payment")}
+      />
       </div>
     </>
   );

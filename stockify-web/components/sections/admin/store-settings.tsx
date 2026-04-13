@@ -10,8 +10,8 @@ export default function StoreSettingsSection() {
 
       {/* Business Information Section */}
       <div className="space-y-6">
-        <h3 className="text-[#385E31] font-bold text-xl">BUSINESS INFORMATION</h3>
-        <div className="grid grid-cols-1 gap-4 max-w-3xl">
+        <h3 className="text-[#385E31] font-bold text-2xl">BUSINESS INFORMATION</h3>
+        <div className="grid grid-cols-1 gap-4 max-w-10xl">
           {[
             { label: "Business Name:", val: "Description" },
             { label: "Contact Number:", val: "Description" },
@@ -33,18 +33,18 @@ export default function StoreSettingsSection() {
       <div className="space-y-4">
         <h3 className="text-[#385E31] font-bold text-xl">PAYMENT METHODS</h3>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-10">
+          <div className="flex items-center gap-50">
             <span className="text-[#385E31] font-bold w-64">Enable Cash-on-Delivery (COD)</span>
             <div className="w-10 h-5 bg-[#385E31] rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"/></div>
           </div>
-          <div className="flex items-center gap-10">
+          <div className="flex items-center gap-50">
             <span className="text-[#385E31] font-bold w-64">Enable QR Code Payment</span>
             <div className="w-10 h-5 bg-[#385E31] rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"/></div>
           </div>
         </div>
       </div>
 
-      {/* QR Code Section - As seen in image_f57fe2.png */}
+      {/* QR Code Section */}
       <div className="space-y-4">
         <h3 className="text-[#385E31] font-bold text-xl">IN-HOUSE QR CODE</h3>
         <div className="bg-white border border-[#385E31] rounded-2xl p-8 flex items-center gap-8 w-fit">
