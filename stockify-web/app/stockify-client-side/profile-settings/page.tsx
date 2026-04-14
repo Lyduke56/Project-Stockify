@@ -17,10 +17,10 @@ export default function ClientProfileSettings() {
           {/* TAB HEADER */}
           <section className="w-full h-12 inline-flex flex-col justify-start items-start gap-[3.23px]">
             <div className="self-stretch h-7 relative">
-              <div className="left-0 top-[-1.62px] absolute justify-start text-lime-800 text-2xl font-bold font-['Inter'] leading-7">Profile </div>
+              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800 text-2xl font-bold font-['Inter'] leading-7">Profile </div>
             </div>
             <div className="self-stretch h-5 relative">
-              <div className="left-0 top-[-1.62px] absolute justify-start text-lime-800/70 text-xs font-normal font-['Inter'] leading-5">Manage and update client and business information</div>
+              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800/70 text-xs font-normal font-['Inter'] leading-5">Manage and update client and business information</div>
             </div>
           </section>
 
