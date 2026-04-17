@@ -15,14 +15,14 @@ export default function ClientDashboardPage() {
           <NavbarClient />
 
             {/* Billing & Subscription Title*/}
-            <section className="w-[1005.84px] h-12 inline-flex flex-col justify-start items-start gap-[3.23px]">
-                <div className="self-stretch h-7 relative">
-                <div className="left-0 top-[-1.62px] absolute justify-start text-lime-800 text-2xl font-bold font-['Inter'] leading-7">Billing &amp; Subscription</div>
-                </div>
-                <div className="self-stretch h-5 relative">
-                <div className="left-0 top-[-1.62px] absolute justify-start text-lime-800/70 text-xs font-normal font-['Inter'] leading-5">Manage your subscription, payment methods, and billing history</div>
-                </div>
-            </section>
+            <section className="w-full h-12 inline-flex flex-col justify-start items-start gap-[3.23px]">
+            <div className="self-stretch h-7 relative">
+              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800 text-2xl font-bold font-['Inter'] leading-7">Billing &amp; Subscription </div>
+            </div>
+            <div className="self-stretch h-5 relative">
+              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800/70 text-xs font-normal font-['Inter'] leading-5">Manage your subscription, payment methods, and billing history</div>
+            </div>
+          </section>
 
             {/* Subscription Status & Payment Method Card*/}
             <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">

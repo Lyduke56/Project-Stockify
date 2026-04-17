@@ -15,9 +15,13 @@ export default function ClientDashboardPage() {
           <NavbarClient />
 
           {/* GREETING + SHOP NAME. replace placeholder values with real data */}
-          <section className="space-y-1">
-            <div className="text-lime-800 text-3xl font-bold font-['Inter'] leading-8">Hello, Client!</div>
-            <div className="text-lime-800/70 text-sm font-normal font-['Inter'] leading-6">Shop Name Corporation, Inc.</div>
+          <section className="w-full h-12 inline-flex flex-col justify-start items-start gap-[3.23px]">
+            <div className="self-stretch h-7 relative">
+              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800 text-3xl font-bold font-['Inter'] leading-8">Hello, Client! </div>
+            </div>
+            <div className="self-stretch h-5 relative">
+              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800/70 text-sm font-normal font-['Inter'] leading-6">Shop Name Corporation, Inc.</div>
+            </div>
           </section>
 
           {/* KPI CARDS. summary metrics + time range */}
