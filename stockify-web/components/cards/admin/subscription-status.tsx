@@ -27,7 +27,7 @@ export default function SubscriptionStatus({
   onPayment,
 }: SubscriptionStatusProps) {
   return (
-    <div className="w-full max-w-[675px] rounded-[10px] p-7 flex flex-col gap-4" style={{ backgroundColor: "#385E31" }}>
+    <div className="w-full max-w-[675px] rounded-[10px] p-5 flex flex-col gap-4" style={{ backgroundColor: "#24481F" }}>
 
       {/* Badge */}
       <div className="w-fit px-2 py-0.5 rounded-[5px]" style={{ backgroundColor: "#E5AC24" }}>
@@ -39,7 +39,7 @@ export default function SubscriptionStatus({
         <span className="text-4xl font-bold font-['Inter']" style={{ color: "#FFFCF0" }}>
           {status}
         </span>
-        <span className="text-4xl font-bold font-['Inter']" style={{ color: "#E5AC24" }}>
+        <span className="text-4xl font-bold font-['Inter']" style={{ color: "#F5E69E" }}>
           {pricePerMonth} / m
         </span>
       </div>
@@ -48,7 +48,7 @@ export default function SubscriptionStatus({
       <div className="flex gap-4">
 
         {/* Inventory Items */}
-        <div className="flex-1 rounded-[10px] p-4 flex flex-col gap-2" style={{ backgroundColor: "#24481F" }}>
+        <div className="w-[500px] rounded-[10px] p-4 flex flex-col gap-2" style={{ backgroundColor: "#385E31" }}>
           <div className="flex items-center gap-3">
             <img src="/icon-inventory.svg" alt="Inventory" className="w-7 h-7 shrink-0" style={{ filter: "brightness(0) saturate(100%) invert(83%) sepia(43%) saturate(2214%) hue-rotate(343deg) brightness(95%) contrast(88%)" }} />
             <span className="text-2xl font-semibold font-['Inter']" style={{ color: "#E5AC24" }}>
@@ -70,7 +70,7 @@ export default function SubscriptionStatus({
         <div className="flex flex-col gap-4 w-52">
 
           {/* Team */}
-          <div className="rounded-[10px] p-4 flex flex-col gap-1" style={{ backgroundColor: "#24481F" }}>
+          <div className="rounded-[10px] p-4 flex flex-col gap-1" style={{ backgroundColor: "#385E31" }}>
             <div className="flex items-center gap-3">
               <img src="/icon-user-administration.svg" alt="Inventory" className="w-7 h-7 shrink-0" style={{ filter: "brightness(0) saturate(100%) invert(83%) sepia(43%) saturate(2214%) hue-rotate(343deg) brightness(95%) contrast(88%)" }} />
               <span className="text-xl font-semibold font-['Inter']" style={{ color: "#E5AC24" }}>Team</span>
@@ -81,7 +81,7 @@ export default function SubscriptionStatus({
           </div>
 
           {/* Next Billing */}
-          <div className="rounded-[10px] p-4 flex flex-col gap-1" style={{ backgroundColor: "#24481F" }}>
+          <div className="rounded-[10px] p-4 flex flex-col gap-1" style={{ backgroundColor: "#385E31" }}>
             <div className="flex items-center gap-3">
               <img src="/icon-subscription-billing.svg" alt="Inventory" className="w-7 h-7 shrink-0" style={{ filter: "brightness(0) saturate(100%) invert(83%) sepia(43%) saturate(2214%) hue-rotate(343deg) brightness(95%) contrast(88%)" }} />
               <span className="text-xl font-semibold font-['Inter']" style={{ color: "#E5AC24" }}>Next Billing</span>
