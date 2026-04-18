@@ -1,11 +1,12 @@
 export default function StoreSettingsSection() {
   return (
     <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
-      <header className="mb-4 text-center">
-        <h1 className="text-[#385E31] text-3xl font-bold uppercase tracking-widest">
+      
+      <header className="mb-8 text-center flex flex-col items-center justify-center">
+        <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
           Store Settings
         </h1>
-        <div className="w-full h-[1px] bg-[#F7B71D] mt-2 opacity-50" />
+        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" /> {/* <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"*/}
       </header>
 
       {/* Business Information Section */}

@@ -6,11 +6,11 @@ import ShopStatus from "@/components/cards/admin/shop-status";
 export default function DashboardHome() {
   return (
     <>
-      <header className="mb-8 text-center">
+      <header className="mb-8 text-center flex flex-col items-center justify-center">
         <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
           Admin Dashboard
         </h1>
-        <div className="w-full h-1 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
+        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" /> {/* <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"*/}
       </header>
 
       <div className="flex flex-col gap-6">
@@ -30,7 +30,7 @@ export default function DashboardHome() {
         <div className="w-full h-[3px] bg-lime-900/50 rounded-full" />
         
         <ShopStatus
-          shopName="Coffee Shop"
+          shopName="Coffee Shop" 
           clientName="Shop Name"
           itemCount={245}
           lowStockCount={12}

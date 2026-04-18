@@ -1,34 +1,66 @@
 "use client";
 import { useState } from "react";
+
 import NewEmployeeModal from "@/components/modals/new-employee-modal";
+import StaffAdminTable from "@/components/tables/user-admin-staff";
+import CustomerAdminTable from "@/components/tables/user-admin-customers";
+import SearchBox from "@/components/inputs/searchbox";
 
 export default function UserAdminSection() {
-  const [isEmployeeModalOpen, setIsEmployeeModalOpen] = useState(false);
-
   return (
-    <div className="flex flex-col gap-6 w-full">
-      {/* ... previous header code ... */}
+    <div className="flex flex-col">
 
-      <div className="flex justify-between items-end mb-2">
-        <div className="space-y-1">
-          <h3 className="text-[#385E31] font-black text-xl uppercase tracking-tighter">Staff Accounts</h3>
-          <p className="text-[#385E31] text-[10px] font-bold opacity-60">CAPACITY: 3 / 3 Employees Provisioned</p>
+      <header className="mb-8 text-center flex flex-col items-center justify-center">
+        <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
+          User Administration
+        </h1>
+        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
+      </header>
+
+      {/* Staff Accounts */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-[#385E31] text-2xl font-bold font-['Inter'] uppercase tracking-widest">
+              Staff Accounts
+            </h2>
+            <p className="text-[#385E31] text-sm font-medium font-['Inter']">
+              CAPACITY: 3 / 3 Employees Provisioned
+            </p>
+          </div>
+          <button
+            className="px-4 py-2 rounded-[10px] font-semibold font-['Inter'] text-sm transition-all hover:brightness-105 active:scale-95"
+            style={{ backgroundColor: "#E5AC24", color: "#24481F" }}
+          >
+            + New Employee
+          </button>
         </div>
-        <button 
-          onClick={() => setIsEmployeeModalOpen(true)}
-          className="bg-[#F7B71D] text-[#385E31] px-8 py-3 rounded-full font-black text-xs shadow-md hover:scale-105 transition-all"
-        >
-          + New Employee
-        </button>
+
+        <SearchBox
+          placeholder="Search"
+          onChange={(val) => console.log(val)}
+        />
+
+        <StaffAdminTable />
+        
       </div>
 
-      {/* Render the Modal */}
-      <NewEmployeeModal 
-        isOpen={isEmployeeModalOpen} 
-        onClose={() => setIsEmployeeModalOpen(false)} 
-      />
+      <div className="w-full h-1 bg-[#385E31] rounded-full opacity-100 mb-4 mt-6" />
 
-      {/* ... rest of your tables ... */}
+      {/* Registered Customers */}
+      <div className="flex flex-col gap-4">
+        <h2 className="text-[#385E31] text-2xl font-bold font-['Inter'] uppercase tracking-widest">
+          Registered Customers
+        </h2>
+
+        <SearchBox
+          placeholder="Search"
+          onChange={(val) => console.log(val)}
+        />
+
+        <CustomerAdminTable />
+      </div>
+
     </div>
   );
 }
