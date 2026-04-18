@@ -5,11 +5,11 @@ import BillingHistory from "@/components/tables/billing-history";
 export default function SubscriptionBilling() {
   return (
     <>
-      <header className="mb-8 text-center">
+      <header className="mb-8 text-center flex flex-col items-center justify-center">
         <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
           Subscription Billing
         </h1>
-        <div className="w-full h-1 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
+        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" /> {/* <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"*/}
       </header>
 
       <div className="flex flex-col gap-8">
