@@ -6,7 +6,7 @@ export default function StoreSettingsSection() {
         <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
           Store Settings
         </h1>
-        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" /> {/* <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"*/}
+        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
       </header>
 
       {/* Business Information Section */}
@@ -32,7 +32,7 @@ export default function StoreSettingsSection() {
 
       {/* Payment Methods Section */}
       <div className="space-y-4">
-        <h3 className="text-[#385E31] font-bold text-xl">PAYMENT METHODS</h3>
+        <h3 className="text-[#385E31] font-bold text-2xl">PAYMENT METHODS</h3>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-50">
             <span className="text-[#385E31] font-bold w-64">Enable Cash-on-Delivery (COD)</span>
@@ -47,9 +47,9 @@ export default function StoreSettingsSection() {
 
       {/* QR Code Section */}
       <div className="space-y-4">
-        <h3 className="text-[#385E31] font-bold text-xl">IN-HOUSE QR CODE</h3>
+        <h3 className="text-[#385E31] font-bold text-2xl">IN-HOUSE QR CODE</h3>
         <div className="bg-white border border-[#385E31] rounded-2xl p-8 flex items-center gap-8 w-fit">
-          <div className="w-40 h-40 bg-white border-2 border-black flex items-center justify-center">
+          <div className="w-75 h-75 bg-white border-2 border-black flex items-center justify-center">
              <img src="/sample-qr.png" alt="QR Code" className="w-32 h-32" />
           </div>
           <div className="flex flex-col gap-2">
