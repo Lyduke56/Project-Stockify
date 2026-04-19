@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, ChangeEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import NavbarLandingPage from "@/components/navbars/navbar-landing-page";
+import RegistrationSubmittedModal from "@/components/modals/sign-up-modals/RegSubmitModal";
 
 interface OwnerForm {
   lastName: string;
@@ -180,6 +181,8 @@ export default function SignUp() {
   const validIdInputRef = useRef<HTMLInputElement>(null);
   const permitInputRef = useRef<HTMLInputElement>(null);
 
+  const isSubmitting = useRef(false);
+
   const [owner, setOwner] = useState<OwnerForm>({
     lastName: "",
     firstName: "",
@@ -252,36 +255,33 @@ export default function SignUp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+
+    if (loading || isSubmitting.current) return;
+
     setError("");
 
     if (owner.password !== owner.confirmPassword) {
       setError("Passwords do not match.");
       return;
     }
+
     if (owner.password.length < 8) {
       setError("Password must be at least 8 characters.");
       return;
     }
+
     if (!agreed) {
       setError("Please accept the Terms and Conditions.");
       return;
     }
 
+    isSubmitting.current = true;
     setLoading(true);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: owner.email,
-        password: owner.password,
-        options: {
-          emailRedirectTo: `${siteUrl}/auth/callback`,
-        },
-      });
-
-      if (authError) throw new Error(authError.message);
-      const authUserId = authData.user?.id;
-      if (!authUserId) throw new Error("Failed to create account.");
+      // --- FILE UPLOADS (still client-side via Supabase Storage) ---
+      // We need a temp ID for storage paths — use email hash or timestamp
+      const tempId = `${Date.now()}-${owner.email.replace(/[^a-z0-9]/gi, "")}`;
 
       let profilePictureUrl = "";
       let logoUrl = "";
@@ -292,118 +292,79 @@ export default function SignUp() {
         profilePictureUrl = await uploadFile(
           supabase,
           "profile-assets",
-          `avatars/${authUserId}/profile.${owner.profilePicture.name.split(".").pop()}`,
+          `avatars/${tempId}/profile.${owner.profilePicture.name.split(".").pop()}`,
           owner.profilePicture
         );
       }
-
       if (business.logo) {
         logoUrl = await uploadFile(
           supabase,
           "profile-assets",
-          `logos/${authUserId}/logo.${business.logo.name.split(".").pop()}`,
+          `logos/${tempId}/logo.${business.logo.name.split(".").pop()}`,
           business.logo
         );
       }
-
       if (business.ownerValidId) {
         ownerValidIdUrl = await uploadFile(
           supabase,
           "registration-docs",
-          `${authUserId}/valid-id.${business.ownerValidId.name.split(".").pop()}`,
+          `${tempId}/valid-id.${business.ownerValidId.name.split(".").pop()}`,
           business.ownerValidId
         );
       }
-
       if (business.businessPermit) {
         businessPermitUrl = await uploadFile(
           supabase,
           "registration-docs",
-          `${authUserId}/business-permit.${business.businessPermit.name.split(".").pop()}`,
+          `${tempId}/business-permit.${business.businessPermit.name.split(".").pop()}`,
           business.businessPermit
         );
       }
 
-      const { data: tenantData, error: tenantError } = await supabase
-        .from("tenants")
-        .insert({
-          business_name: business.businessName,
-          owner_email: owner.email,
-          business_type: business.businessType || null,
-          owner_full_name: business.ownerFullName,
-          business_warehouse_address: business.businessWarehouseAddress,
-          owner_valid_id_url: ownerValidIdUrl || null,
-          business_permit_url: businessPermitUrl || null,
-        })
-        .select("tenant_id")
-        .single();
-
-      if (tenantError) throw new Error(tenantError.message);
-      const tenantId = tenantData.tenant_id;
-
-      const { error: userError } = await supabase.from("users").insert({
-        user_id: authUserId,
-        tenant_id: tenantId,
-        email: owner.email,
-        role: "Administrator",
-        display_name: `${owner.firstName} ${owner.lastName}`,
-        first_name: owner.firstName,
-        last_name: owner.lastName,
-        middle_name: owner.middleName || null,
-        suffix: owner.suffix || null,
-        gender: owner.gender || null,
-        contact_number: owner.contactNumber || null,
-        address: owner.address || null,
-        citizenship: owner.citizenship || null,
-        profile_picture_url: profilePictureUrl || null,
-        is_active: false,
+      // --- CALL SERVER API ROUTE (handles auth + DB inserts with service role) ---
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: owner.email,
+          password: owner.password,
+          firstName: owner.firstName,
+          lastName: owner.lastName,
+          middleName: owner.middleName,
+          suffix: owner.suffix,
+          gender: owner.gender,
+          contactNumber: owner.contactNumber,
+          address: owner.address,
+          citizenship: owner.citizenship,
+          profilePictureUrl,
+          businessName: business.businessName,
+          businessType: business.businessType,
+          ownerFullName: business.ownerFullName,
+          businessWarehouseAddress: business.businessWarehouseAddress,
+          ownerValidIdUrl,
+          businessPermitUrl,
+          logoUrl,
+        }),
       });
 
-      if (userError) throw new Error(userError.message);
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || "Something went wrong.");
+      }
+
       setSuccess(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
+      isSubmitting.current = false;
     }
   };
 
-  if (success) {
-    return (
-      <div className="w-full min-h-screen bg-[#FFFCEB] flex flex-col items-center relative">
-        {/* Same wrapper alignment as the landing page */}
-        <div className="w-full max-w-[1268px] flex flex-col h-full px-8 pt-5">
-          <div className="w-full flex justify-center shrink-0">
-            <NavbarLandingPage />
-          </div>
-          <div className="flex flex-1 items-center justify-center py-16">
-            <div className="bg-[#3A6131] rounded-[10px] px-12 py-14 text-center max-w-md shadow-lg">
-              <div className="text-6xl mb-5">🎉</div>
-              <h2 className="font-bold text-[32px] text-[#FFD980] mb-3 font-['Inter']">
-                Registration Submitted!
-              </h2>
-              <p className="text-[16px] text-[#FFF9D7] mb-6 leading-relaxed font-['Inter']">
-                Thank you for registering. Our team will review your application
-                and notify you via email once your account is approved.
-              </p>
-              <button
-                onClick={() => router.push("/")}
-                className="bg-[#FFD980] text-[#3A6131] font-bold text-[18px] px-8 py-3 rounded-[5px] hover:opacity-90 transition w-full font-['Inter']"
-              >
-                Back to Home
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full min-h-screen bg-[#FFFCEB] flex flex-col items-center relative">
-      
       <div className="w-full max-w-[1268px] flex flex-col h-full px-8 pt-5 pb-16">
-        
         {/* Navbar Section */}
         <div className="w-full flex justify-center shrink-0">
           <NavbarLandingPage />
@@ -421,13 +382,11 @@ export default function SignUp() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-10">
-            
             {/* Section 1: Business Owner */}
-            <SectionCard 
-              icon={<img src="/business-owner.svg" alt="Business Owner" className="w-full h-full object-contain" />} 
-              title="Business Owner’s Information"
+            <SectionCard
+              icon={<img src="/business-owner.svg" alt="Business Owner" className="w-full h-full object-contain" />}
+              title="Business Owner's Information"
             >
-              
               {/* Top Row: Name Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-5 w-full">
                 <InputField
@@ -455,10 +414,9 @@ export default function SignUp() {
                 />
               </div>
 
-              {/* Bottom Section: Profile Picture + Details Right Aligned */}
+              {/* Bottom Section: Profile Picture + Details */}
               <div className="flex flex-col md:flex-row gap-5 items-stretch w-full">
-                
-                {/* Left Column: Profile Picture Box (Exactly mimicking proportions) */}
+                {/* Left Column: Profile Picture Box */}
                 <div className="w-full md:w-[220px] shrink-0">
                   <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
                     {owner.profilePicturePreview ? (
@@ -472,7 +430,6 @@ export default function SignUp() {
                         <img src="/business-owner.svg" alt="Upload Owner Picture" className="w-40 h-40 object-contain opacity-70" />
                       </div>
                     )}
-                    {/* Floating Upload Button Inside the Box */}
                     <button
                       type="button"
                       onClick={() => profilePicInputRef.current?.click()}
@@ -490,7 +447,7 @@ export default function SignUp() {
                   </div>
                 </div>
 
-                {/* Right Column: 3 Rows matching the height of the Picture box */}
+                {/* Right Column: Fields */}
                 <div className="flex-1 flex flex-col justify-between gap-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <SelectField
@@ -536,30 +493,29 @@ export default function SignUp() {
 
               {/* Password Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full">
-                  <InputField
-                    placeholder="Password *"
-                    type="password"
-                    value={owner.password}
-                    onChange={(e) => setOwnerField("password", e.target.value)}
-                    required
-                  />
-                  <InputField
-                    placeholder="Confirm Password *"
-                    type="password"
-                    value={owner.confirmPassword}
-                    onChange={(e) => setOwnerField("confirmPassword", e.target.value)}
-                    required
-                  />
+                <InputField
+                  placeholder="Password *"
+                  type="password"
+                  value={owner.password}
+                  onChange={(e) => setOwnerField("password", e.target.value)}
+                  required
+                />
+                <InputField
+                  placeholder="Confirm Password *"
+                  type="password"
+                  value={owner.confirmPassword}
+                  onChange={(e) => setOwnerField("confirmPassword", e.target.value)}
+                  required
+                />
               </div>
             </SectionCard>
 
             {/* Section 2: Business Details */}
-            <SectionCard 
-              icon={<img src="/business-details.svg" alt="Business Details" className="w-full h-full object-contain" />} 
+            <SectionCard
+              icon={<img src="/business-details.svg" alt="Business Details" className="w-full h-full object-contain" />}
               title="Business Details"
             >
               <div className="flex flex-col md:flex-row gap-5 items-start">
-                
                 {/* Logo Upload Box */}
                 <div className="w-full md:w-[220px] shrink-0 relative">
                   <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
@@ -701,6 +657,11 @@ export default function SignUp() {
           </form>
         </div>
       </div>
+
+      <RegistrationSubmittedModal
+        open={success}
+        onClose={() => setSuccess(false)}
+      />
     </div>
   );
 }
