@@ -12,6 +12,7 @@ import UserAdminSection from "@/components/sections/admin/user-admin";
 import StorefrontSection from "@/components/sections/admin/storefront";
 import StoreSettingsSection from "@/components/sections/admin/store-settings";
 import SubscriptionBillingSection from "@/components/sections/admin/subscription-billing";  
+import AdminSettingsSection from "@/components/sections/admin/client-settings";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientSettingsModal from "@/components/modals/client-settings-modal";
@@ -21,14 +22,16 @@ export type SectionKey =
   | "user-admin"
   | "storefront"
   | "store-settings"
-  | "subscription-billing";
+  | "subscription-billing"
+  | "admin-settings";
 
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "dashboard": <DashboardSection />,
   "user-admin": <UserAdminSection />,
   "storefront": <StorefrontSection />,
   "store-settings": <StoreSettingsSection />,
-  "subscription-billing": <SubscriptionBillingSection />
+  "subscription-billing": <SubscriptionBillingSection />,
+  "admin-settings": <AdminSettingsSection />
 };
 
 export default function AdminDashboard() {
