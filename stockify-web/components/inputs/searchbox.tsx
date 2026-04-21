@@ -28,7 +28,7 @@ export default function SearchBox({
       />
       <button className="w-5 h-5 flex items-center justify-center shrink-0">
         <img
-          src="/icon-search.svg"
+          src="/search.svg"
           alt="Search"
           className="w-5 h-5"
           style={{

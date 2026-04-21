@@ -22,7 +22,8 @@ export default function DashboardHome() {
         <div className="flex justify-center">
           <div className="justify-center align-center grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard title="Active New Customers" value="58" className="w-full" svgName="icon-upward" />
-          <StatCard title="Monthly Revenue" value="₱ 62.3k" className="w-full" svgName="icon-upward" />
+          <StatCard title="Monthly Revenue" value="₱ 62.3k ‎ " className="w-full" svgName="icon-upward" />
+          {/* U+200E is an empty character ignore ra na for now /> */}
           <StatCard title="Total Orders" value="143" className="w-full" svgName="icon-downward" />
           </div>
         </div>
