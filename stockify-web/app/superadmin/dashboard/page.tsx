@@ -62,9 +62,9 @@ const recentActivities = [
 const getPillStyles = (status: string) => {
   switch (status) {
     case 'Active': return { bg: 'bg-[#385E31]', text: 'text-[#FFFCEB]' };
-    case 'Pending': return { bg: 'bg-[#E5AD24]', text: 'text-[#385E31]' }; // Dark text on Golden Yellow
-    case 'Suspended': return { bg: 'bg-[#E91F22]', text: 'text-[#FFFCEB]' }; // Cream text on Red
-    case 'Overdue': return { bg: 'bg-[#FFD980]', text: 'text-[#385E31]' }; // Dark text on Light Yellow
+    case 'Pending': return { bg: 'bg-[#E5AD24]', text: 'text-[#385E31]' }; 
+    case 'Suspended': return { bg: 'bg-[#E91F22]', text: 'text-[#FFFCEB]' }; 
+    case 'Overdue': return { bg: 'bg-[#FFD980]', text: 'text-[#385E31]' }; 
     default: return { bg: 'bg-[#385E31]', text: 'text-[#FFFCEB]' };
   }
 };
@@ -149,53 +149,52 @@ export default function SuperadminDashboard() {
         {/* Table Section */}
         <div className="w-full flex flex-col items-center">
           
-          {/* Header */}
-          <h2 className="text-center text-[#385E31] text-[32px] font-extrabold font-['Inter'] mb-5">
+          {/* Header scaled down slightly to match the vibe of the other tables */}
+          <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-4">
             Recent Activities
           </h2>
 
-          {/* Table Container */}
-          <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-hidden">
+          {/* Table Container - matches billing screen border and shadow */}
+          <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
             
-            {/* Header Row */}
-            <div className="w-full flex bg-[#385E31] px-4 py-4">
-              <div className="flex-1 text-center text-[#FFFCEB] text-[17px] font-bold font-['Inter']">Business Name</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[17px] font-bold font-['Inter']">Owner</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[17px] font-bold font-['Inter']">Status</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[17px] font-bold font-['Inter']">Health/Resources</div>
+            {/* Header Row - reduced py-4 to py-3 and text-17px to 15px */}
+            <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
+              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Status</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Health/Resources</div>
             </div>
 
             {/* Data Rows */}
-            <div className="flex flex-col w-full py-2">
-              {recentActivities.map((row) => {
+            <div className="flex flex-col w-full">
+              {recentActivities.map((row, idx) => {
                 const { bg, text } = getPillStyles(row.status);
+                const isLast = idx === recentActivities.length - 1;
                 
                 return (
-                  <div key={row.id} className="w-full flex px-4 py-[13px] items-center">
+                  <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     
-                    {/* Data Cells */}
-                    <div className="flex-1 text-center text-[#3A6131] text-base font-semibold font-['Inter']">Body</div>
-                    <div className="flex-1 text-center text-[#3A6131] text-base font-semibold font-['Inter']">Body</div>
+                    {/* Data Cells - reduced text-base to text-[13px] */}
+                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
                     
-                    {/* Status Pill (Using exact Figma specs provided) */}
+                    {/* Status Pill - matched to billing screen dimensions */}
                     <div className="flex-1 flex justify-center items-center">
-                      <div className={`w-20 h-5 px-[5px] py-[3px] rounded-[40px] inline-flex justify-center items-center gap-2.5 ${bg}`}>
-                        <div className={`flex-1 text-center ${text} text-[9.70px] font-semibold font-['Inter'] leading-3`}>
-                          {row.status}
-                        </div>
+                      <div className={`w-[75px] py-[4px] rounded-[40px] flex justify-center items-center ${bg}`}>
+                        <span className={`${text} text-[10px] font-bold leading-3`}>{row.status}</span>
                       </div>
                     </div>
 
-                    <div className="flex-1 text-center text-[#3A6131] text-base font-semibold font-['Inter']">Body</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Load More Button */}
+          {/* Load More Button - adjusted to match billing button exactly */}
           <div className="w-full flex justify-end mt-6">
-            <button className="bg-[#E5AD24] text-[#385E31] text-[15px] font-bold font-['Inter'] px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
+            <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold font-['Inter'] px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
               Load More
             </button>
           </div>
