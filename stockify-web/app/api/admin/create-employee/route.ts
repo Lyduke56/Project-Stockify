@@ -101,17 +101,17 @@ export async function POST(req: NextRequest) {
     }
 
     // --- 6. Send email ONLY after both auth + DB succeed ---
-    const { error: emailError } = await resend.emails.send({
-      from: "Your App <onboarding@yourdomain.com>", // ✅ must be a Resend-verified domain
+      const { error: emailError } = await resend.emails.send({
+      from: "Stockify <onboarding@resend.dev>", // ← match exactly what works
       to: email,
-      subject: "Your employee account is ready",
+      subject: "Your Stockify Employee Account is Ready",
       html: `
         <div style="font-family:sans-serif;max-width:480px;margin:auto;">
           <h2 style="color:#385E31;">Welcome, ${name}!</h2>
           <p>Your employee account has been created with the role: <strong>${role}</strong>.</p>
           <p>You can now log in using your email and the password set by your administrator.</p>
           <a href="${process.env.NEXT_PUBLIC_APP_URL}/login"
-             style="display:inline-block;margin-top:16px;padding:10px 24px;background:#385E31;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
+            style="display:inline-block;margin-top:16px;padding:10px 24px;background:#385E31;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
             Log In Now
           </a>
           <p style="margin-top:24px;font-size:12px;color:#888;">

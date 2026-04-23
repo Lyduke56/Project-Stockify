@@ -1,42 +1,11 @@
-"use client";
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
-
-import NewEmployeeModal from "@/components/modals/admin/new-employee-modal";
-import StaffAdminTable from "@/components/tables/user-admin-staff";
-import CustomerAdminTable from "@/components/tables/user-admin-customers";
-import SearchBox from "@/components/inputs/searchbox";
-
-const supabase = createClient();
-
-export default function UserAdminSection() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [tableKey, setTableKey] = useState(0);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
-    });
-  }, []);
-
-  function handleEmployeeCreated() {
-    setTableKey((k) => k + 1); // remounts StaffAdminTable → triggers refetch
-    setIsModalOpen(false);
-  }
-
+export default function UserAdmin() {
   return (
-    <div className="flex flex-col">
-      <header className="mb-8 text-center flex flex-col items-center justify-center">
-=======
-"use client";
-import { useState } from "react";
-
-import NewEmployeeModal from "@/components/modals/new-employee-modal";
+    <>
+      <header className="mb-8 text-center">
 import StaffAdminTable from "@/components/tables/user-admin-staff";
 import CustomerAdminTable from "@/components/tables/user-admin-customers";
 import SearchBox from "@/components/inputs/searchbox";
-
+        
 export default function UserAdminSection() {
   return (
     <div className="flex flex-col">
@@ -73,7 +42,6 @@ export default function UserAdminSection() {
 
         <SearchBox placeholder="Search" onChange={(val) => console.log(val)} />
 
-        {/* key remounts the table after a new employee is added */}
         <StaffAdminTable key={tableKey} userId={userId ?? ""} />
       </div>
 
@@ -83,12 +51,6 @@ export default function UserAdminSection() {
       <div className="flex flex-col gap-4">
         <h2 className="text-[#385E31] text-2xl font-bold font-['Inter'] uppercase tracking-widest">
           Registered Customers
-        </h2>
-
-        <SearchBox placeholder="Search" onChange={(val) => console.log(val)} />
-
-        <CustomerAdminTable />
-      </div>
 
       <NewEmployeeModal
         isOpen={isModalOpen}
