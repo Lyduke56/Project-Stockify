@@ -1,9 +1,33 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type SidebarClientProps = {
   active?: "dashboard" | "billing" | "settings";
 };
+
+export interface HamburgerMenuProps {
+  onClick: () => void;
+  isInitiallyOpen: boolean;
+}
+
+export function Hamburger(props: HamburgerMenuProps) {
+    const { onClick, isInitiallyOpen } = props;
+    const [isOpen, setIsOpen] = useState<boolean>(isInitiallyOpen ?? false);
+
+    const handleClick = () => {
+        setIsOpen(prev => !prev);
+        onClick();
+    }
+
+    return (
+        <button onClick={handleClick} type="button" className={``}>
+            <div className={``}/>
+            <div className={``}/>
+            <div className={``}/>
+        </button>
+    );
+}
 
 export default function SidebarClient({ active = "dashboard" }: SidebarClientProps) {
   const router = useRouter();
