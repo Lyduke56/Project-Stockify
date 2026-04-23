@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import StatCard from "@/components/cards/stat-cards";
 import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
@@ -11,7 +12,7 @@ type StatusType = 'outage' | 'partial' | 'normal';
 const uptimeStatus: Record<string, StatusType> = {
   'Jan-12': 'outage',
   'Jan-24': 'outage',
-  'Feb-31': 'partial', 
+  'Feb-28': 'partial', // Adjusted from 31 to a valid date
   'Mar-26': 'partial',
   'Apr-26': 'partial',
   'May-28': 'partial',
@@ -77,44 +78,69 @@ export default function SuperadminDashboard() {
       <SidebarSuperAdmin />
 
       {/* RIGHT SIDE: Main Content ehey*/}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-20 pt-5 pb-12">
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex-1 flex flex-col h-full overflow-y-auto px-16 pt-4 pb-10"
+      >
         
         <NavbarApp />
 
-        {/* Header */}
-        <div className="w-full flex flex-col items-center mt-10 mb-8">
-          <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
-            Superadmin Dashboard
-          </h1>
-          <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
+        {/* Header - Fades in slightly after the main container */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="w-full flex flex-col items-center"
+        >
+          <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">
+            <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+              SUPERADMIN DASHBOARD
+            </h1>
+            <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
+          </div>
+        </motion.div>
+
+        {/* Stat Cards - Staggered Spring Animation */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.15 }}>
+            <StatCard title="Active Tenants" value="1.24k" trendText="↑ 5% this month (January)" className="w-full py-3 h-full" svgName="SA-active-tenants" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.25 }}>
+            <StatCard title="Pending Applications" value="39" trendText="39 new applications await review" className="w-full py-3 h-full" svgName="SA-pending-app" />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.35 }}>
+            <StatCard title="Revenue status" value="124" trendText="Review their payment status and take action" className="w-full py-3 h-full" svgName="SA-rev-stat" />
+          </motion.div>
         </div>
 
-        {/* Stat Cards */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-          <StatCard title="Active Tenants" value="1.24k" trendText="↑ 5% this month (January)" className="w-full" svgName="SA-active-tenants" />
-          <StatCard title="Pending Applications" value="39" trendText="39 new applications await review" className="w-full" svgName="SA-pending-app" />
-          <StatCard title="Revenue status" value="124" trendText="Review their payment status and take action" className="w-full" svgName="SA-rev-stat" />
-        </div>
-
-        {/* System Uptime */}
-        <div className="w-full p-6 bg-[#385E31] rounded-[10px] flex flex-col gap-4 mb-8">
-          <div className="w-full text-[#FFFCEB] text-[22px] font-bold font-['Inter'] tracking-wide">
+        {/* System Uptime - Pops in after the Stat Cards */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.45 }}
+          className="w-full p-4 bg-[#385E31] rounded-[10px] flex flex-col gap-3 mb-6"
+        >
+          <div className="w-full text-[#FFFCEB] text-[18px] font-bold font-['Inter'] tracking-wide">
             System Uptime
           </div>
-          <div className="flex w-full gap-5">
-            <div className="w-[280px] bg-[#FFFCEB] rounded-[8px] flex flex-col justify-center items-center px-6 py-10 shrink-0">
-              <div className="text-[#3A6131] text-[64px] font-black tracking-tight leading-none mb-4">
+          <div className="flex w-full gap-4">
+            <div className="w-[240px] bg-[#FFFCEB] rounded-[8px] flex flex-col justify-center items-center px-4 py-6 shrink-0">
+              <div className="text-[#3A6131] text-[48px] font-black tracking-tight leading-none mb-3">
                 99.98%
               </div>
-              <p className="text-center text-[#3A6131] text-[13px] font-medium leading-relaxed">
+              <p className="text-center text-[#3A6131] text-[11px] font-medium leading-relaxed">
                 All systems, including the multi-tenant SaaS inventory engine and database, are fully functional.
               </p>
             </div>
-            <div className="flex-1 bg-[#FFFCEB] rounded-[8px] px-6 py-6 flex flex-col justify-between">
-              <div className="grid grid-cols-[30px_repeat(31,minmax(0,1fr))] gap-x-[1px] gap-y-[2px] w-full">
+            
+            <div className="flex-1 bg-[#FFFCEB] rounded-[8px] px-7 py-4 flex flex-col justify-between">
+              {/* Scaled down squares to 10px and gaps to fit in a tighter vertical space */}
+              <div className="grid grid-cols-[30px_repeat(31,minmax(0,1fr))] gap-x-[2px] gap-y-[2px] w-full items-center">
                 {months.map((month) => (
                   <React.Fragment key={month.abbr}>
-                    <div className="text-[#3A6131] text-[11px] font-bold self-center pr-2 text-right">
+                    <div className="text-[#3A6131] text-[10px] font-bold self-center pr-2 text-right">
                       {month.abbr}
                     </div>
                     {[...Array(31)].map((_, i) => {
@@ -123,7 +149,7 @@ export default function SuperadminDashboard() {
                       return (
                         <div 
                           key={day} 
-                          className={`w-full aspect-square max-w-[14px] max-h-[14px] rounded-[2px] mx-auto ${isHidden ? 'invisible' : getHeatmapStatusClass(month.abbr, day)}`}
+                          className={`w-full aspect-square max-w-[13px] max-h-[13px] rounded-[2px] mx-auto ${isHidden ? 'invisible' : getHeatmapStatusClass(month.abbr, day)}`}
                           title={isHidden ? undefined : `${month.name} ${day}`}
                         />
                       );
@@ -132,76 +158,74 @@ export default function SuperadminDashboard() {
                 ))}
                 <div className="col-start-1"></div>
                 {[...Array(31)].map((_, i) => (
-                  <div key={i} className="text-[#3A6131] text-[9px] font-bold text-center mt-1">
+                  <div key={i} className="text-[#3A6131] text-[8px] font-bold text-center mt-0.5">
                     {i + 1}
                   </div>
                 ))}
               </div>
-              <div className="w-full flex items-center justify-end gap-6 mt-4 text-[#3A6131] text-[11px] font-bold">
-                <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 rounded-[2px] bg-[#22C55E]"></div>100%</div>
-                <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 rounded-[2px] bg-[#F59E0B]"></div>Partial Degradation</div>
-                <div className="flex items-center gap-2"><div className="w-3.5 h-3.5 rounded-[2px] bg-[#EF4444]"></div>Service Outage</div>
+              <div className="w-full flex items-center justify-end gap-5 mt-3 text-[#3A6131] text-[10px] font-bold">
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-[2px] bg-[#22C55E]"></div>100%</div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-[2px] bg-[#F59E0B]"></div>Partial Degradation</div>
+                <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-[2px] bg-[#EF4444]"></div>Service Outage</div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Table Section */}
-        <div className="w-full flex flex-col items-center">
+        {/* Table Section - Slides in last */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
+          className="w-full flex flex-col items-center"
+        >
           
-          {/* Header scaled down slightly to match the vibe of the other tables */}
-          <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-4">
+          <h2 className="text-[#385E31] text-[24px] font-extrabold font-['Inter'] mb-3">
             Recent Activities
           </h2>
 
-          {/* Table Container - matches billing screen border and shadow */}
           <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
             
-            {/* Header Row - reduced py-4 to py-3 and text-17px to 15px */}
-            <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Status</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Health/Resources</div>
+            <div className="w-full flex bg-[#385E31] px-4 py-2.5 rounded-t-[8px]">
+              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Business Name</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Owner</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Status</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Health/Resources</div>
             </div>
 
-            {/* Data Rows */}
             <div className="flex flex-col w-full">
               {recentActivities.map((row, idx) => {
                 const { bg, text } = getPillStyles(row.status);
                 const isLast = idx === recentActivities.length - 1;
                 
                 return (
-                  <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
+                  <div key={row.id} className={`w-full flex px-4 py-[12px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     
-                    {/* Data Cells - reduced text-base to text-[13px] */}
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">Body</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">Body</div>
                     
-                    {/* Status Pill - matched to billing screen dimensions */}
                     <div className="flex-1 flex justify-center items-center">
-                      <div className={`w-[75px] py-[4px] rounded-[40px] flex justify-center items-center ${bg}`}>
+                      <div className={`w-[75px] py-[3px] rounded-[40px] flex justify-center items-center ${bg}`}>
                         <span className={`${text} text-[10px] font-bold leading-3`}>{row.status}</span>
                       </div>
                     </div>
 
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">Body</div>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Load More Button - adjusted to match billing button exactly */}
-          <div className="w-full flex justify-end mt-6">
-            <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold font-['Inter'] px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
+          <div className="w-full flex justify-end mt-4">
+            <button className="bg-[#F7B71D] text-[#385E31] text-[14px] font-bold font-['Inter'] px-8 py-2 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
               Load More
             </button>
           </div>
 
-        </div>
+        </motion.div>
 
-      </div>
+      </motion.div>
     </div>
   );
 }

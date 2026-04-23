@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 interface PendingTenant {
@@ -12,6 +11,11 @@ interface PendingTenant {
   owner_email: string;
 }
 
+// 1. Added the interface to receive the routing function
+interface PendingTenantsTabProps {
+  onViewTenant: (id: string) => void;
+}
+
 const ChevronDown = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
     fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -19,16 +23,15 @@ const ChevronDown = () => (
   </svg>
 );
 
-export default function PendingTenantsTab() {
-  const router = useRouter();
+// 2. Destructure onViewTenant from props
+export default function PendingTenantsTab({ onViewTenant }: PendingTenantsTabProps) {
   const supabase = createClient();
 
   const [pendingData, setPendingData] = useState<PendingTenant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null); // tenantId being processed
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  // Confirmation modal state
   const [modal, setModal] = useState<{
     open: boolean;
     action: "approve" | "reject" | null;
@@ -40,18 +43,18 @@ export default function PendingTenantsTab() {
   }, []);
 
   const fetchPending = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch("/api/superadmin/approve");
-    const result = await res.json();
-    if (result.error) throw new Error(result.error);
-    setPendingData(result.data || []);
-  } catch (err: unknown) {
-    setError(err instanceof Error ? err.message : "Failed to load pending tenants.");
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      const res = await fetch("/api/superadmin/approve");
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+      setPendingData(result.data || []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load pending tenants.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openModal = (action: "approve" | "reject", tenant: PendingTenant) => {
     setModal({ open: true, action, tenant });
@@ -79,7 +82,6 @@ export default function PendingTenantsTab() {
       const result = await res.json();
       if (!result.success) throw new Error(result.error || "Action failed.");
 
-      // Remove from local list after success
       setPendingData((prev) =>
         prev.filter((t) => t.tenant_id !== modal.tenant!.tenant_id)
       );
@@ -113,10 +115,8 @@ export default function PendingTenantsTab() {
         </p>
       )}
 
-      {/* Table */}
       <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
         
-        {/* Header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
@@ -124,7 +124,6 @@ export default function PendingTenantsTab() {
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Actions</div>
         </div>
 
-        {/* Rows */}
         {pendingData.length === 0 ? (
           <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
             No pending applications.
@@ -140,8 +139,9 @@ export default function PendingTenantsTab() {
                 className={`w-full flex px-4 py-[14px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
               >
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                  {/* 3. Replaced router.push with onViewTenant */}
                   <span
-                    onClick={() => router.push(`/superadmin/tenant-review/${row.tenant_id}`)}
+                    onClick={() => onViewTenant(row.tenant_id)}
                     className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
@@ -160,8 +160,9 @@ export default function PendingTenantsTab() {
                     </span>
                   ) : (
                     <>
+                      {/* 4. Replaced router.push with onViewTenant */}
                       <button
-                        onClick={() => router.push(`/superadmin/tenant-review/${row.tenant_id}`)}
+                        onClick={() => onViewTenant(row.tenant_id)}
                         className="bg-[#385E31] text-[#FFFCEB] px-4 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 transition-colors"
                       >
                         Review
@@ -187,7 +188,6 @@ export default function PendingTenantsTab() {
         )}
       </div>
 
-      {/* Confirm Modal */}
       {modal.open && modal.tenant && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
