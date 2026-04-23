@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import ViewOrderModal, { type Order } from "./orders-modals/view-modal";
-import EditOrderModal from "./orders-modals/edit-mordal";
+import EditOrderModal from "./orders-modals/edit-modal";
 import DeleteOrderModal from "./orders-modals/delete-modal";
 
 /* ─── Sample Data ─────────────────────────────────────────── */
