@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "framer-motion"; // <-- Imported Framer Motion
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
 
@@ -65,21 +66,36 @@ export default function AuditLogs() {
       {/* LEFT SIDE: Fixed Sidebar */}
       <SidebarSuperAdmin />
 
-      {/* RIGHT SIDE: Main Content */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12">
+      {/* RIGHT SIDE: Main Content Wrapper with Slide/Fade-in */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
+      >
         
         <NavbarApp />
 
-        {/* Page Header */}
-        <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">
+        {/* Page Header - Slight delay to trail the main wrapper */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="w-full flex flex-col items-center mt-10 mb-8 gap-2"
+        >
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             AUDIT LOGS
           </h1>
           <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
-        </div>
+        </motion.div>
 
-        {/* --- SYSTEM UPTIME COMPONENT --- */}
-        <div className="w-full p-6 bg-[#385E31] rounded-[10px] flex flex-col gap-4 mb-12 shadow-sm">
+        {/* --- SYSTEM UPTIME COMPONENT - Pops in next --- */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
+          className="w-full p-6 bg-[#385E31] rounded-[10px] flex flex-col gap-4 mb-12 shadow-sm"
+        >
           <div className="w-full text-[#FFFCEB] text-[20px] font-bold font-['Inter'] tracking-wide">
             System Uptime
           </div>
@@ -126,10 +142,15 @@ export default function AuditLogs() {
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* --- FILTERS & TABLE SECTION --- */}
-        <div className="w-full flex flex-col items-center">
+        {/* --- FILTERS & TABLE SECTION - Slides in last --- */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.3 }}
+          className="w-full flex flex-col items-center"
+        >
           
           {/* Search and Filter Row */}
           <div className="w-full flex justify-between items-center mb-4 gap-4">
@@ -200,8 +221,8 @@ export default function AuditLogs() {
             </button>
           </div>
 
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

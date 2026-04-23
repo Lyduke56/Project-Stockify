@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation"; 
+import { motion } from "framer-motion"; 
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 
@@ -32,8 +33,8 @@ const getPillStyles = (status: string) => {
 const getTabConfig = (tab: string) => {
   switch (tab) {
     case "Overall": return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Overdue": return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Missed": return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
+    case "Overdue": return { bg: "bg-[#E53333]", text: "text-[#FFFCEB]" };
+    case "Missed": return { bg: "bg-[#CE0000]", text: "text-[#FFFCEB]" };
     default: return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
   }
 };
@@ -52,18 +53,24 @@ const ChevronDown = () => (
   </svg>
 );
 
-// STAT CARD COMPONENT 
+// STAT CARD COMPONENT (Updated with framer-motion and delay prop)
 interface StatCardProps {
   title: string;
   value: string | number;
   trendText: string;
   className?: string;
   svgName: string;
+  delay?: number;
 }
 
-function StatCard({ title, value, trendText, className = "", svgName }: StatCardProps) {
+function StatCard({ title, value, trendText, className = "", svgName, delay = 0 }: StatCardProps) {
   return (
-    <div className={`bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31] ${className}`}>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25, delay: delay }}
+      className={`bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31] ${className}`}
+    >
       <h3 className="text-[#FFFCEB] text-[18px] font-bold mb-3">{title}</h3>
       <div className="bg-[#FFFCEB] rounded-[6px] flex flex-col items-center justify-center py-5 flex-1 relative">
         <div className="flex items-center justify-center gap-3">
@@ -76,7 +83,7 @@ function StatCard({ title, value, trendText, className = "", svgName }: StatCard
         </div>
         <p className="text-[#385E31] text-[11px] mt-2 font-bold">{trendText}</p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -110,43 +117,62 @@ export default function SubscriptionBilling() {
       
       <Sidebar />
 
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12">
+      {/* Main Content Wrapper with Slide/Fade-in */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
+      >
         
         <NavbarApp />
 
-        {/* Page Header */}
-        <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">
+        {/* Page Header - Slight delay to trail the main wrapper */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="w-full flex flex-col items-center mt-10 mb-8 gap-2"
+        >
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             SUBSCRIPTION BILLING
           </h1>
           <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full flex justify-center">
           </div>
-        </div>
+        </motion.div>
 
-        {/* Top Stat Cards Row */}
+        {/* Top Stat Cards Row - Staggered Delays */}
         <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <StatCard 
             title="Total Paid" 
             value="790k" 
             trendText="4 of 12 months" 
             svgName="SA-rev-stat" 
+            delay={0.15}
           />
           <StatCard 
             title="Late Payments" 
             value="73" 
             trendText="Avg. 24.8 days late" 
             svgName="SA-late-payments" 
+            delay={0.25}
           />
           <StatCard 
             title="Missed Payments" 
             value="49" 
             trendText="As of September 2026" 
             svgName="SA-missed-payments" 
+            delay={0.35}
           />
         </div>
 
-        {/* NAVIGATION TABS */}
-        <div className="w-full flex justify-center mb-6">
+        {/* NAVIGATION TABS - Pops in after cards */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.45 }}
+          className="w-full flex justify-center mb-6"
+        >
           <div className="relative flex w-full max-w-[600px] h-[45px] items-center my-2">
             
             {/* Background Outline */}
@@ -187,10 +213,15 @@ export default function SubscriptionBilling() {
               );
             })}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Database Section */}
-        <div className="w-full flex flex-col items-center">
+        {/* Database Section - Slides in last */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
+          className="w-full flex flex-col items-center"
+        >
           
           {/* Subheader */}
           <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-6">
@@ -242,7 +273,13 @@ export default function SubscriptionBilling() {
                 return (
                   <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                      {row.name}
+                      {/* --- NEW CLICKABLE BUSINESS NAME LOGIC HERE --- */}
+                      <span 
+                        onClick={() => router.push(`/superadmin/tenant-profile/${row.id}`)}
+                        className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
+                      >
+                        {row.name}
+                      </span>
                     </div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
                     <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
@@ -295,8 +332,8 @@ export default function SubscriptionBilling() {
             </button>
           </div>
 
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

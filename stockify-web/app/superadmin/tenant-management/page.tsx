@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation"; 
+import { motion } from "framer-motion";
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import TenantActionModal from "@/components/modals/confimation-modal";
@@ -87,11 +88,17 @@ interface StatCardProps {
   trendText: string;
   className?: string;
   svgName: string;
+  delay?: number;
 }
 
-function StatCard({ title, value, trendText, className = "", svgName }: StatCardProps) {
+function StatCard({ title, value, trendText, className = "", svgName, delay = 0 }: StatCardProps) {
   return (
-    <div className={`bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31] ${className}`}>
+    <motion.div 
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25, delay: delay }}
+      className={`bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31] ${className}`}
+    >
       <h3 className="text-[#FFFCEB] text-[18px] font-bold mb-3">{title}</h3>
       <div className="bg-[#FFFCEB] rounded-[6px] flex flex-col items-center justify-center py-3 flex-1 relative">
         <div className="flex items-center justify-center gap-3">
@@ -100,7 +107,7 @@ function StatCard({ title, value, trendText, className = "", svgName }: StatCard
         </div>
         <p className="text-[#385E31] text-[11px] mt-1 font-medium">{trendText}</p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -118,8 +125,12 @@ export default function TenantManagement() {
     setOpenDropdownId((prevId) => (prevId === id ? null : id));
   };
 
-  const handleViewTenant = (tenantId: number) => {
-    router.push(`/superadmin/tenant-review/${tenantId}`);
+  const handleViewTenant = (tenantId: string | number) => {
+    if (activeTab === "Pending") {
+      router.push(`/superadmin/tenant-review/${tenantId}`);
+    } else {
+      router.push(`/superadmin/tenant-profile/${tenantId}`);
+    }
   };
 
   const handleSuspendClick = (tenant: any) => {
@@ -160,9 +171,13 @@ export default function TenantManagement() {
       {/* LEFT SIDE: Fixed Sidebar */}
       <Sidebar />
 
-      {/* RIGHT SIDE: Main Content */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12">
-
+      {/* RIGHT SIDE: Main Content Wrapper with Animation */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
+      >
         <NavbarApp />
 
         {/* Page Header */}
@@ -173,12 +188,12 @@ export default function TenantManagement() {
           <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
         </div>
 
-        {/* Top Stat Cards Row */}
+        {/* Top Stat Cards Row with staggered delays */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Active Tenants"        value="43" trendText="↑ 3% this month (January)"           svgName="SA-active-tenants"    />
-          <StatCard title="Pending Applications"  value="39" trendText="39 new applications await review"    svgName="SA-pending-app"       />
-          <StatCard title="Suspended Tenants"     value="12" trendText="12 tenants temporarily suspended"    svgName="SA-suspended-tenants" />
-          <StatCard title="Terminated Tenants"    value="9"  trendText="9 tenants were terminated"           svgName="SA-terminated-tenants"/>
+          <StatCard title="Active Tenants"        value="43" trendText="↑ 3% this month (January)"           svgName="SA-active-tenants"     delay={0.1} />
+          <StatCard title="Pending Applications"  value="39" trendText="39 new applications await review"    svgName="SA-pending-app"        delay={0.2} />
+          <StatCard title="Suspended Tenants"     value="12" trendText="12 tenants temporarily suspended"    svgName="SA-suspended-tenants"  delay={0.3} />
+          <StatCard title="Terminated Tenants"    value="9"  trendText="9 tenants were terminated"           svgName="SA-terminated-tenants" delay={0.4} />
         </div>
 
         {/* --- ANIMATED NAVIGATION TABS --- */}
@@ -227,7 +242,7 @@ export default function TenantManagement() {
         </div>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Database Section                                                    */}
+        {/* Database Section                                                  */}
         {/* ------------------------------------------------------------------ */}
         <div className="w-full flex flex-col items-center">
 
@@ -239,7 +254,7 @@ export default function TenantManagement() {
           </h2>
 
           {/* ── PENDING: renders its own self-contained table ── */}
-          {activeTab === "Pending" && <PendingTenantsTab />}
+          {activeTab === "Pending" && <PendingTenantsTab onViewTenant={handleViewTenant} />}
 
           {/* ── ALL OTHER TABS: shared search + table wrapper ── */}
           {activeTab !== "Pending" && (
@@ -286,8 +301,6 @@ export default function TenantManagement() {
                   {activeTab === "Suspended" && (
                     <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Actions</div>
                   )}
-
-                  {/* Terminated: no extra columns */}
                 </div>
 
                 {/* --- DYNAMIC DATA ROWS --- */}
@@ -461,7 +474,7 @@ export default function TenantManagement() {
           )}
 
         </div>
-      </div>
+      </motion.div>
 
       {/* MODALS */}
       <TenantActionModal
