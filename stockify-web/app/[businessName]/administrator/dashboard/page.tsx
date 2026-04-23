@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import NavbarAdmin from "@/components/navbars/navbar-admin";
 import SidebarAdmin from "@/components/navbars/sidebar-admin";
 
-
 import DashboardSection from "@/components/sections/admin/dashboard-home";
 import UserAdminSection from "@/components/sections/admin/user-admin";
 import StorefrontSection from "@/components/sections/admin/storefront";

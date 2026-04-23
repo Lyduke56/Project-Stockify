@@ -36,7 +36,7 @@ export default function NavbarAdmin({
           onClick={() => setActiveSection("dashboard")} 
           className="hover:scale-110 transition-transform"
         >
-          <img src="/navbar-home.svg" alt="Home" className="w-6 h-6" />
+          <img src="/navbar-home.svg" alt="Home" className="w-8 h-8" />
         </button>
 
         {/* Notifications Button - Now triggers the Modal */}
@@ -45,7 +45,7 @@ export default function NavbarAdmin({
             onClick={openNotifs} 
             className="hover:scale-110 transition-transform"
           >
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-6 h-6" />
+            <img src="/navbar-notif.svg" alt="Notifications" className="w-8 h-8" />
             <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white" />
           </button>
         </div>
