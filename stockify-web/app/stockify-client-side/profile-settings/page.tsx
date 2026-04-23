@@ -2,14 +2,107 @@
 
 import SidebarClient from "@/components/navbars/sidebar-client";
 import NavbarClient from "@/components/navbars/navbar-client";
+import { motion } from "framer-motion";
+import { useState } from "react";
+
+function SectionCard({
+  iconPath,
+  title,
+  children,
+  delay = 0,
+}: {
+  iconPath: string;
+  title: string;
+  children: React.ReactNode;
+  delay?: number; 
+}) {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25, delay: delay }}
+      className="w-full px-6 sm:px-8 pt-4 pb-5 bg-[#385E31] rounded-[10px] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col gap-3"
+    >
+      <div className="flex justify-start items-center gap-3">
+        <div className="w-8 h-8 flex justify-center items-center">
+          <img src={iconPath} alt={title} className="w-full h-full object-contain" />
+        </div>
+        <div className="flex-1 text-[#FFF9D7] text-[22px] sm:text-[26px] font-bold font-['Inter']">
+          {title}
+        </div>
+      </div>
+      <div className="w-full p-4 sm:p-5 bg-[#FFF9D7] rounded-[5px] flex flex-col gap-4">
+        {children}
+      </div>
+    </motion.div>
+  );
+}
+
+function ReadOnlyField({
+  placeholder,
+  value,
+  className = "",
+}: {
+  placeholder: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <input
+      type="text"
+      placeholder={placeholder}
+      value={value}
+      readOnly
+      className={`bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-semibold text-[14px] px-4 py-2 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 w-full cursor-default ${className}`}
+    />
+  );
+}
+
+function DocumentField({
+  label,
+  fileName,
+}: {
+  label: string;
+  fileName: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 w-full h-full relative">
+      <input
+        value={fileName}
+        readOnly
+        placeholder={label}
+        className="bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-semibold text-[14px] px-4 py-2 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 w-full truncate cursor-default pr-24"
+      />
+      <button
+        type="button"
+        className="absolute right-2 shrink-0 bg-[#385E31] text-[#FFD980] font-bold text-[11px] px-4 py-1 rounded-[12px] hover:bg-[#2D4B24] transition shadow-sm"
+      >
+        View
+      </button>
+    </div>
+  );
+}
 
 export default function ClientProfileSettings() {
+  const [reviewData] = useState({
+      ownerFullName: "Benideck M. Longakit",
+      gender: "Male",
+      email: "benideck@example.com",
+      citizenship: "Filipino",
+      contactNumber: "+63 912 345 6789",
+      address: "123 Mango Avenue, Cebu City",
+      businessName: "Tech IT Hub",
+      businessType: "Non-Food & Beverage",
+      businessPermitName: "tech_it_hub_permit_2026.pdf",
+      ownerValidIdName: "benideck_id.pdf",
+      warehouseAddress: "456 IT Park Blvd, Cebu City",
+    });
 
   return (
     <div className="min-h-screen bg-white flex overflow-x-hidden">
       <SidebarClient active="dashboard" />
 
-      <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className="ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto w-full max-w-6xl space-y-6">
           {/* TOP BAR */}
           <NavbarClient />
@@ -24,100 +117,82 @@ export default function ClientProfileSettings() {
             </div>
           </section>
 
-          {/* Business Owner Information */}
-          <section className="w-full h-96 relative">
-            <div className="w-full h-96 left-0 top-0 absolute bg-white rounded-2xl shadow-[3.5800905227661133px_3.5800905227661133px_20.585519790649414px_0px_rgba(0,0,0,0.25)] border-1 border-lime-900" />
-            <div className="w-full h-10 left-[100.34px] top-[32.95px] absolute justify-start text-lime-950 text-4xl font-semibold font-['Inter']">Business Owner’s Information</div>
-            <img className="w-16 h-14 left-[23.72px] top-[26.85px] absolute border-1 border-white/40" src="https://placehold.co/70x55" />
-            <div className="w-[886.97px] h-64 left-[30.43px] top-[109.19px] absolute bg-lime-800 rounded-lg border-1 border-white/40" />
-            <div className="w-80 h-8 px-4 py-2 left-[60px] top-[141px] absolute bg-white outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-80 h-8 left-0 top-0 absolute bg-neutral-50 rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Last Name *</div>
-            </div>
-            <div className="w-40 h-8 px-4 py-2 left-[223.63px] top-[196.90px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-40 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Gender *</div>
-            </div>
-            <div className="w-40 h-8 px-4 py-2 left-[223.63px] top-[255.08px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-40 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Citizenship *</div>
-            </div>
-            <div className="w-[485.37px] h-8 px-4 py-2 left-[398.97px] top-[255.08px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-[485.37px] h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Permanent Address *</div>
-            </div>
-            <div className="w-80 h-8 px-4 py-2 left-[401.52px] top-[196.90px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-80 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Email *</div>
-            </div>
-            <div className="w-56 h-8 px-4 py-2 left-[402.36px] top-[140.52px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-56 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">First Name *</div>
-            </div>
-            <div className="w-36 h-8 px-4 py-2 left-[643.78px] top-[141.41px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-36 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Middle Name *</div>
-            </div>
-            <div className="w-20 h-8 px-4 py-2 left-[803.88px] top-[141.41px] absolute bg-white outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-20 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Suffix</div>
-            </div>
-            <div className="w-40 h-8 px-4 py-2 left-[723.40px] top-[196.90px] absolute bg-amber-200/90 outline outline-1 outline-offset-[-0.90px] outline-white/40 inline-flex justify-start items-center gap-2">
-              <div className="w-40 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Contact No. *</div>
-            </div>
-            <div className="w-32 h-32 left-[78.70px] top-[195.15px] absolute bg-white rounded-full shadow-[2.685067892074585px_2.685067892074585px_8.950225830078125px_0px_rgba(0,0,0,0.25)] border-1 border-white/40" />
-            <img className="w-20 h-24 left-[101.34px] top-[214.30px] absolute border-1 border-white/40" src="https://placehold.co/85x90" />
-            <img className="w-3 h-3 left-[359.84px] top-[206.03px] absolute border-1 border-white/40" src="https://placehold.co/12x12" />
-            <img className="w-3 h-3 left-[359.84px] top-[265.10px] absolute border-1 border-white/40" src="https://placehold.co/12x12" />
-          </section>
+          <div className="w-full max-w-5xl mx-auto flex flex-col gap-8">
+          
+          {/* Section 1: Business Owner */}
+          <SectionCard 
+            iconPath="/business-owner.svg" 
+            title="Business Owner’s Information"
+            delay={0.2}
+          >
+            <div className="flex flex-col md:flex-row gap-5 items-stretch w-full">
+              
+              {/* Left Column: Scaled down Profile Picture Box */}
+              <div className="w-full md:w-[180px] shrink-0 relative">
+                <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
+                   <div className="w-full h-full flex items-center justify-center">
+                     <img src="/business-owner.svg" alt="Owner Picture" className="w-24 h-24 object-contain opacity-70" />
+                   </div>
+                </div>
+              </div>
 
-          {/* Business Details */}
-          <section className="w-full h-[509.27px] relative">
-            <div className="w-full h-[509.27px] left-0 top-0 absolute bg-white rounded-2xl shadow-[3.5800905227661133px_3.5800905227661133px_20.585519790649414px_0px_rgba(0,0,0,0.25)] border border-lime-800" />
-            <div className="w-[767.98px] h-10 left-[100.20px] top-[38.24px] absolute justify-start text-lime-950 text-4xl font-semibold font-['Inter']">Business Details</div>
-            <img className="w-14 h-14 left-[28.80px] top-[29.54px] absolute" src="https://placehold.co/58x58" />
-            <div className="w-[886.89px] h-96 left-[30.50px] top-[112.77px] absolute bg-lime-800 rounded-lg" />
-            <div className="w-[741.19px] px-4 py-2 left-[63.53px] top-[147.68px] absolute bg-lime-800 inline-flex justify-start items-center gap-2">
-              <div className="w-[741.19px] h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Business Name *</div>
+              {/* Right Column: Tighter gap between rows */}
+              <div className="flex-1 flex flex-col justify-between gap-3">
+                <div className="w-full">
+                  <ReadOnlyField placeholder="Full Name *" value={reviewData.ownerFullName} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadOnlyField placeholder="Gender *" value={reviewData.gender} />
+                  <ReadOnlyField placeholder="Email Address *" value={reviewData.email} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadOnlyField placeholder="Citizenship *" value={reviewData.citizenship} />
+                  <ReadOnlyField placeholder="Contact No. *" value={reviewData.contactNumber} />
+                </div>
+                <div className="w-full">
+                  <ReadOnlyField placeholder="Permanent Address *" value={reviewData.address} />
+                </div>
+              </div>
             </div>
-            <div className="w-[823.36px] px-4 py-2 left-[63.53px] top-[204.06px] absolute bg-lime-800 inline-flex justify-start items-center gap-2">
-              <div className="w-[823.36px] h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Business/Warehouse Address *</div>
+          </SectionCard>
+
+          {/* Section 2: Business Details */}
+          <SectionCard 
+            iconPath="/business-details.svg" 
+            title="Business Details"
+            delay={0.3}
+          >
+            <div className="flex flex-col md:flex-row gap-5 items-stretch w-full">
+              
+              {/* Scaled down Logo Box */}
+              <div className="w-full md:w-[180px] shrink-0 relative">
+                <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img src="/business-details.svg" alt="Business Logo" className="w-24 h-24 object-contain opacity-70" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Tighter gap between rows */}
+              <div className="flex-1 w-full flex flex-col justify-between gap-3">
+                <div className="w-full">
+                  <ReadOnlyField placeholder="Business Name *" value={reviewData.businessName} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <ReadOnlyField placeholder="Business Type *" value={reviewData.businessType} />
+                  <ReadOnlyField placeholder="Owner Full Name (as on permit) *" value={reviewData.ownerFullName} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DocumentField label="Owner's Valid ID *" fileName={reviewData.ownerValidIdName} />
+                  <DocumentField label="Business Permit *" fileName={reviewData.businessPermitName} />
+                </div>
+                <div className="w-full">
+                  <ReadOnlyField placeholder="Business/Warehouse Address *" value={reviewData.warehouseAddress} />
+                </div>
+              </div>
             </div>
-            <div className="w-80 px-4 py-2 left-[62.68px] top-[260.45px] absolute bg-lime-800 inline-flex justify-start items-center gap-2">
-              <div className="w-80 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Business Contact/Tel. No. *</div>
-            </div>
-            <div className="w-80 px-4 py-2 left-[401.51px] top-[260.45px] absolute bg-lime-800 inline-flex justify-start items-center gap-2">
-              <div className="w-80 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Business Type *</div>
-            </div>
-            <div className="w-3 h-3 left-[680.04px] top-[270.47px] absolute bg-lime-800" />
-            <div className="w-80 px-4 py-2 left-[63.53px] top-[318.63px] absolute bg-lime-800 inline-flex justify-start items-center gap-2">
-              <div className="w-80 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Upload Valid Business Permit *</div>
-            </div>
-            <div className="w-20 h-4 px-11 py-2.5 left-[304.95px] top-[325.79px] absolute bg-lime-800 inline-flex justify-center items-center gap-2">
-              <div className="w-20 h-4 left-0 top-0 absolute bg-lime-800 rounded-3xl shadow-[1.7900452613830566px_3.5800905227661133px_3.5800905227661133px_0.8950226306915283px_rgba(0,0,0,0.16)]" />
-              <div className="text-center justify-center text-amber-200 text-xs font-semibold font-['Inter']">Upload</div>
-            </div>
-            <div className="w-80 px-4 py-2 left-[402.36px] top-[318.63px] absolute bg-lime-800 inline-flex justify-start items-center gap-2">
-              <div className="w-80 h-8 left-0 top-0 absolute bg-white rounded border-1 border-lime-800/40" />
-              <div className="flex-1 justify-start text-lime-800 text-sm font-normal font-['Inter']">Upload Business Owner Valid ID *</div>
-            </div>
-            <div className="w-20 h-4 px-11 py-2.5 left-[634.34px] top-[325.79px] absolute bg-lime-800 inline-flex justify-center items-center gap-2">
-              <div className="w-20 h-4 left-0 top-0 absolute bg-lime-800 rounded-3xl shadow-[1.7900452613830566px_3.5800905227661133px_3.5800905227661133px_0.8950226306915283px_rgba(0,0,0,0.16)]" />
-              <div className="text-center justify-center text-amber-200 text-xs font-semibold font-['Inter']">Upload</div>
-            </div>
-            <div className="w-64 h-12 px-11 py-2.5 left-[63.53px] top-[397.39px] absolute bg-lime-800 inline-flex justify-center items-center gap-2">
-              <div className="w-64 h-12 left-0 top-0 absolute bg-amber-400 rounded-3xl shadow-[1.7900452613830566px_3.5800905227661133px_3.5800905227661133px_0.8950226306915283px_rgba(0,0,0,0.16)]" />
-              <div className="text-center justify-center text-lime-800 text-xl font-semibold font-['Inter']">Save Information</div>
-            </div>
-            <div className="w-32 h-32 left-[733.49px] top-[262.27px] absolute bg-white rounded-full shadow-[2.685067892074585px_2.685067892074585px_8.950225830078125px_0px_rgba(0,0,0,0.25)] border-1 border-lime-800/40" />
-            <img className="w-20 h-20 left-[759px] top-[287.27px] absolute" src="https://placehold.co/79x79" />
-          </section>
+          </SectionCard>
+        </div>
 
           {/* Help Section */}
             <section className="w-[965.42px] h-10 relative">
