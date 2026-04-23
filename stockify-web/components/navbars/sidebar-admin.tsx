@@ -52,16 +52,20 @@ export default function SidebarAdmin({ activeSection, setActiveSection }: Sideba
   }, []);
 
   const adminNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
-    { label: "Dashboard",             iconFileName: "icon-dashboard",             section: "dashboard" },
-    { label: "User Administration",   iconFileName: "icon-user-administration",            section: "user-admin" },
-    { label: "Storefront",            iconFileName: "icon-storefront",            section: "storefront" },
-    { label: "Store Settings",        iconFileName: "icon-store-settings",        section: "store-settings" },
-    { label: "Subscription Billing",  iconFileName: "icon-subscription-billing",  section: "subscription-billing" },
+    { label: "Dashboard",            iconFileName: "icon-dashboard",            section: "dashboard" },
+    { label: "User Administration",  iconFileName: "icon-user-administration",  section: "user-admin" },
+    { label: "Storefront",           iconFileName: "icon-storefront",           section: "storefront" },
+    { label: "Store Settings",       iconFileName: "icon-store-settings",       section: "store-settings" },
+    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", section: "subscription-billing" },
+    // no settings here
+  ];
+
+  const bottomNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
+    { label: "Settings", iconFileName: "icon-settings", section: "admin-settings" },
   ];
 
   const bottomItems = [
-    { label: "Settings", iconFileName: "icon-settings", path: "/superadmin/profile-settings" },
-    { label: "Logout",   iconFileName: "icon-logout",   path: "/logout" },
+    { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
   ];
 
   return (
@@ -84,6 +88,17 @@ export default function SidebarAdmin({ activeSection, setActiveSection }: Sideba
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
+
+          {bottomNavItems.map((item) => (
+            <NavItem
+              key={item.label}
+              label={item.label}
+              iconFileName={item.iconFileName}
+              isActive={activeSection === item.section}
+              onClick={() => setActiveSection(item.section)}
+            />
+          ))}
+
           {bottomItems.map((item) => (
             <NavItem
               key={item.label}
@@ -93,6 +108,7 @@ export default function SidebarAdmin({ activeSection, setActiveSection }: Sideba
               onClick={() => router.push(item.path)}
             />
           ))}
+
         </div>
       </div>
 

@@ -47,15 +47,19 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setLoading(false);
 
     if (error) {
-      setError(error.message);
+      if (error.message.toLowerCase().includes("email not confirmed")) {
+        setError("Please check your email and confirm your address before logging in.");
+      } else {
+        setError(error.message);
+      }
       return;
     }
    
 
     if (data?.user) {
       const shopName = await getBusinessNameByUserId(data.user.id);
-      const userRole = await getUserData(data.user.id); // This returns "Superadmin", "Admin", etc.
-      
+      const userRole = await getUserData(data.user.id); 
+
       setLoading(false);
 
       if (userRole === "Superadmin") {
@@ -64,6 +68,20 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         router.refresh();
         return; 
       }
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("is_active")
+        .eq("user_id", data.user.id)
+        .single();
+
+      if (!userData?.is_active) {
+        await supabase.auth.signOut(); 
+        onClose();
+        router.push("/auth/account/waiting-approved");
+        return;
+      }
+
 
       if (shopName) {
         onClose();

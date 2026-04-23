@@ -1,17 +1,18 @@
 export default function StoreSettingsSection() {
   return (
     <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
-      <header className="mb-4 text-center">
-        <h1 className="text-[#385E31] text-3xl font-bold uppercase tracking-widest">
+      
+      <header className="mb-8 text-center flex flex-col items-center justify-center">
+        <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
           Store Settings
         </h1>
-        <div className="w-full h-[1px] bg-[#F7B71D] mt-2 opacity-50" />
+        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
       </header>
 
       {/* Business Information Section */}
       <div className="space-y-6">
-        <h3 className="text-[#385E31] font-bold text-xl">BUSINESS INFORMATION</h3>
-        <div className="grid grid-cols-1 gap-4 max-w-3xl">
+        <h3 className="text-[#385E31] font-bold text-2xl">BUSINESS INFORMATION</h3>
+        <div className="grid grid-cols-1 gap-4 max-w-10xl">
           {[
             { label: "Business Name:", val: "Description" },
             { label: "Contact Number:", val: "Description" },
@@ -31,24 +32,24 @@ export default function StoreSettingsSection() {
 
       {/* Payment Methods Section */}
       <div className="space-y-4">
-        <h3 className="text-[#385E31] font-bold text-xl">PAYMENT METHODS</h3>
+        <h3 className="text-[#385E31] font-bold text-2xl">PAYMENT METHODS</h3>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-10">
+          <div className="flex items-center gap-50">
             <span className="text-[#385E31] font-bold w-64">Enable Cash-on-Delivery (COD)</span>
             <div className="w-10 h-5 bg-[#385E31] rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"/></div>
           </div>
-          <div className="flex items-center gap-10">
+          <div className="flex items-center gap-50">
             <span className="text-[#385E31] font-bold w-64">Enable QR Code Payment</span>
             <div className="w-10 h-5 bg-[#385E31] rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"/></div>
           </div>
         </div>
       </div>
 
-      {/* QR Code Section - As seen in image_f57fe2.png */}
+      {/* QR Code Section */}
       <div className="space-y-4">
-        <h3 className="text-[#385E31] font-bold text-xl">IN-HOUSE QR CODE</h3>
+        <h3 className="text-[#385E31] font-bold text-2xl">IN-HOUSE QR CODE</h3>
         <div className="bg-white border border-[#385E31] rounded-2xl p-8 flex items-center gap-8 w-fit">
-          <div className="w-40 h-40 bg-white border-2 border-black flex items-center justify-center">
+          <div className="w-75 h-75 bg-white border-2 border-black flex items-center justify-center">
              <img src="/sample-qr.png" alt="QR Code" className="w-32 h-32" />
           </div>
           <div className="flex flex-col gap-2">
