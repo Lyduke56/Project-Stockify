@@ -105,13 +105,13 @@ export default function SuperadminDashboard() {
         {/* Stat Cards - Staggered Spring Animation */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.15 }}>
-            <StatCard title="Active Tenants" value="1.24k" trendText="↑ 5% this month (January)" className="w-full py-3 h-full" svgName="SA-active-tenants" />
+            <StatCard title="Active Tenants" value="1.24k" trendText="↑ 5% this month (January)" className="w-full pb-5 h-full" svgName="SA-active-tenants" />
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.25 }}>
-            <StatCard title="Pending Applications" value="39" trendText="39 new applications await review" className="w-full py-3 h-full" svgName="SA-pending-app" />
+            <StatCard title="Pending Applications" value="39" trendText="39 new applications await review" className="w-full pb-5 h-full" svgName="SA-pending-app" />
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.35 }}>
-            <StatCard title="Revenue status" value="124" trendText="Review their payment status and take action" className="w-full py-3 h-full" svgName="SA-rev-stat" />
+            <StatCard title="Revenue status" value="124" trendText="Review their payment status and take action" className="w-full pb-5 h-full" svgName="SA-rev-stat" />
           </motion.div>
         </div>
 

@@ -36,7 +36,7 @@ export default function ShopStatus({
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             {/* Shop icon */}
-            <img src="/icon-storefront.svg" alt="shop" className="w-4 h-4" />
+            <img src="/icon-storefront2.svg" alt="shop" className="w-4 h-4" />
             <span className="text-lime-800 text-sm font-semibold font-['Inter']">{clientName}</span>
             <span className="px-1.5 py-0.5 rounded-md border border-lime-800/30 text-neutral-950 text-[10px] font-medium font-['Inter']">
               {shopName}
@@ -45,7 +45,7 @@ export default function ShopStatus({
           <div className="flex items-center gap-3 pl-0.5">
             {/* Item count */}
             <div className="flex items-center gap-1">
-              <img src="/icon-store-settings.svg" alt="items" className="w-3.5 h-3.5 opacity-70" />
+              <img src="/icon-store-settings2.svg" alt="items" className="w-3.5 h-3.5 opacity-70" />
               <span className="text-lime-800/70 text-xs font-['Inter']">{itemCount} items</span>
             </div>
             {/* Low stock warning */}

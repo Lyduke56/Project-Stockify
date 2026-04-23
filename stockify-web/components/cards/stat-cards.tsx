@@ -27,7 +27,7 @@ export default function StatCard({
       </div>
 
       {/* Inner Content Box */}
-      <div className="w-full pt-5 pb-4 bg-[#FFFCEB] rounded-[5px] flex flex-col items-center justify-center">
+      <div className="w-full pt-4 pb-4 bg-[#FFFCEB] rounded-[5px] flex flex-col items-center justify-center">
         
         {/* Icon & Value Row */}
         <div className="flex items-center justify-center gap-3">
