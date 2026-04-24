@@ -52,7 +52,7 @@ export default function SidebarSuperAdmin() {
     { label: "Dashboard", iconFileName: "icon-dashboard", path: "/superadmin/dashboard" },
     { label: "Tenant Management", iconFileName: "icon-tenant-management", path: "/superadmin/tenant-management" },
     { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/superadmin/subscription-billing" },
-    { label: "Audit Logs", iconFileName: "icon-audit-logs", path: "/superadmin/audit-logs" },
+    { label: "Audit Logs", iconFileName: "icon-audit-logs", path: "/superadmin/audit-logs" }
   ];
 
   const bottomItems = [

@@ -6,6 +6,10 @@ import { motion } from "framer-motion";
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 
+// Modals — swap for your actual superadmin modal components
+import NotificationModal from "@/components/modals/notification-modal";
+import ClientProfileModal from "@/components/modals/client-profile-modal";
+
 // MOCK DATA RA NIIIIIIIIII
 const billingData = [
   { id: 1, name: "Cafe Cebu", owner: "Clyde Justine Rosal", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
@@ -112,6 +116,10 @@ export default function SubscriptionBilling() {
 
   const currentData = getFilteredData();
 
+  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
+
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
       
@@ -125,7 +133,12 @@ export default function SubscriptionBilling() {
         className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
       >
         
-        <NavbarApp />
+        {/* ── Navbar ── */}
+                <NavbarApp
+                  onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  openNotifs={() => setIsNotifsOpen(true)}
+                  openProfile={() => setIsProfileOpen(true)}
+                />
 
         {/* Page Header - Slight delay to trail the main wrapper */}
         <motion.div 
@@ -331,6 +344,10 @@ export default function SubscriptionBilling() {
               Load More
             </button>
           </div>
+
+          {/* ── Modals ── */}
+                <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+                <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
         </motion.div>
       </motion.div>
