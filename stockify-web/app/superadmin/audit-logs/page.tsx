@@ -5,6 +5,11 @@ import { motion } from "framer-motion"; // <-- Imported Framer Motion
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
 
+// Modals — swap for your actual superadmin modal components
+import NotificationModal from "@/components/modals/notification-modal";
+import ClientProfileModal from "@/components/modals/client-profile-modal";
+
+
 // --- MOCK DATA & HELPERS FOR SYSTEM UPTIME ---
 type StatusType = 'outage' | 'partial' | 'normal';
 
@@ -55,11 +60,15 @@ const ChevronDown = () => (
   </svg>
 );
 
+
+
 // --- MAIN COMPONENT ---
 export default function AuditLogs() {
   // Generate mock array for the 12 "Body" rows shown in the design
   const mockTableRows = Array.from({ length: 12 }).map((_, i) => ({ id: i }));
 
+  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
       
@@ -74,7 +83,11 @@ export default function AuditLogs() {
         className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
       >
         
-        <NavbarApp />
+        <NavbarApp
+                          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                          openNotifs={() => setIsNotifsOpen(true)}
+                          openProfile={() => setIsProfileOpen(true)}
+                        />
 
         {/* Page Header - Slight delay to trail the main wrapper */}
         <motion.div 
@@ -220,6 +233,10 @@ export default function AuditLogs() {
               Load More
             </button>
           </div>
+
+          {/* ── Modals ── */}
+            <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+            <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
         </motion.div>
       </motion.div>

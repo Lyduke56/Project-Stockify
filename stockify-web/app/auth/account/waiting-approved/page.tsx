@@ -14,7 +14,7 @@ export default function WaitingApproved() {
         <div className="flex flex-1 items-center justify-center py-16">
           <div className="bg-[#385E31] rounded-[10px] px-12 py-14 text-center max-w-md shadow-lg">
             <div className="text-6xl mb-5">⏳</div>
-            <h2 className="font-bold text-[32px] text-[#F7B71D] mb-3 font-['Inter'] opacity-20">
+            <h2 className="font-bold text-[32px] text-[#F7B71D] mb-3 font-['Inter']">
               Email Confirmed!
             </h2>
             <p className="text-[16px] text-[#FFF9D7] mb-6 leading-relaxed font-['Inter']">
@@ -24,7 +24,7 @@ export default function WaitingApproved() {
             </p>
             <button
               onClick={() => router.push("/")}
-              className="bg-[#FFD980] text-[#385E31] font-bold text-[18px] py-3 px-20 rounded-[5px] hover:opacity-90 transition w-md font-['Inter']"
+              className="bg-[#FFD980] text-[#385E31] font-bold text-[18px] py-3 px-20 rounded-[5px] hover:opacity-90 transition w-full font-['Inter']"
             >
               Back to Home
             </button>

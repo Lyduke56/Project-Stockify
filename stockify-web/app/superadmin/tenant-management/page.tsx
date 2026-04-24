@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from "react";
@@ -7,6 +8,10 @@ import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import TenantActionModal from "@/components/modals/confimation-modal";
 import PendingTenantsTab from "@/components/sections/superadmin/pending-tenants-tab";
+
+// Modals — swap for your actual superadmin modal components
+import NotificationModal from "@/components/modals/notification-modal";
+import ClientProfileModal from "@/components/modals/client-profile-modal";
 
 // --- MOCK DATA ---
 const tenantData = [
@@ -165,6 +170,9 @@ export default function TenantManagement() {
     setSelectedTenant(null);
   };
 
+  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
 
@@ -178,7 +186,11 @@ export default function TenantManagement() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
       >
-        <NavbarApp />
+        <NavbarApp
+                  onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  openNotifs={() => setIsNotifsOpen(true)}
+                  openProfile={() => setIsProfileOpen(true)}
+                />
 
         {/* Page Header */}
         <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">
@@ -254,7 +266,7 @@ export default function TenantManagement() {
           </h2>
 
           {/* ── PENDING: renders its own self-contained table ── */}
-          {activeTab === "Pending" && <PendingTenantsTab onViewTenant={handleViewTenant} />}
+          {activeTab === "Pending" && <PendingTenantsTab />}
 
           {/* ── ALL OTHER TABS: shared search + table wrapper ── */}
           {activeTab !== "Pending" && (
@@ -492,6 +504,11 @@ export default function TenantManagement() {
         tenantName={selectedTenant?.name || ""}
         actionType="terminate"
       />
+
+      {/* ── Modals ── */}
+                      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+                      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      
     </div>
   );
 }

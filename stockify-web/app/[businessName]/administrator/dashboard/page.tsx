@@ -10,7 +10,6 @@ import DashboardSection from "@/components/sections/admin/dashboard-home";
 import UserAdminSection from "@/components/sections/admin/user-admin";
 import StorefrontSection from "@/components/sections/admin/storefront";
 import StoreSettingsSection from "@/components/sections/admin/store-settings";
-import SubscriptionBillingSection from "@/components/sections/admin/subscription-billing";  
 import AdminSettingsSection from "@/components/sections/admin/client-settings";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 import NotificationModal from "@/components/modals/notification-modal";
