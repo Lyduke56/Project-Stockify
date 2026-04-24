@@ -8,7 +8,7 @@ interface NavbarSuperAdminProps {
 
 export default function NavbarApp({ onHome, openNotifs, openProfile }: NavbarSuperAdminProps) {
   return (
-    <nav className="relative w-full h-[60px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[0]">
+    <nav className="relative w-full h-[60px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
 
       {/* LEFT: Logo + Brand */}
       <div

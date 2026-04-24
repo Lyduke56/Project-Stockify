@@ -189,7 +189,7 @@ export default function SuperadminDashboard() {
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
           className="w-full flex flex-col items-center"
         >
-          <h2 className="text-[#385E31] text-[24px] font-extrabold mb-3">
+          <h2 className="text-[#385E31] text-[24px] font-extrabold mb-3 mt-4">
             Recent Activities
           </h2>
 
