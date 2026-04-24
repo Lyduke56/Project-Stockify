@@ -9,7 +9,7 @@ export default function ClientDashboardPage() {
     <div className="min-h-screen bg-white flex overflow-x-hidden">
       <SidebarClient active="dashboard" />
 
-      <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className="ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto w-full max-w-6xl space-y-6">
           {/* TOP BAR */}
           <NavbarClient />
