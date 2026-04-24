@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useStaffRecords, StaffRecord, UserRole, UserStatus  } from "@/backend/hooks/useStaffRecords";
+import { useStaffRecords, StaffRecord, UserRole, UserStatus } from "@/backend/hooks/useStaffRecords";
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -18,8 +18,6 @@ const statusColors: Record<UserStatus, string> = {
   Inactive:  "#888888",
   Suspended: "#E53333",
 };
-
-const roleOptions: Exclude<UserRole, "Administrator">[] = ["Manager", "Employee"];
 
 const COLUMNS = ["Name", "Email", "Role", "Status", "Actions"] as const;
 
@@ -107,21 +105,7 @@ function Row({ record, onEdit, onDelete }: { record: StaffRecord; onEdit?: () =>
 
       {/* Role */}
       <Cell>
-        {isAdmin ? (
-          <span className="text-sm font-medium text-[#385E31]">Administrator</span>
-        ) : (
-          <div className="relative flex items-center justify-center w-full max-w-[110px]">
-            <select
-              defaultValue={record.role}
-              className="w-full h-8 pl-3 pr-7 text-xs font-bold border border-[#385E31] rounded-full bg-transparent text-[#385E31] appearance-none cursor-pointer outline-none text-center"
-            >
-              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <div className="absolute right-3 pointer-events-none">
-              <svg width="8" height="5" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="#385E31" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </div>
-          </div>
-        )}
+        <span className="text-sm font-medium text-[#385E31] text-center">{record.role}</span>
       </Cell>
 
       {/* Status */}

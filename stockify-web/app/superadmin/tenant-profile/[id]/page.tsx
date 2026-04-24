@@ -5,6 +5,10 @@ import { motion } from "framer-motion";
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 
+// Modals — swap for your actual superadmin modal components
+import NotificationModal from "@/components/modals/notification-modal";
+import ClientProfileModal from "@/components/modals/client-profile-modal";
+
 // --- STAT CARD COMPONENT ---
 interface StatCardProps {
   title: string;
@@ -322,6 +326,9 @@ function PaymentLogTable() {
 
 // --- MAIN PAGE COMPONENT ---
 export default function TenantPaymentHistory() {
+   const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
       
@@ -335,9 +342,14 @@ export default function TenantPaymentHistory() {
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="flex-1 flex flex-col h-full overflow-y-auto px-8 md:px-16 pt-5 pb-12"
       >
-        <NavbarApp />
+        {/* ── Navbar ── */}
+                        <NavbarApp
+                          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                          openNotifs={() => setIsNotifsOpen(true)}
+                          openProfile={() => setIsProfileOpen(true)}
+                        />
 
-        <div className="w-full flex flex-col items-center mt-8 mb-6 gap-6 max-w-[960px] mx-auto">
+        <div className="w-full flex flex-col items-center mt-8 mb-6 gap-6 max-w-[1070px] mx-auto">
           
           {/* GREEN HEADER */}
           <div className="w-full p-8 bg-[#385E31] rounded-[10px] shadow-sm flex items-center justify-start gap-8 border border-[#385E31]">
@@ -457,6 +469,10 @@ export default function TenantPaymentHistory() {
 
           {/* PAYMENT LOG TABLE */}
           <PaymentLogTable />
+
+          {/* ── Modals ── */}
+                          <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+                          <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
           
         </div>
       </motion.div>

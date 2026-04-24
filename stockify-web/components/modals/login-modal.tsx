@@ -117,7 +117,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
           damping: 25, 
           delay: 0.1 
         }}
-        className="relative flex flex-col md:flex-row w-full max-w-[900px] min-h-[400px] md:min-h-[520px] rounded-[24px] bg-[#385E31] border-[3px] border-[#F7B71D] shadow-2xl overflow-hidden"
+        className="relative flex flex-col md:flex-row w-full max-w-[900px] min-h-[400px] md:max-h-[570px] rounded-[24px] bg-[#385E31] border-[3px] border-[#F7B71D] shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Left Side: Illustration (Hidden on Mobile) */}
@@ -136,7 +136,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             <h1 className="font-['Fredoka'] font-bold text-[36px] md:text-[42px] leading-tight text-[#385E31] mb-1">
               SIGN IN
             </h1>
-            <p className="font-['Fredoka'] font-normal text-[14px] text-[#8C9B85] mb-30">
+            <p className="font-['Fredoka'] font-normal text-[14px] text-[#8C9B85] mb-1">
               Please enter your details to continue.
             </p>
           </div>
@@ -197,7 +197,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             </div>
 
             {/* Centered Submit Button */}
-            <div className="flex justify-center mt-6">
+            <div className="flex justify-center mt-25">
               <button
                 type="submit"
                 disabled={loading}
