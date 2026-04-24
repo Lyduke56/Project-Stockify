@@ -8,7 +8,7 @@ interface NavbarSuperAdminProps {
 
 export default function NavbarApp({ onHome, openNotifs, openProfile }: NavbarSuperAdminProps) {
   return (
-    <nav className="relative w-full h-[60px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
+    <nav className="relative w-full h-[60px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[0]">
 
       {/* LEFT: Logo + Brand */}
       <div
@@ -16,7 +16,7 @@ export default function NavbarApp({ onHome, openNotifs, openProfile }: NavbarSup
         onClick={onHome}
       >
         <div className="w-12 h-12 flex items-center justify-center">
-          <img src="/stockify-logo-1.svg" alt="Stockify Icon" className="h-9 w-auto" />
+          <img src="/stockify-logo-1.svg" alt="Stockify Icon" className="h-9 w-auto" /> 
         </div>
         <div className="text-[#385E31] text-3xl font-bold font-fredoka">
           STOCKIFY

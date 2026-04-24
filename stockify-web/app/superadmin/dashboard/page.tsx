@@ -234,5 +234,6 @@ export default function SuperadminDashboard() {
       <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
+    
   );
 }

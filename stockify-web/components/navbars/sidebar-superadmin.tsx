@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
 import LogoutModal from "../modals/logout-modal";
+import SettingsModal from "../modals/navbar-modals/settings"; // <-- NEW
 
 interface NavItemProps {
   label: string;
@@ -11,7 +12,6 @@ interface NavItemProps {
   onClick: () => void;
 }
 
-// --- NavItem Component ---
 function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   return (
     <div
@@ -34,9 +34,7 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
           }
         />
       </div>
-      <div className="text-base font-['Inter'] whitespace-nowrap">
-        {label}
-      </div>
+      <div className="text-base font-['Inter'] whitespace-nowrap">{label}</div>
     </div>
   );
 }
@@ -46,38 +44,42 @@ export default function SidebarSuperAdmin() {
   const pathname = usePathname();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false); // <-- NEW
 
-  // FIX: Updated all paths from "/admin/..." to "/superadmin/..." to match your folder structure
   const adminNavItems = [
-    { label: "Dashboard", iconFileName: "icon-dashboard", path: "/superadmin/dashboard" },
-    { label: "Tenant Management", iconFileName: "icon-tenant-management", path: "/superadmin/tenant-management" },
+    { label: "Dashboard",            iconFileName: "icon-dashboard",            path: "/superadmin/dashboard" },
+    { label: "Tenant Management",    iconFileName: "icon-tenant-management",    path: "/superadmin/tenant-management" },
     { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/superadmin/subscription-billing" },
-    { label: "Audit Logs", iconFileName: "icon-audit-logs", path: "/superadmin/audit-logs" }
+    { label: "Audit Logs",           iconFileName: "icon-audit-logs",           path: "/superadmin/audit-logs" },
   ];
 
   const bottomItems = [
     { label: "Settings", iconFileName: "icon-settings", path: "/superadmin/profile-settings" },
-    { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
+    { label: "Logout",   iconFileName: "icon-logout",   path: "/logout" },
   ];
 
-    const handleNavigation = (label: string, path: string) => {
-      if (label === "Logout") {
-        setShowLogoutModal(true);
-        return;
-      }
+  const handleNavigation = (label: string, path: string) => {
+    if (label === "Logout") {
+      setShowLogoutModal(true);
+      return;
+    }
+    // Open modal for Settings instead of navigating
+    if (label === "Settings") {
+      setShowSettingsModal(true);
+      return;
+    }
+    router.push(path);
+  };
 
-      router.push(path);
-    };
-
-    const handleLogout = () => {
-      localStorage.removeItem("token"); 
-      setShowLogoutModal(false);
-      router.push("/");
-    };
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    setShowLogoutModal(false);
+    router.push("/");
+  };
 
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-between shrink-0 sticky top-0 overflow-y-auto">
-      
+
       {/* Top Navigation */}
       <div className="w-full flex flex-col gap-1">
         {adminNavItems.map((item) => (
@@ -85,7 +87,7 @@ export default function SidebarSuperAdmin() {
             key={item.label}
             label={item.label}
             iconFileName={item.iconFileName}
-            isActive={pathname === item.path} // This will now correctly match the current URL
+            isActive={pathname === item.path}
             onClick={() => handleNavigation(item.label, item.path)}
           />
         ))}
@@ -93,25 +95,32 @@ export default function SidebarSuperAdmin() {
 
       {/* Bottom Navigation & Divider */}
       <div className="w-full flex flex-col items-center gap-4 mt-10">
-        <div className="w-48 h-px bg-white/10"></div>
+        <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
           {bottomItems.map((item) => (
             <NavItem
               key={item.label}
               label={item.label}
               iconFileName={item.iconFileName}
-              isActive={pathname === item.path}
+              // Settings is never "active" in the URL sense — it opens a modal
+              isActive={item.label !== "Settings" && pathname === item.path}
               onClick={() => handleNavigation(item.label, item.path)}
             />
           ))}
         </div>
       </div>
-      
+
+      {/* Modals */}
       <LogoutModal
-          isOpen={showLogoutModal}
-          onCancel={() => setShowLogoutModal(false)}
-          onConfirm={handleLogout}
-        />
+        isOpen={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
+      <SettingsModal 
+      isOpen={showSettingsModal}
+              onClose={() => setShowSettingsModal(false)}
+      />
+            
     </div>
   );
 }
