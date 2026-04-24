@@ -9,7 +9,6 @@ interface NavbarAdminProps {
   openSettings: () => void;
 }
 
-// Destructure the new modal props here
 export default function NavbarAdmin({ 
   setActiveSection, 
   openProfile, 
@@ -18,51 +17,71 @@ export default function NavbarAdmin({
 }: NavbarAdminProps) {
 
   return (
-    <nav className="relative w-full h-[60px] px-8 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
+    <nav className="relative w-full h-[48px] px-4 md:px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
       
-      {/* LEFT: Logo */}
+      {/* LEFT SIDE: Logo and Brand Name */}
       <div 
-        className="flex items-center gap-2 cursor-pointer select-none" 
+        className="flex items-center gap-1.5 cursor-pointer select-none" 
         onClick={() => setActiveSection("dashboard")}
       >
-        <img src="/stockify-logo-1.svg" alt="Logo" className="h-8 w-auto" />
-        <div className="text-[#385E31] text-2xl font-bold font-['Inter']">STOCKIFY</div>
+        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
+          <img
+            src="/stockify-logo-1.svg"
+            alt="Stockify Icon"
+            className="h-7 md:h-9 w-auto"
+          />
+        </div>
+        <div className="text-[#385E31] text-xl md:text-3xl font-bold font-fredoka">
+          STOCKIFY
+        </div>
       </div>
 
-      {/* RIGHT: Quick Actions */}
-      <div className="flex items-center gap-6">
-        {/* Home */}
-        <button 
+      {/* RIGHT SIDE: Navigation Icons */}
+      <div className="flex items-center gap-4 md:gap-8">
+        
+        {/* Home Icon */}
+        <button
           onClick={() => setActiveSection("dashboard")} 
-          className="hover:scale-110 transition-transform"
+          className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+          title="Home"
         >
-          <img src="/navbar-home.svg" alt="Home" className="w-8 h-8" />
+          <img 
+            src="/navbar-home.svg" 
+            alt="Home" 
+            className="w-full h-full object-contain" 
+          />
         </button>
 
-        {/* Notifications Button - Now triggers the Modal */}
-        <div className="relative">
-          <button 
+        {/* Notifications Icon */}
+        <div className="relative flex items-center justify-center">
+          <button
             onClick={openNotifs} 
-            className="hover:scale-110 transition-transform"
-          >
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-8 h-8" />
-            <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white" />
-          </button>
-        </div>
-
-        {/* Profile Button - Now triggers the Profile Modal */}
-        <div className="relative">
-          <button 
-            onClick={openProfile} 
-            className="hover:scale-110 transition-transform"
+            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+            title="Notifications"
           >
             <img 
-              src="/navbar-profile-settings.svg" 
-              alt="Profile" 
-              className="w-8 h-8 rounded-full border border-[#385E31]" 
+              src="/navbar-notif.svg" 
+              alt="Notifications" 
+              className="w-full h-full object-contain" 
             />
           </button>
+          {/* Notification Red Dot */}
+          <div className="absolute -top-1 -right-1 w-2 md:w-2.5 h-2 md:h-2.5 bg-red-600 rounded-full border border-white" />
         </div>
+
+        {/* Profile Settings Icon */}
+        <button
+          onClick={openProfile} 
+          className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+          title="Profile Settings"
+        >
+          <img 
+            src="/navbar-profile-settings.svg" 
+            alt="Profile Settings" 
+            className="w-full h-full object-contain" 
+          />
+        </button>
+
       </div>
     </nav>
   );

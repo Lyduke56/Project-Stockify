@@ -1,63 +1,170 @@
+"use client";
+
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+
+// Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0 },
+};
+
 export default function StoreSettingsSection() {
+  const [codEnabled, setCodEnabled] = useState(true);
+  const [qrEnabled, setQrEnabled] = useState(true);
+
+  const businessInfo = [
+    { label: "Business Name", placeholder: "e.g., Green Earth Grocery" },
+    { label: "Contact Number", placeholder: "e.g., +1 (555) 123-4567" },
+    { label: "Operating Hours", placeholder: "e.g., Mon-Fri, 9AM - 6PM" },
+  ];
+
   return (
-    <div className="flex flex-col gap-8 w-full animate-in fade-in duration-500">
-      
-      <header className="mb-8 text-center flex flex-col items-center justify-center">
-        <h1 className="text-[#385E31] text-3xl font-bold font-['Inter'] uppercase tracking-widest">
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="flex flex-col w-full min-h-screen bg-[#FFFCEB] font-['Inter'] pt-5 pb-12"
+    >
+      {/* PAGE HEADER */}
+      <motion.header variants={itemVariants} className="w-full flex flex-col items-center mb-12 gap-2">
+        <h1 className="text-[#385E31] text-[30px] font-extrabold uppercase tracking-tight">
           Store Settings
         </h1>
-        <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-2 rounded-full opacity-50" />
-      </header>
+        <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full opacity-60" />
+      </motion.header>
 
-      {/* Business Information Section */}
-      <div className="space-y-6">
-        <h3 className="text-[#385E31] font-bold text-2xl">BUSINESS INFORMATION</h3>
-        <div className="grid grid-cols-1 gap-4 max-w-10xl">
-          {[
-            { label: "Business Name:", val: "Description" },
-            { label: "Contact Number:", val: "Description" },
-            { label: "Operating Hours:", val: "Description" },
-          ].map((item) => (
-            <div key={item.label} className="grid grid-cols-3 items-center">
-              <label className="text-[#385E31] font-bold">{item.label}</label>
-              <input 
-                type="text" 
-                placeholder={item.val}
-                className="col-span-2 p-3 rounded-lg bg-[#FDE68A]/50 border border-[#F7B71D]/30 outline-none text-[#385E31]" 
-              />
+      <motion.div variants={itemVariants} className="flex flex-col gap-8 w-full max-w-5xl mx-auto">
+        
+        {/* BUSINESS INFORMATION SECTION */}
+        <div className="flex flex-col gap-6 p-8 w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] shadow-sm">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-[#385E31] text-[18px] font-extrabold uppercase">
+              Business Information
+            </h3>
+            <p className="text-[#385E31]/70 text-sm font-medium">
+              Update your core business details visible to customers.
+            </p>
+          </div>
+          
+          <div className="flex flex-col gap-5">
+            {businessInfo.map((item) => (
+              <div key={item.label} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <label className="text-[#385E31] font-bold text-sm sm:w-40 shrink-0">
+                  {item.label}
+                </label>
+                <input
+                  type="text"
+                  placeholder={item.placeholder}
+                  className="flex-1 border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/50 outline-none font-medium text-sm transition-all focus:ring-1 focus:ring-[#385E31]"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* PAYMENT METHODS SECTION */}
+          <div className="flex flex-col gap-6 p-8 w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] shadow-sm">
+            <div className="flex flex-col gap-1 mb-2">
+              <h3 className="text-[#385E31] text-[18px] font-extrabold uppercase">
+                Payment Methods
+              </h3>
+              <p className="text-[#385E31]/70 text-sm font-medium">
+                Select which checkout options are available.
+              </p>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Payment Methods Section */}
-      <div className="space-y-4">
-        <h3 className="text-[#385E31] font-bold text-2xl">PAYMENT METHODS</h3>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-50">
-            <span className="text-[#385E31] font-bold w-64">Enable Cash-on-Delivery (COD)</span>
-            <div className="w-10 h-5 bg-[#385E31] rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"/></div>
-          </div>
-          <div className="flex items-center gap-50">
-            <span className="text-[#385E31] font-bold w-64">Enable QR Code Payment</span>
-            <div className="w-10 h-5 bg-[#385E31] rounded-full relative"><div className="absolute right-1 top-1 w-3 h-3 bg-white rounded-full"/></div>
-          </div>
-        </div>
-      </div>
+            <div className="flex flex-col gap-5">
+              <div 
+                className="flex items-center justify-between p-4 rounded-xl border border-[#385E31]/20 hover:bg-[#385E31]/5 transition-colors cursor-pointer"
+                onClick={() => setCodEnabled(!codEnabled)}
+              >
+                <span className="text-[#385E31] font-bold text-sm">Enable Cash-on-Delivery (COD)</span>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${codEnabled ? 'bg-[#385E31]' : 'bg-[#385E31]/30'}`}>
+                  <motion.div 
+                    layout
+                    className="absolute top-1 w-4 h-4 bg-[#FFFCEB] rounded-full shadow-sm"
+                    initial={false}
+                    animate={{ 
+                      x: codEnabled ? 28 : 4 
+                    }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </div>
+              </div>
 
-      {/* QR Code Section */}
-      <div className="space-y-4">
-        <h3 className="text-[#385E31] font-bold text-2xl">IN-HOUSE QR CODE</h3>
-        <div className="bg-white border border-[#385E31] rounded-2xl p-8 flex items-center gap-8 w-fit">
-          <div className="w-75 h-75 bg-white border-2 border-black flex items-center justify-center">
-             <img src="/sample-qr.png" alt="QR Code" className="w-32 h-32" />
+              <div 
+                className="flex items-center justify-between p-4 rounded-xl border border-[#385E31]/20 hover:bg-[#385E31]/5 transition-colors cursor-pointer"
+                onClick={() => setQrEnabled(!qrEnabled)}
+              >
+                <span className="text-[#385E31] font-bold text-sm">Enable QR Code Payment</span>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${qrEnabled ? 'bg-[#385E31]' : 'bg-[#385E31]/30'}`}>
+                  <motion.div 
+                    layout
+                    className="absolute top-1 w-4 h-4 bg-[#FFFCEB] rounded-full shadow-sm"
+                    initial={false}
+                    animate={{ 
+                      x: qrEnabled ? 28 : 4 
+                    }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-[#385E31] text-xs font-bold text-center">Active Token<br/><span className="font-mono opacity-60 italic">a1b2c3d4e5f6g7h8i9j0</span></p>
-            <button className="bg-[#385E31] text-white px-4 py-2 rounded-full text-xs font-bold">Generate New QR Code</button>
+
+          {/* IN-HOUSE QR CODE SECTION */}
+          <div className="flex flex-col gap-6 p-8 w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] shadow-sm">
+             <div className="flex flex-col gap-1 mb-2">
+              <h3 className="text-[#385E31] text-[18px] font-extrabold uppercase">
+                In-House QR Code
+              </h3>
+              <p className="text-[#385E31]/70 text-sm font-medium">
+                Manage your store's primary payment QR token.
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center justify-center gap-6 h-full">
+              <div className="w-32 h-32 bg-white rounded-xl border-2 border-[#385E31] shadow-sm flex items-center justify-center p-2">
+                <img 
+                  src="/api/placeholder/150/150" 
+                  alt="QR Code Placeholder" 
+                  className="w-full h-full object-cover opacity-80 mix-blend-multiply" 
+                />
+              </div>
+              
+              <div className="flex flex-col gap-4 w-full items-center">
+                <div className="text-center bg-[#385E31]/5 py-2 px-6 rounded-lg border border-[#385E31]/10 w-full">
+                  <p className="text-[#385E31] text-[11px] font-bold uppercase tracking-wider mb-1">Active Token</p>
+                  <p className="text-[#385E31] font-mono text-sm opacity-80 break-all">
+                    a1b2c3d4e5f6g7h8i9j0
+                  </p>
+                </div>
+                
+                <button
+                  className="w-full whitespace-nowrap px-6 py-3 rounded-[40px] font-bold text-[13px] transition-all hover:brightness-105 active:scale-95 shadow-sm"
+                  style={{ backgroundColor: "#385E31", color: "#FFFCEB" }}
+                >
+                  Generate New QR Code
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
