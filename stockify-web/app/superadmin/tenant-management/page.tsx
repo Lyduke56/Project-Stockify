@@ -1,76 +1,38 @@
-
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation"; 
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { createClient } from "@supabase/supabase-js";
+
+// Components
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
-import TenantActionModal from "@/components/modals/confimation-modal";
 import PendingTenantsTab from "@/components/sections/superadmin/pending-tenants-tab";
-
-// Modals — swap for your actual superadmin modal components
+import ActiveTenantsTab from "@/components/sections/superadmin/active-tenants-tab";
+import TerminatedTenantsTab from "@/components/sections/superadmin/terminated-tenants-table";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
+import SuspendedTenantsTab from "@/components/sections/superadmin/suspended-tenant-tab";
 
-// --- MOCK DATA ---
-const tenantData = [
-  { id: 1, name: "Cafe Cebu", owner: "Clyde Justine Rosal", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-  { id: 2, name: "Tech Hub IT", owner: "Christopher John Rubio", date: "02/01/2026", status: "Overdue", balance: "₱5,000.00" },
-  { id: 3, name: "Fully Booked", owner: "Axziel Jay Bartolabac", date: "01/21/2026", status: "Active", balance: "₱8,000.00" },
-  { id: 4, name: "National Book Store", owner: "Axziel Jay Bartolabac", date: "02/21/2025", status: "Overdue", balance: "₱8,000.00" },
-  { id: 5, name: "TAMBAY Cafe", owner: "Benideck Longakit", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-  { id: 6, name: "Uncle Brew", owner: "Nesserain De la Cruz", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-  { id: 7, name: "Elle's Boutique", owner: "Elle Bernante", date: "02/21/2026", status: "Overdue", balance: "₱3,000.00" },
-  { id: 8, name: "Manok na Chicken", owner: "Tweetie Zapanta", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-];
-
-const suspendedData = [
-  { id: 201, name: "Late Payers Co.", owner: "John Doe", date: "01/15/2026" },
-  { id: 202, name: "Rule Breakers Inc.", owner: "Jane Smith", date: "12/10/2025" },
-  { id: 203, name: "Ghost Town Shop", owner: "Casper Ghost", date: "11/05/2025" },
-  { id: 204, name: "Policy Violators", owner: "Arthur Dent", date: "02/28/2026" },
-  { id: 205, name: "Spammy Goods", owner: "Clark Kent", date: "03/01/2026" },
-  { id: 206, name: "Non-Compliant Ltd.", owner: "Bruce Wayne", date: "03/15/2026" },
-  { id: 207, name: "Strike Three Store", owner: "Peter Parker", date: "03/20/2026" },
-  { id: 208, name: "Frozen Assets", owner: "Tony Stark", date: "04/01/2026" },
-];
-
-const terminatedData = [
-  { id: 301, name: "Closed For Good", owner: "Walter White", date: "08/10/2025" },
-  { id: 302, name: "Bankrupt Bros", owner: "Saul Goodman", date: "09/15/2025" },
-  { id: 303, name: "Banned Books", owner: "Jesse Pinkman", date: "10/20/2025" },
-  { id: 304, name: "End of the Line", owner: "Hank Schrader", date: "11/25/2025" },
-  { id: 305, name: "No More Business", owner: "Skyler White", date: "12/30/2025" },
-  { id: 306, name: "Final Chapter", owner: "Gus Fring", date: "01/05/2026" },
-  { id: 307, name: "Done Deal", owner: "Mike Ehrmantraut", date: "02/10/2026" },
-  { id: 308, name: "Terminated Tech", owner: "Tuco Salamanca", date: "03/15/2026" },
-];
+// Supabase Init
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 const tabs = ["Active", "Pending", "Suspended", "Terminated"];
 
 // --- HELPERS ---
-const getPillStyles = (status: string) => {
-  switch (status) {
+const getTabConfig = (tab: string) => {
+  switch (tab) {
     case "Active":    return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
     case "Pending":   return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
     case "Suspended": return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
-    case "Overdue":   return { bg: "bg-[#FFD980]",  text: "text-[#385E31]" };
-    default:          return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-  }
-};
-
-const getTabConfig = (tab: string) => {
-  switch (tab) {
-    case "Active":     return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Pending":    return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
-    case "Suspended":  return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
     case "Terminated": return { bg: "bg-[#E91F22]", text: "text-[#F7B71D]" };
     default:           return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
   }
 };
 
-// --- CUSTOM SVG COMPONENTS ---
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
     fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -98,10 +60,10 @@ interface StatCardProps {
 
 function StatCard({ title, value, trendText, className = "", svgName, delay = 0 }: StatCardProps) {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25, delay: delay }}
+      transition={{ type: "spring", stiffness: 300, damping: 25, delay }}
       className={`bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31] ${className}`}
     >
       <h3 className="text-[#FFFCEB] text-[18px] font-bold mb-3">{title}</h3>
@@ -116,83 +78,72 @@ function StatCard({ title, value, trendText, className = "", svgName, delay = 0 
   );
 }
 
-// --- MAIN COMPONENT ---
+// --- MAIN PAGE ---
 export default function TenantManagement() {
-  const router = useRouter();
-
   const [activeTab, setActiveTab] = useState("Active");
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
-  const [selectedTenant, setSelectedTenant] = useState<any>(null);
-  const [showSuspendModal, setShowSuspendModal] = useState(false);
-  const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const toggleDropdown = (id: number) => {
-    setOpenDropdownId((prevId) => (prevId === id ? null : id));
-  };
+  // Stats State
+  const [stats, setStats] = useState({
+    active: 0,
+    pending: 0,
+    suspended: 0,
+    terminated: 0
+  });
 
-  const handleViewTenant = (tenantId: string | number) => {
-    if (activeTab === "Pending") {
-      router.push(`/superadmin/tenant-review/${tenantId}`);
-    } else {
-      router.push(`/superadmin/tenant-profile/${tenantId}`);
-    }
-  };
+  useEffect(() => {
+    const fetchAllStats = async () => {
+      try {
+        const [activeRes, pendingRes, suspendedRes, terminatedRes] = await Promise.all([
+          // 1. Total count of tenants that are marked as active/verified
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", true),
+          
+          // 2. Pending: tenants table where is_active = false
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", false),
+          
+          // 3. Suspended: actual records in the suspended_tenants table
+          supabase.from("suspended_tenants").select("*", { count: "exact", head: true }),
+          
+          // 4. Terminated: actual records in the terminated_business table
+          supabase.from("terminated_business").select("*", { count: "exact", head: true })
+        ]);
 
-  const handleSuspendClick = (tenant: any) => {
-    setSelectedTenant(tenant);
-    setOpenDropdownId(null);
-    setShowSuspendModal(true);
-  };
+        const totalActiveVerified = activeRes.count || 0;
+        const totalSuspended = suspendedRes.count || 0;
 
-  const handleTerminateClick = (tenant: any) => {
-    setSelectedTenant(tenant);
-    setOpenDropdownId(null);
-    setShowTerminateModal(true);
-  };
+        setStats({
+          // We subtract the suspended count from the total active count 
+          // to get only those who are active AND operational.
+          active: totalActiveVerified - totalSuspended,
+          pending: pendingRes.count || 0,
+          suspended: totalSuspended,
+          terminated: terminatedRes.count || 0
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      }
+    };
 
-  const handleConfirmSuspend = () => {
-    console.log(`Suspending tenant: ${selectedTenant?.name}`);
-    // TODO: add API call
-    setShowSuspendModal(false);
-    setSelectedTenant(null);
-  };
-
-  const handleConfirmTerminate = () => {
-    console.log(`Terminating tenant: ${selectedTenant?.name}`);
-    // TODO: add API call
-    setShowTerminateModal(false);
-    setSelectedTenant(null);
-  };
-
-  const handleCloseModal = () => {
-    setShowSuspendModal(false);
-    setShowTerminateModal(false);
-    setSelectedTenant(null);
-  };
-
-  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    fetchAllStats();
+  }, []);
 
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
-
-      {/* LEFT SIDE: Fixed Sidebar */}
       <Sidebar />
 
-      {/* RIGHT SIDE: Main Content Wrapper with Animation */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
       >
         <NavbarApp
-                  onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                  openNotifs={() => setIsNotifsOpen(true)}
-                  openProfile={() => setIsProfileOpen(true)}
-                />
+          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          openNotifs={() => setIsNotifsOpen(true)}
+          openProfile={() => setIsProfileOpen(true)}
+        />
 
-        {/* Page Header */}
         <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             TENANT MANAGEMENT
@@ -200,30 +151,44 @@ export default function TenantManagement() {
           <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
         </div>
 
-        {/* Top Stat Cards Row with staggered delays */}
+        {/* --- DYNAMIC STAT CARDS --- */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard title="Active Tenants"        value="43" trendText="↑ 3% this month (January)"           svgName="SA-active-tenants"     delay={0.1} />
-          <StatCard title="Pending Applications"  value="39" trendText="39 new applications await review"    svgName="SA-pending-app"        delay={0.2} />
-          <StatCard title="Suspended Tenants"     value="12" trendText="12 tenants temporarily suspended"    svgName="SA-suspended-tenants"  delay={0.3} />
-          <StatCard title="Terminated Tenants"    value="9"  trendText="9 tenants were terminated"           svgName="SA-terminated-tenants" delay={0.4} />
+          <StatCard 
+            title="Active Tenants" 
+            value={stats.active} 
+            trendText="Verified and operational" 
+            svgName="SA-active-tenants" 
+            delay={0.1} 
+          />
+          <StatCard 
+            title="Pending Applications" 
+            value={stats.pending} 
+            trendText={`${stats.pending} awaiting review`} 
+            svgName="SA-pending-app" 
+            delay={0.2} 
+          />
+          <StatCard 
+            title="Suspended Tenants" 
+            value={stats.suspended} 
+            trendText="Temporary access restrictions" 
+            svgName="SA-suspended-tenants" 
+            delay={0.3} 
+          />
+          <StatCard 
+            title="Terminated Tenants" 
+            value={stats.terminated} 
+            trendText="Permanently closed accounts" 
+            svgName="SA-terminated-tenants" 
+            delay={0.4} 
+          />
         </div>
 
-        {/* --- ANIMATED NAVIGATION TABS --- */}
+        {/* Tab navigation */}
         <div className="w-full flex justify-center mb-8">
           <div className="relative flex w-full max-w-[800px] h-[45px] items-center my-2">
-
-            {/* Background Outline */}
             <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
-
-            {/* Static Vertical Dividers */}
-            <div className="absolute inset-0 flex pointer-events-none">
-              <div className="flex-1 border-r-2 border-[#385E31]" />
-              <div className="flex-1 border-r-2 border-[#385E31]" />
-              <div className="flex-1 border-r-2 border-[#385E31]" />
-              <div className="flex-1" />
-            </div>
-
-            {/* Sliding Colored Box */}
+            
+            {/* Slider Background */}
             <div
               className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
               style={{
@@ -232,16 +197,12 @@ export default function TenantManagement() {
               }}
             />
 
-            {/* Clickable Text Overlays */}
             {tabs.map((tab) => {
               const isActive = activeTab === tab;
               return (
                 <button
                   key={tab}
-                  onClick={() => {
-                    setActiveTab(tab);
-                    setOpenDropdownId(null);
-                  }}
+                  onClick={() => setActiveTab(tab)}
                   className={`flex-1 h-full z-20 text-center font-bold text-[18px] transition-colors duration-300 cursor-pointer ${
                     isActive ? getTabConfig(tab).text : "text-[#385E31]"
                   }`}
@@ -253,262 +214,21 @@ export default function TenantManagement() {
           </div>
         </div>
 
-        {/* ------------------------------------------------------------------ */}
-        {/* Database Section                                                  */}
-        {/* ------------------------------------------------------------------ */}
+        {/* Database section */}
         <div className="w-full flex flex-col items-center">
-
-          {/* Dynamic Title */}
           <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-4">
-            {activeTab === "Pending"
-              ? "Pending Applications Database"
-              : `${activeTab} Tenants Database`}
+            {activeTab === "Pending" ? "Pending Applications Database" : `${activeTab} Tenants Database`}
           </h2>
 
-          {/* ── PENDING: renders its own self-contained table ── */}
+          {activeTab === "Active" && <ActiveTenantsTab />}
           {activeTab === "Pending" && <PendingTenantsTab />}
-
-          {/* ── ALL OTHER TABS: shared search + table wrapper ── */}
-          {activeTab !== "Pending" && (
-            <>
-              {/* Search and Filter Row */}
-              <div className="w-full flex justify-between items-center mb-4 gap-4">
-                <div className="relative flex-1 max-w-[60%]">
-                  <input
-                    type="text"
-                    placeholder="Search"
-                    className="w-full border border-[#385E31] rounded-full px-5 py-2 bg-transparent text-[#385E31] placeholder-[#385E31] outline-none font-medium"
-                  />
-                  <div className="absolute right-4 top-2.5 text-[#385E31]">
-                    <SearchIcon />
-                  </div>
-                </div>
-                <div className="relative w-[200px]">
-                  <select className="w-full appearance-none border border-[#385E31] rounded-full px-5 py-2 bg-transparent text-[#385E31] outline-none font-medium cursor-pointer">
-                    <option>Filter By</option>
-                  </select>
-                  <div className="absolute right-4 top-3.5 text-[#385E31] pointer-events-none">
-                    <ChevronDown />
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Table */}
-              <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
-
-                {/* --- DYNAMIC HEADER ROW --- */}
-                <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-                  <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
-                  <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
-                  <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Reg. Date</div>
-
-                  {activeTab === "Active" && (
-                    <>
-                      <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Subscription</div>
-                      <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Balance</div>
-                      <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Actions</div>
-                    </>
-                  )}
-
-                  {activeTab === "Suspended" && (
-                    <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Actions</div>
-                  )}
-                </div>
-
-                {/* --- DYNAMIC DATA ROWS --- */}
-                <div className="flex flex-col w-full">
-
-                  {/* ACTIVE TAB ROWS */}
-                  {activeTab === "Active" &&
-                    tenantData.map((row, idx) => {
-                      const { bg, text } = getPillStyles(row.status);
-                      const isLast = idx === tenantData.length - 1;
-                      const isDropdownOpen = openDropdownId === row.id;
-
-                      return (
-                        <div
-                          key={row.id}
-                          className={`w-full flex px-4 py-[14px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
-                        >
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                            <span
-                              onClick={() => handleViewTenant(row.id)}
-                              className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
-                            >
-                              {row.name}
-                            </span>
-                          </div>
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
-
-                          <div className="flex-1 flex justify-center items-center">
-                            <div className={`w-[75px] py-[3px] rounded-[40px] flex justify-center items-center ${bg}`}>
-                              <span className={`${text} text-[10px] font-bold leading-3`}>{row.status}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.balance}</div>
-
-                          <div className="flex-1 flex justify-center items-center relative">
-                            <button
-                              onClick={() => toggleDropdown(row.id)}
-                              className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                                isDropdownOpen
-                                  ? "bg-[#385E31] text-[#FFFCEB]"
-                                  : "text-[#385E31] hover:bg-[#385E31]/10"
-                              }`}
-                            >
-                              Action <ChevronDown />
-                            </button>
-
-                            {isDropdownOpen && (
-                              <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                                <button
-                                  onClick={() => handleViewTenant(row.id)}
-                                  className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                                >
-                                  View Tenant
-                                </button>
-                                <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">
-                                  Send Notification
-                                </button>
-                                <button
-                                  onClick={() => handleSuspendClick(row)}
-                                  className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                                >
-                                  Suspend Tenant
-                                </button>
-                                <button
-                                  onClick={() => handleTerminateClick(row)}
-                                  className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                                >
-                                  Terminate Tenant
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                  {/* SUSPENDED TAB ROWS */}
-                  {activeTab === "Suspended" &&
-                    suspendedData.map((row, idx) => {
-                      const isLast = idx === suspendedData.length - 1;
-                      const isDropdownOpen = openDropdownId === row.id;
-
-                      return (
-                        <div
-                          key={row.id}
-                          className={`w-full flex px-4 py-[14px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
-                        >
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                            <span
-                              onClick={() => handleViewTenant(row.id)}
-                              className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
-                            >
-                              {row.name}
-                            </span>
-                          </div>
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
-
-                          <div className="flex-1 flex justify-center items-center relative">
-                            <button
-                              onClick={() => toggleDropdown(row.id)}
-                              className={`border border-[#385E31] rounded-full px-4 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                                isDropdownOpen
-                                  ? "bg-[#385E31] text-[#FFFCEB]"
-                                  : "text-[#385E31] hover:bg-[#385E31]/10"
-                              }`}
-                            >
-                              Action <ChevronDown />
-                            </button>
-
-                            {isDropdownOpen && (
-                              <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                                <button
-                                  onClick={() => handleViewTenant(row.id)}
-                                  className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                                >
-                                  View Tenant
-                                </button>
-                                <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">
-                                  Send Notification
-                                </button>
-                                <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">
-                                  Restore Tenant
-                                </button>
-                                <button className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">
-                                  Terminate Tenant
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                  {/* TERMINATED TAB ROWS */}
-                  {activeTab === "Terminated" &&
-                    terminatedData.map((row, idx) => {
-                      const isLast = idx === terminatedData.length - 1;
-
-                      return (
-                        <div
-                          key={row.id}
-                          className={`w-full flex px-4 py-[14px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
-                        >
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                            <span
-                              onClick={() => handleViewTenant(row.id)}
-                              className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
-                            >
-                              {row.name}
-                            </span>
-                          </div>
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
-                          <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
-                        </div>
-                      );
-                    })}
-
-                </div>
-              </div>
-
-              {/* Load More Button */}
-              <div className="w-full flex justify-end mt-6">
-                <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold font-['Inter'] px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
-                  Load More
-                </button>
-              </div>
-            </>
-          )}
-
+          {activeTab === "Terminated" && <TerminatedTenantsTab />}
+          {activeTab === "Suspended" && <SuspendedTenantsTab />}
         </div>
       </motion.div>
 
-      {/* MODALS */}
-      <TenantActionModal
-        isOpen={showSuspendModal}
-        onClose={handleCloseModal}
-        onConfirm={handleConfirmSuspend}
-        tenantName={selectedTenant?.name || ""}
-        actionType="suspend"
-      />
-
-      <TenantActionModal
-        isOpen={showTerminateModal}
-        onClose={handleCloseModal}
-        onConfirm={handleConfirmTerminate}
-        tenantName={selectedTenant?.name || ""}
-        actionType="terminate"
-      />
-
-      {/* ── Modals ── */}
-                      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
-                      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-      
+      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} />
+      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );
 }

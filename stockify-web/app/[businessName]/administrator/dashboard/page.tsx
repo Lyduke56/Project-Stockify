@@ -26,7 +26,6 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "user-admin": <UserAdminSection />,
   "storefront": <StorefrontSection />,
   "store-settings": <StoreSettingsSection />,
-  // REMOVED: "subscription-billing" from mapping
   "admin-settings": <AdminSettingsSection />
 };
 
