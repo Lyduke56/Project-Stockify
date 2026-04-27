@@ -1,6 +1,6 @@
 "use client";
 
-import ModalBackdrop from "./modals-bakcdrop";
+import ModalBackdrop from "./modals-backdrop";
 import { Product } from "@/types/product";
 
 interface DeleteModalProps {
