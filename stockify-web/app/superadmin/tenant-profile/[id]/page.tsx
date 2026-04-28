@@ -1,12 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
+import { useTenantDetails } from "@/backend/hooks/useTenantDetails";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string | undefined) {
+  if (!iso) return "N/A";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const SpinnerIcon = () => (
+  <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="28" height="28"
+    viewBox="0 0 24 24" fill="none" stroke="#385E31" strokeWidth="2.5"
+    strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
 
 // ── Inline Confirmation Modal ─────────────────────────────────────────────────
 
@@ -190,12 +212,12 @@ const InfoItem = ({
   <div className={`flex flex-col ${colSpan ? "col-span-1 md:col-span-2" : ""}`}>
     <span className="text-[10px] text-[#385E31]/70 font-bold uppercase tracking-wider mb-1">{label}</span>
     <div className="text-[13px] text-[#385E31] font-semibold bg-[#385E31]/5 px-3 py-2 rounded-[6px] border border-[#385E31]/10 min-h-[36px] flex items-center">
-      {value || "N/A"}
+      {value || <span className="italic text-[#385E31]/40 font-normal">Not provided</span>}
     </div>
   </div>
 );
 
-// ── Monthly Payment Chart ──────────────────────────────────────────────────────
+// ── Monthly Payment Chart (Static) ─────────────────────────────────────────────
 
 function MonthlyPaymentChart() {
   const chartData = [
@@ -268,7 +290,7 @@ function MonthlyPaymentChart() {
   );
 }
 
-// ── Total Revenue Chart ────────────────────────────────────────────────────────
+// ── Total Revenue Chart (Static) ───────────────────────────────────────────────
 
 function TotalRevenueChart() {
   const revenueData = [
@@ -353,7 +375,7 @@ function TotalRevenueChart() {
   );
 }
 
-// ── Payment Log Table ─────────────────────────────────────────────────────────
+// ── Payment Log Table (Static) ────────────────────────────────────────────────
 
 function PaymentLogTable() {
   const logData = [
@@ -416,11 +438,15 @@ function PaymentLogTable() {
 export default function TenantProfile() {
   const params   = useParams();
   const router   = useRouter();
-  const tenantId = params?.tenantId as string;
+
+  console.log("Next.js Params object:", params);
+  const tenantId = params?.id as string;
+  // Data hook
+  const { tenant, loading, error, fetchTenant, reset } = useTenantDetails();
 
   // Modal state
   const [activeAction, setActiveAction] = useState<ActionType | null>(null);
-  const [isLoading,    setIsLoading]    = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [successMsg,   setSuccessMsg]   = useState("");
   const [errorMsg,     setErrorMsg]     = useState("");
 
@@ -428,11 +454,18 @@ export default function TenantProfile() {
   const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
+  // Fetch tenant data on mount
+  useEffect(() => {
+    if (tenantId) {
+      fetchTenant(tenantId);
+    }
+  }, [tenantId, fetchTenant]);
+
   // ── Action handler ──────────────────────────────────────────────────────────
 
   const handleConfirm = async () => {
     if (!activeAction) return;
-    setIsLoading(true);
+    setIsActionLoading(true);
     setErrorMsg("");
 
     try {
@@ -464,7 +497,7 @@ export default function TenantProfile() {
       setActiveAction(null);
       setErrorMsg(err instanceof Error ? err.message : "Action failed.");
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
   };
 
@@ -509,114 +542,138 @@ export default function TenantProfile() {
             )}
           </AnimatePresence>
 
-          {/* Green header banner */}
-          <div className="w-full p-8 bg-[#385E31] rounded-[10px] shadow-sm flex items-center justify-between gap-8 border border-[#385E31]">
-            <div className="flex items-center gap-8">
-              <div className="w-28 h-28 relative shrink-0">
-                <div className="absolute inset-0 bg-[#FFD980] rounded-[5px] border border-lime-800/40" />
-                <div className="absolute inset-0 flex items-center justify-center p-3">
-                  <img src="/business-details.svg" alt="Business" className="w-full h-full object-contain" />
+          {/* Data Loading / Error State */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <SpinnerIcon />
+              <p className="text-[#385E31] text-sm font-semibold animate-pulse">
+                Fetching tenant details…
+              </p>
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium w-full">
+              {error}
+            </div>
+          )}
+
+          {/* Main Content (Shown when Data is ready) */}
+          {!loading && !error && tenant && (
+            <>
+              {/* Green header banner */}
+              <div className="w-full p-8 bg-[#385E31] rounded-[10px] shadow-sm flex items-center justify-between gap-8 border border-[#385E31]">
+                <div className="flex items-center gap-8">
+                  <div className="w-28 h-28 relative shrink-0">
+                    <div className="absolute inset-0 bg-[#FFD980] rounded-[5px] border border-lime-800/40" />
+                    <div className="absolute inset-0 flex items-center justify-center p-3">
+                      {tenant.logo_url ? (
+                        <img src={tenant.logo_url} alt="Business Logo" className="w-full h-full object-cover rounded" />
+                      ) : (
+                        <img src="/business-details.svg" alt="Business fallback" className="w-full h-full object-contain" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    <h1 className="text-orange-100 text-[26px] font-bold font-['Inter']">
+                      {tenant.business_name} &nbsp;|&nbsp; Payment History
+                    </h1>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-orange-100 text-[14px] font-semibold">Owner: {tenant.owner_full_name}</span>
+                      <span className="text-orange-100 text-[14px] font-semibold">Date Registered: {formatDate(tenant.created_at)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons — live in the header banner */}
+                <div className="flex flex-col gap-3 shrink-0">
+                  <button
+                    onClick={() => setActiveAction("suspend")}
+                    className="border-2 border-[#E5AD24] text-[#E5AD24] font-bold text-[13px] px-8 py-2 rounded-[40px] hover:bg-[#E5AD24]/15 transition-colors whitespace-nowrap"
+                  >
+                    Suspend Tenant
+                  </button>
+                  <button
+                    onClick={() => setActiveAction("terminate")}
+                    className="border-2 border-[#E91F22] text-[#E91F22] font-bold text-[13px] px-8 py-2 rounded-[40px] hover:bg-[#E91F22]/15 transition-colors whitespace-nowrap"
+                  >
+                    Terminate Tenant
+                  </button>
                 </div>
               </div>
-              <div className="flex flex-col gap-3">
-                <h1 className="text-orange-100 text-[26px] font-bold font-['Inter']">
-                  Tech IT Hub &nbsp;|&nbsp; Payment History
-                </h1>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-orange-100 text-[14px] font-semibold">Owner: Benideck Longakit</span>
-                  <span className="text-orange-100 text-[14px] font-semibold">Date Registered: 02/21/2026</span>
+
+              {/* Stat cards */}
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatCard title="Total Paid"       value="32.7k" trendText="4 of 12 months"          svgName="SA-rev-stat"        />
+                <StatCard title="Late Payments"    value="12"    trendText="Avg. 24.8 days late"       svgName="SA-late-payments"   />
+                <StatCard title="Missed Payments"  value="3"     trendText="As of September 2026"      svgName="SA-missed-payments" />
+              </div>
+
+              {/* Owner + Business details cards */}
+              <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 mt-1">
+
+                {/* Owner Info */}
+                <div className="bg-[#FFFCEB] rounded-[8px] border border-[#385E31] p-5 flex flex-col shadow-sm">
+                  <div className="flex items-center gap-2 mb-4 border-b border-[#385E31]/20 pb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#385E31" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <h2 className="text-[16px] font-extrabold text-[#385E31]">Business Owner's Information</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                    {/* Replaced split names with Full Name spanning 2 columns since backend provides full name */}
+                    <InfoItem label="Full Name"    value={tenant.owner_full_name} colSpan />
+                    <InfoItem label="Gender"       value={tenant.gender}                                   />
+                    <InfoItem label="Citizenship"  value={tenant.citizenship}                                />
+                    <InfoItem label="Email"        value={tenant.owner_email}                              />
+                    <InfoItem label="Contact No."  value={tenant.contact_number}                           />
+                    <InfoItem label="Address"      value={tenant.address} colSpan />
+                  </div>
+                </div>
+
+                {/* Business Details */}
+                <div className="bg-[#FFFCEB] rounded-[8px] border border-[#385E31] p-5 flex flex-col shadow-sm">
+                  <div className="flex items-center gap-2 mb-4 border-b border-[#385E31]/20 pb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#385E31" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
+                    <h2 className="text-[16px] font-extrabold text-[#385E31]">Business Details</h2>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
+                    <InfoItem label="Business Name" value={tenant.business_name}          colSpan />
+                    <InfoItem label="Business Type" value={tenant.business_type}          colSpan />
+                    <InfoItem label="Owner's Valid ID" value={
+                      tenant.owner_valid_id_url ? (
+                        <a href={tenant.owner_valid_id_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[#E5AD24] hover:text-[#D19D1F] transition-colors font-bold text-[12px] group">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+                          </svg>
+                          <span className="group-hover:underline">View Document</span>
+                        </a>
+                      ) : <span className="italic text-[#385E31]/40 font-normal">Not provided</span>
+                    } />
+                    <InfoItem label="Business Permit" value={
+                      tenant.business_permit_url ? (
+                        <a href={tenant.business_permit_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[#E5AD24] hover:text-[#D19D1F] transition-colors font-bold text-[12px] group">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+                          </svg>
+                          <span className="group-hover:underline">View Document</span>
+                        </a>
+                      ) : <span className="italic text-[#385E31]/40 font-normal">Not provided</span>
+                    } />
+                    <InfoItem label="Business/Warehouse Address" value={tenant.business_warehouse_address} colSpan />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Action buttons — live in the header banner */}
-            <div className="flex flex-col gap-3 shrink-0">
-              <button
-                onClick={() => setActiveAction("suspend")}
-                className="border-2 border-[#E5AD24] text-[#E5AD24] font-bold text-[13px] px-8 py-2 rounded-[40px] hover:bg-[#E5AD24]/15 transition-colors whitespace-nowrap"
-              >
-                Suspend Tenant
-              </button>
-              <button
-                onClick={() => setActiveAction("terminate")}
-                className="border-2 border-[#E91F22] text-[#E91F22] font-bold text-[13px] px-8 py-2 rounded-[40px] hover:bg-[#E91F22]/15 transition-colors whitespace-nowrap"
-              >
-                Terminate Tenant
-              </button>
-            </div>
-          </div>
+              {/* Charts */}
+              <TotalRevenueChart   />
 
-          {/* Stat cards */}
-          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard title="Total Paid"       value="32.7k" trendText="4 of 12 months"          svgName="SA-rev-stat"        />
-            <StatCard title="Late Payments"    value="12"    trendText="Avg. 24.8 days late"      svgName="SA-late-payments"   />
-            <StatCard title="Missed Payments"  value="3"     trendText="As of September 2026"     svgName="SA-missed-payments" />
-          </div>
-
-          {/* Owner + Business details cards */}
-          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 mt-1">
-
-            {/* Owner Info */}
-            <div className="bg-[#FFFCEB] rounded-[8px] border border-[#385E31] p-5 flex flex-col shadow-sm">
-              <div className="flex items-center gap-2 mb-4 border-b border-[#385E31]/20 pb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#385E31" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-                </svg>
-                <h2 className="text-[16px] font-extrabold text-[#385E31]">Business Owner's Information</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                <InfoItem label="Last Name"    value="Longakit"                                />
-                <InfoItem label="First Name"   value="Benideck"                                />
-                <InfoItem label="Middle Name"  value="M."                                      />
-                <InfoItem label="Suffix"       value="N/A"                                     />
-                <InfoItem label="Gender"       value="Male"                                    />
-                <InfoItem label="Email"        value="benideck@techithub.com"                  />
-                <InfoItem label="Citizenship"  value="Filipino"                                />
-                <InfoItem label="Contact No."  value="+63 917 123 4567"                        />
-                <InfoItem label="Address"      value="123 Tech Avenue, IT Park, Cebu City" colSpan />
-              </div>
-            </div>
-
-            {/* Business Details */}
-            <div className="bg-[#FFFCEB] rounded-[8px] border border-[#385E31] p-5 flex flex-col shadow-sm">
-              <div className="flex items-center gap-2 mb-4 border-b border-[#385E31]/20 pb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#385E31" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-                <h2 className="text-[16px] font-extrabold text-[#385E31]">Business Details</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-3">
-                <InfoItem label="Business Name" value="Tech IT Hub"           colSpan />
-                <InfoItem label="Business Type" value="Sole Proprietorship"           />
-                <InfoItem label="Full Name"      value="Tech IT Hub Trading"          />
-                <InfoItem label="Owner's Valid ID" value={
-                  <button className="flex items-center gap-1.5 text-[#E5AD24] hover:text-[#D19D1F] transition-colors font-bold text-[12px] group">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-                    </svg>
-                    <span className="group-hover:underline">View Document</span>
-                  </button>
-                } />
-                <InfoItem label="Business Permit" value={
-                  <button className="flex items-center gap-1.5 text-[#E5AD24] hover:text-[#D19D1F] transition-colors font-bold text-[12px] group">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
-                    </svg>
-                    <span className="group-hover:underline">View Document</span>
-                  </button>
-                } />
-                <InfoItem label="Business/Warehouse Address" value="123 Tech Avenue, IT Park, Cebu City" colSpan />
-              </div>
-            </div>
-          </div>
-
-          {/* Charts */}
-          <MonthlyPaymentChart />
-          <TotalRevenueChart   />
-
-          {/* Payment log */}
-          <PaymentLogTable />
-
+              {/* Payment log */}
+              <PaymentLogTable />
+            </>
+          )}
         </div>
       </motion.div>
 
@@ -625,10 +682,10 @@ export default function TenantProfile() {
         <ConfirmModal
           isOpen={!!activeAction}
           actionType={activeAction}
-          tenantName="Tech IT Hub"
-          isLoading={isLoading}
+          tenantName={tenant?.business_name || "this tenant"}
+          isLoading={isActionLoading}
           onConfirm={handleConfirm}
-          onClose={() => !isLoading && setActiveAction(null)}
+          onClose={() => !isActionLoading && setActiveAction(null)}
         />
       )}
 

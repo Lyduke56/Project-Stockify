@@ -12,7 +12,7 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from("tenants")
-    .select("tenant_id, business_name, owner_full_name, owner_email, created_at")
+    .select("tenant_id, business_name, owner_full_name, business_type, owner_email, created_at")
     .eq("subscription_status", "Pending")
     .order("created_at", { ascending: false });
 

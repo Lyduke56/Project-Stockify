@@ -5,13 +5,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const MONTHLY_FEE = 1000; // ₱1,000 / month
+
 /**
  * GET /api/superadmin/active-tenants
- * Returns all non-pending, non-terminated tenants with their latest subscription balance.
+ * Returns Active + Overdue tenants with business_type, balance (₱), and next_billing_date.
  */
 export async function GET() {
-
-  // Fetch tenants that are active or overdue (i.e. not Pending / Terminated / Suspended)
   const { data: tenants, error } = await supabase
     .from("tenants")
     .select(
@@ -19,11 +20,15 @@ export async function GET() {
       tenant_id,
       business_name,
       owner_full_name,
+      owner_email,
+      business_type,
       created_at,
       subscription_status,
       subscription_records (
+        subscription_id,
         billing_period,
-        payment_status
+        payment_status,
+        amount
       )
     `
     )
@@ -35,23 +40,69 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Compute a balance label from unpaid subscription records
   const data = (tenants ?? []).map((tenant: any) => {
-    const records: { billing_period: string; payment_status: string }[] =
-      tenant.subscription_records ?? [];
+    const records: {
+      subscription_id: string;
+      billing_period: string;
+      payment_status: string;
+      amount: number | null;
+    }[] = tenant.subscription_records ?? [];
 
-    const unpaidCount = records.filter(
-      (r) => r.payment_status === "Pending" || r.payment_status === "Overdue"
-    ).length;
+    // ── Unpaid records (Pending or Overdue), sorted earliest first ──────
+    const unpaidRecords = records
+      .filter((r) => r.payment_status === "Pending" || r.payment_status === "Overdue")
+      .sort(
+        (a, b) =>
+          new Date(a.billing_period).getTime() - new Date(b.billing_period).getTime()
+      );
+
+    // ── Balance: sum of unpaid amounts ───────────────────────────────────
+    const unpaidTotal = unpaidRecords.reduce(
+      (sum, r) => sum + (r.amount ?? MONTHLY_FEE),
+      0
+    );
+    const balance =
+      unpaidTotal > 0
+        ? `₱${unpaidTotal.toLocaleString("en-PH")}`
+        : "—";
+
+    // ── Next billing date ────────────────────────────────────────────────
+    let next_billing_date: string | null = null;
+
+    if (unpaidRecords.length > 0) {
+      // Earliest unpaid period IS the current due date
+      next_billing_date = unpaidRecords[0].billing_period;
+    } else {
+      // All paid — advance latest paid by 1 month
+      const paidRecords = records
+        .filter((r) => r.payment_status === "Paid")
+        .sort(
+          (a, b) =>
+            new Date(b.billing_period).getTime() - new Date(a.billing_period).getTime()
+        );
+
+      if (paidRecords.length > 0) {
+        const d = new Date(paidRecords[0].billing_period + "T00:00:00");
+        d.setMonth(d.getMonth() + 1);
+        next_billing_date = d.toISOString().split("T")[0];
+      } else {
+        // No records at all — first billing is 1 month after tenant creation
+        const d = new Date(tenant.created_at);
+        d.setMonth(d.getMonth() + 1);
+        next_billing_date = d.toISOString().split("T")[0];
+      }
+    }
 
     return {
       tenant_id:           tenant.tenant_id,
       business_name:       tenant.business_name,
       owner_full_name:     tenant.owner_full_name,
+      owner_email:         tenant.owner_email,
+      business_type:       tenant.business_type ?? "—",
       created_at:          tenant.created_at,
       subscription_status: tenant.subscription_status,
-      // Show number of unpaid billing periods; replace with actual amount if stored
-      balance: unpaidCount > 0 ? `${unpaidCount} unpaid` : "—",
+      balance,
+      next_billing_date,
     };
   });
 

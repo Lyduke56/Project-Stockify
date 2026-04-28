@@ -8,7 +8,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type Tab = "profile" | "security" | "notifications";
+type Tab =  "security" | "notifications";
 
 // --- Icon Components ---
 const XIcon = () => (
@@ -137,7 +137,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     return () => setMounted(false);
   }, []);
 
-  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [activeTab, setActiveTab] = useState<Tab>("security");
 
   // Profile state
   const [firstName, setFirstName] = useState("Juan");
@@ -197,7 +197,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const tabs: { key: Tab; label: string; Icon: React.FC }[] = [
-    { key: "profile", label: "Profile", Icon: UserIcon },
     { key: "security", label: "Security", Icon: ShieldIcon },
     { key: "notifications", label: "Notifications", Icon: BellIcon },
   ];
@@ -262,58 +261,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
           {/* Scrollable Body */}
           <div className="flex-1 overflow-y-auto px-7 py-6">
-
-            {/* ── PROFILE TAB ── */}
-            {activeTab === "profile" && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full bg-[#C4D6C1] border-4 border-[#385E31] flex items-center justify-center overflow-hidden shrink-0">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[#385E31] text-[32px] font-black select-none">
-                          {firstName.charAt(0)}{lastName.charAt(0)}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => fileRef.current?.click()}
-                      className="absolute bottom-0 right-0 w-8 h-8 bg-[#F7B71D] rounded-full flex items-center justify-center border-2 border-[#FFFCEB] hover:bg-[#E5AD24] transition-colors duration-150"
-                    >
-                      <CameraIcon />
-                    </button>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarChange}
-                    />
-                  </div>
-                  <p className="text-[#385E31]/60 text-[12px] font-['Inter']">
-                    Click the camera icon to upload a photo
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="First Name" value={firstName} onChange={setFirstName} placeholder="First name" />
-                  <InputField label="Last Name" value={lastName} onChange={setLastName} placeholder="Last name" />
-                </div>
-                <InputField label="Email Address" value={email} disabled />
-                <InputField label="Phone Number" value={phone} onChange={setPhone} placeholder="+63 9XX XXX XXXX" />
-                <InputField label="Role" value="Super Administrator" disabled />
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={() => {}}
-                    className="bg-[#385E31] text-white text-[14px] font-bold font-['Inter'] px-8 py-2.5 rounded-full hover:bg-[#2E4E28] transition-colors duration-150"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* ── SECURITY TAB ── */}
             {activeTab === "security" && (
