@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import ModalBackdrop from "./modals-bakcdrop";
+import ModalBackdrop from "./modals-backdrop";
 import { Product, CATEGORIES } from "@/types/product";
 
 interface ProductModalProps {

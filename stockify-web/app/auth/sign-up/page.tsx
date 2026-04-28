@@ -16,6 +16,9 @@ interface OwnerForm {
   citizenship: string;
   contactNumber: string;
   address: string;
+  // ✅ Restored from original
+  password: string;
+  confirmPassword: string;
   profilePicture: File | null;
   profilePicturePreview: string;
 }
@@ -82,6 +85,7 @@ function InputField({
   type = "text",
   required = false,
   className = "",
+  rightElement,
 }: {
   placeholder: string;
   value: string;
@@ -89,16 +93,26 @@ function InputField({
   type?: string;
   required?: boolean;
   className?: string;
+  rightElement?: React.ReactNode;
 }) {
   return (
-    <input
-      type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      required={required}
-      className={`bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-medium text-sm px-4 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 focus:outline-2 focus:outline-offset-0 focus:outline-[#3A6131] transition w-full ${className}`}
-    />
+    <div className="relative w-full">
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className={`bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-medium text-sm px-4 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 focus:outline-2 focus:outline-offset-0 focus:outline-[#3A6131] transition w-full ${
+          rightElement ? "pr-10" : ""
+        } ${className}`}
+      />
+      {rightElement && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+          {rightElement}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -177,6 +191,8 @@ export default function SignUp() {
 
   const [mounted, setMounted] = useState(false);
   const [step, setStep] = useState(1);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const profilePicInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -195,6 +211,9 @@ export default function SignUp() {
     citizenship: "",
     contactNumber: "",
     address: "",
+    // ✅ Restored from original
+    password: "",
+    confirmPassword: "",
     profilePicture: null,
     profilePicturePreview: "",
   });
@@ -229,7 +248,7 @@ export default function SignUp() {
     val: BusinessForm[K]
   ) => setBusiness((p) => ({ ...p, [key]: val }));
 
-  // --- Validation Logic ---
+  // ✅ Validation — password fields included in Step 1 check
   const isOwnerValid =
     owner.lastName.trim() !== "" &&
     owner.firstName.trim() !== "" &&
@@ -238,7 +257,9 @@ export default function SignUp() {
     owner.email.trim() !== "" &&
     owner.citizenship !== "" &&
     owner.contactNumber.trim() !== "" &&
-    owner.address.trim() !== "";
+    owner.address.trim() !== "" &&
+    owner.password.trim() !== "" &&
+    owner.confirmPassword.trim() !== "";
 
   const isBusinessValid =
     business.businessName.trim() !== "" &&
@@ -248,7 +269,6 @@ export default function SignUp() {
     business.ownerValidId !== null &&
     business.businessPermit !== null;
 
-  // --- Handlers ---
   const handleProfilePic = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -275,6 +295,23 @@ export default function SignUp() {
     if (!file) return;
     setBusinessField("businessPermit", file);
     setBusinessField("businessPermitName", file.name);
+  };
+
+  // ✅ Restored password validation from original before going to Step 2
+  const handleNextStep = () => {
+    setError("");
+
+    if (owner.password !== owner.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    if (owner.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setStep(2);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -331,11 +368,13 @@ export default function SignUp() {
         );
       }
 
+      // ✅ password restored in API body
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: owner.email,
+          password: owner.password,
           firstName: owner.firstName,
           lastName: owner.lastName,
           middleName: owner.middleName,
@@ -392,7 +431,7 @@ export default function SignUp() {
             <p className="text-sm sm:text-base font-medium text-[#3A6131] mt-2 mb-5">
               Fill out the details below to submit your registration for approval.
             </p>
-            
+
             {/* Visual Progress Bar */}
             <p className="text-xs font-bold text-[#3A6131]/70 mt-2 tracking-widest uppercase">
               Step {step} of 2
@@ -409,7 +448,6 @@ export default function SignUp() {
                 }`}
               />
             </div>
-            
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full">
@@ -420,7 +458,7 @@ export default function SignUp() {
                   icon={<img src="/business-owner.svg" alt="Business Owner" className="w-full h-full object-contain" />}
                   title="Business Owner's Information"
                 >
-                  {/* Top Row: Name Fields */}
+                  {/* Name Fields */}
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 w-full">
                     <InputField
                       placeholder="Last Name *"
@@ -447,9 +485,9 @@ export default function SignUp() {
                     />
                   </div>
 
-                  {/* Bottom Section: Profile Picture + Details */}
+                  {/* Profile Picture + Details */}
                   <div className="flex flex-col md:flex-row gap-5 items-stretch w-full">
-                    {/* Left Column: Profile Picture Box */}
+                    {/* Profile Picture Box */}
                     <div className="w-full md:w-[180px] shrink-0">
                       <div className="relative w-full aspect-square bg-[#FFD980] rounded-[5px] outline outline-1 outline-[#3A6131]/40 flex flex-col items-center justify-center overflow-hidden">
                         {owner.profilePicturePreview ? (
@@ -523,14 +561,75 @@ export default function SignUp() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ✅ Password Fields — restored from original with visibility toggles */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                    <InputField
+                      placeholder="Password *"
+                      type={showPassword ? "text" : "password"}
+                      value={owner.password}
+                      onChange={(e) => setOwnerField("password", e.target.value)}
+                      required
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-[#3A6131]/70 hover:text-[#3A6131] transition focus:outline-none"
+                        >
+                          {showPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          )}
+                        </button>
+                      }
+                    />
+                    <InputField
+                      placeholder="Confirm Password *"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={owner.confirmPassword}
+                      onChange={(e) => setOwnerField("confirmPassword", e.target.value)}
+                      required
+                      rightElement={
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="text-[#3A6131]/70 hover:text-[#3A6131] transition focus:outline-none"
+                        >
+                          {showConfirmPassword ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          )}
+                        </button>
+                      }
+                    />
+                  </div>
                 </SectionCard>
-                
-                {/* Navigation Button Outside the Card */}
+
+                {/* ✅ Error shown on Step 1 too (e.g. password mismatch) */}
+                {error && (
+                  <p className="text-red-700 bg-red-100 border border-red-300 px-4 py-2 rounded-[5px] text-sm text-center font-medium">
+                    {error}
+                  </p>
+                )}
+
+                {/* Next Button */}
                 <div className="flex justify-end mt-2">
                   <button
                     type="button"
                     disabled={!isOwnerValid}
-                    onClick={() => setStep(2)}
+                    onClick={handleNextStep}
                     className="bg-[#3A6131] text-[#FFF9D7] font-bold text-sm px-10 py-3 rounded-[5px] shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-[#2D4B24]"
                   >
                     Next ➔
@@ -654,7 +753,7 @@ export default function SignUp() {
                   </p>
                 )}
 
-                {/* Terms & Navigation Outside the Card */}
+                {/* Terms & Navigation */}
                 <div className="flex flex-col items-center gap-4 mt-6">
                   <div className="flex flex-col items-center gap-2">
                     <p className="font-semibold font-Inter text-[#3A6131] text-sm">
@@ -682,7 +781,7 @@ export default function SignUp() {
                   <div className="flex flex-col sm:flex-row justify-center gap-4 w-full sm:w-auto mt-2 pb-8">
                     <button
                       type="button"
-                      onClick={() => setStep(1)}
+                      onClick={() => { setStep(1); setError(""); }}
                       className="bg-transparent text-[#3A6131] outline outline-2 outline-[#3A6131] font-bold text-sm px-12 py-3 rounded-[5px] hover:bg-[#3A6131] hover:text-[#FFF9D7] transition-all w-full sm:w-auto"
                     >
                       Back

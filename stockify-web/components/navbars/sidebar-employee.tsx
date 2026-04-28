@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { getUserData } from "@/backend/hooks/getUserData";
 import { createClient } from "@/lib/supabase/client";
+import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
 
 interface NavItemProps {
   label: string;
@@ -31,20 +32,23 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   );
 }
 
-// Items visible to Managers (and above)
-const MANAGER_ONLY_LABELS = new Set([
-  "Analytics & Orders",
-  "Audit Logs",
-  "Transactions",
+// Labels only visible to Managers (and above)
+const MANAGER_ONLY_SECTIONS = new Set<SectionKey>([
+  "analytics",
+  "audit-logs",
+  "transactions",
 ]);
 
-export default function SidebarEmployee() {
+interface SidebarEmployeeProps {
+  activeSection: SectionKey;
+  setActiveSection: (section: SectionKey) => void;
+}
+
+export default function SidebarEmployee({ activeSection, setActiveSection }: SidebarEmployeeProps) {
   const router   = useRouter();
-  const pathname = usePathname();
   const supabase = createClient();
 
-  const [shopName, setShopName] = useState<string | null>(null);
-  const [role, setRole]         = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -61,13 +65,11 @@ export default function SidebarEmployee() {
 
       const normalized = userRole?.toLowerCase();
 
-      // Redirect if role is unrecognized
       if (!normalized || !["employee", "manager"].includes(normalized)) {
         router.push("/access-denied");
         return;
       }
 
-      setShopName(name);
       setRole(userRole);
     };
 
@@ -76,57 +78,71 @@ export default function SidebarEmployee() {
 
   const isEmployee = role?.toLowerCase() === "employee";
 
-  const allNavItems = [
-    { label: "Dashboard",          iconFileName: "icon-dashboard",           path: shopName ? `/${shopName}/employee/dashboard`           : null },
-    { label: "Inventory",          iconFileName: "icon-inventory",            path: shopName ? `/${shopName}/employee/inventory`            : null },
-    { label: "Orders",             iconFileName: "icon-orders",               path: shopName ? `/${shopName}/employee/orders`               : null },
-    { label: "Analytics & Orders", iconFileName: "icon-chart2",              path: shopName ? `/${shopName}/employee/analytics`            : null },
-    { label: "Stock Notifications",iconFileName: "icon-stocknotifications",   path: shopName ? `/${shopName}/employee/stock-notifications`  : null },
-    { label: "Audit Logs",         iconFileName: "icon-audit-logs",           path: shopName ? `/${shopName}/employee/audit-logs`           : null },
-    { label: "Transactions",       iconFileName: "icon-transactions",         path: shopName ? `/${shopName}/employee/transactions`         : null },
+  const allNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
+    { label: "Dashboard",           iconFileName: "icon-dashboard",          section: "dashboard"           },
+    { label: "Inventory",           iconFileName: "icon-inventory",           section: "inventory"           },
+    { label: "Orders",              iconFileName: "icon-orders",              section: "orders"              },
+    { label: "Analytics & Orders",  iconFileName: "icon-chart2",             section: "analytics"           },
+    { label: "Stock Notifications", iconFileName: "icon-stocknotifications",  section: "stock-notifications" },
+    { label: "Audit Logs",          iconFileName: "icon-audit-logs",          section: "audit-logs"          },
+    { label: "Transactions",        iconFileName: "icon-transactions",        section: "transactions"        },
   ];
 
-  // Employees only see Orders, Inventory, Stock Notifications
   const navItems = isEmployee
-    ? allNavItems.filter((item) => !MANAGER_ONLY_LABELS.has(item.label))
+    ? allNavItems.filter((item) => !MANAGER_ONLY_SECTIONS.has(item.section))
     : allNavItems;
 
-  const bottomItems = [
-    { label: "Settings", iconFileName: "icon-settings", path: "/superadmin/profile-settings" },
-    { label: "Logout",   iconFileName: "icon-logout",   path: "/logout" },
+  const bottomNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
+    { label: "Settings", iconFileName: "icon-settings", section: "store-settings" },
   ];
 
-  const handleNavigation = (path: string | null) => {
-    if (path) router.push(path);
-  };
-    if (role === null) return null;
+  const bottomItems = [
+    { label: "Logout", iconFileName: "icon-logout", path: "/logout" },
+  ];
+
+  if (role === null) return null;
+
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
 
+      {/* Top Navigation */}
       <div className="flex flex-col gap-1">
         {navItems.map((item) => (
           <NavItem
             key={item.label}
             label={item.label}
             iconFileName={item.iconFileName}
-            isActive={pathname === item.path}
-            onClick={() => handleNavigation(item.path)}
+            isActive={activeSection === item.section}
+            onClick={() => setActiveSection(item.section)}
           />
         ))}
       </div>
 
+      {/* Bottom Navigation */}
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
+
+          {bottomNavItems.map((item) => (
+            <NavItem
+              key={item.label}
+              label={item.label}
+              iconFileName={item.iconFileName}
+              isActive={activeSection === item.section}
+              onClick={() => setActiveSection(item.section)}
+            />
+          ))}
+
           {bottomItems.map((item) => (
             <NavItem
               key={item.label}
               label={item.label}
               iconFileName={item.iconFileName}
-              isActive={pathname === item.path}
-              onClick={() => handleNavigation(item.path)}
+              isActive={false}
+              onClick={() => router.push(item.path)}
             />
           ))}
+
         </div>
       </div>
 
