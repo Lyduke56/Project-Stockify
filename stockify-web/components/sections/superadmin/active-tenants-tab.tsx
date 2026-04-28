@@ -3,16 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmActionModal from "@/components/modals/confirm-tenant-action-modal";
+import SendNotificationModal from "@/components/modals/superadmin/send-notification-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ActiveTenant {
-  tenant_id: string;
-  business_name: string;
-  owner_full_name: string;
-  created_at: string;
+  tenant_id:           string;
+  business_name:       string;
+  owner_full_name:     string;
+  owner_email:         string;
+  business_type:       string;
   subscription_status: string;
-  balance: string;
+  balance:             string;
+  next_billing_date:   string | null;
 }
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
@@ -43,6 +46,18 @@ const getPillStyles = (status: string) => {
   }
 };
 
+// ── Column headers ────────────────────────────────────────────────────────────
+
+const COLUMNS = [
+  "Business Name",
+  "Owner",
+  "Business Type",
+  "Next Billing Date",
+  "Subscription Status",
+  "Balance",
+  "Actions",
+];
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ActiveTenantsTab() {
@@ -57,13 +72,16 @@ export default function ActiveTenantsTab() {
   const [filterStatus,   setFilterStatus]   = useState("All");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
-  // Modal state
-  const [selectedTenant,     setSelectedTenant]     = useState<ActiveTenant | null>(null);
+  // Shared action state
+  const [selectedTenant,  setSelectedTenant]  = useState<ActiveTenant | null>(null);
+  const [actionLoading,   setActionLoading]   = useState(false);
+  const [actionError,     setActionError]     = useState("");
+  const [successMsg,      setSuccessMsg]      = useState("");
+
+  // Modal visibility
+  const [showNotifyModal,    setShowNotifyModal]    = useState(false);
   const [showSuspendModal,   setShowSuspendModal]   = useState(false);
   const [showTerminateModal, setShowTerminateModal] = useState(false);
-  const [actionLoading,      setActionLoading]      = useState(false);
-  const [actionError,        setActionError]        = useState("");
-  const [successMsg,         setSuccessMsg]         = useState("");
 
   // Close dropdown on outside click
   const tableRef = useRef<HTMLDivElement>(null);
@@ -108,14 +126,15 @@ export default function ActiveTenantsTab() {
       const q = search.toLowerCase();
       list = list.filter(
         (t) =>
-          t.business_name.toLowerCase().includes(q) ||
-          t.owner_full_name?.toLowerCase().includes(q),
+          t.business_name.toLowerCase().includes(q)   ||
+          t.owner_full_name?.toLowerCase().includes(q) ||
+          t.business_type?.toLowerCase().includes(q),
       );
     }
     setFiltered(list);
   }, [search, filterStatus, tenants]);
 
-  // ── Actions ─────────────────────────────────────────────────────────────────
+  // ── Action wrapper ──────────────────────────────────────────────────────────
 
   const withAction = async (fn: () => Promise<void>) => {
     setActionLoading(true);
@@ -129,64 +148,88 @@ export default function ActiveTenantsTab() {
     }
   };
 
-  const handleSuspend = () =>
-    withAction(async () => {
-      if (!selectedTenant) return;
-      const res    = await fetch("/api/superadmin/suspend", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: selectedTenant.tenant_id }),
+  const flash = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(""), 4500);
+  };
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  /** Called by SendNotificationModal on confirm */
+  const handleSendNotification = async (fields: {
+    title:       string;
+    header:      string;
+    about:       string;
+    body:        string;
+    description: string;
+  }) => {
+    if (!selectedTenant) return;
+    await withAction(async () => {
+      const res    = await fetch("/api/superadmin/notify", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ tenantId: selectedTenant.tenant_id, ...fields }),
       });
       const result = await res.json();
-      if (!result.success) throw new Error(result.error ?? "Suspend failed.");
+      if (!res.ok || !result.success) throw new Error(result.error ?? "Notification failed.");
+      setShowNotifyModal(false);
+      setSelectedTenant(null);
+      flash(`Notification sent to ${selectedTenant.business_name}.`);
+    });
+  };
 
+  /** Called by ConfirmActionModal (suspend) */
+  const handleSuspend = async (reason?: string) => {
+    if (!selectedTenant) return;
+    await withAction(async () => {
+      const res    = await fetch("/api/superadmin/suspend", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          tenantId: selectedTenant.tenant_id,
+          reason:   reason?.trim() || "Overdue subscription payment",
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) throw new Error(result.error ?? "Suspend failed.");
       setTenants((prev) => prev.filter((t) => t.tenant_id !== selectedTenant.tenant_id));
       setShowSuspendModal(false);
       setSelectedTenant(null);
-      setSuccessMsg(`${selectedTenant.business_name} has been suspended.`);
-      setTimeout(() => setSuccessMsg(""), 4000);
+      flash(`${selectedTenant.business_name} has been suspended.`);
     });
+  };
 
-  const handleTerminate = () =>
-    withAction(async () => {
-      if (!selectedTenant) return;
+  /** Called by ConfirmActionModal (terminate) */
+  const handleTerminate = async (remarks?: string) => {
+    if (!selectedTenant) return;
+    await withAction(async () => {
       const res    = await fetch("/api/superadmin/terminate", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: selectedTenant.tenant_id }),
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          tenantId: selectedTenant.tenant_id,
+          remarks:  remarks?.trim() || "Administrative decision — please contact support for details.",
+        }),
       });
       const result = await res.json();
-      if (!result.success) throw new Error(result.error ?? "Terminate failed.");
-
+      if (!res.ok || !result.success) throw new Error(result.error ?? "Termination failed.");
       setTenants((prev) => prev.filter((t) => t.tenant_id !== selectedTenant.tenant_id));
       setShowTerminateModal(false);
       setSelectedTenant(null);
-      setSuccessMsg(`${selectedTenant.business_name} has been terminated.`);
-      setTimeout(() => setSuccessMsg(""), 4000);
+      flash(`${selectedTenant.business_name} has been permanently terminated.`);
     });
-
-  const handleSendNotification = async (tenant: ActiveTenant) => {
-    setOpenDropdownId(null);
-    try {
-      const res    = await fetch("/api/superadmin/notify", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId: tenant.tenant_id }),
-      });
-      const result = await res.json();
-      if (!result.success) throw new Error(result.error ?? "Notification failed.");
-      setSuccessMsg(`Notification sent to ${tenant.business_name}.`);
-      setTimeout(() => setSuccessMsg(""), 4000);
-    } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : "Failed to send notification.");
-    }
   };
 
   // ── Date formatter ──────────────────────────────────────────────────────────
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-PH", {
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "—";
+    return new Date(iso + "T00:00:00").toLocaleDateString("en-PH", {
       month: "2-digit", day: "2-digit", year: "numeric",
     });
+  };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Loading state ───────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -195,6 +238,8 @@ export default function ActiveTenantsTab() {
       </div>
     );
   }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -220,7 +265,7 @@ export default function ActiveTenantsTab() {
         <div className="relative flex-1 max-w-[60%]">
           <input
             type="text"
-            placeholder="Search by business or owner…"
+            placeholder="Search by business, owner, or type…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full border border-[#385E31] rounded-full px-5 py-2 bg-transparent text-[#385E31] placeholder-[#385E31] outline-none font-medium"
@@ -249,8 +294,10 @@ export default function ActiveTenantsTab() {
       >
         {/* Header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-          {["Business Name", "Owner", "Reg. Date", "Subscription", "Balance", "Actions"].map((col) => (
-            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">{col}</div>
+          {COLUMNS.map((col) => (
+            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">
+              {col}
+            </div>
           ))}
         </div>
 
@@ -285,9 +332,26 @@ export default function ActiveTenantsTab() {
                   {row.owner_full_name}
                 </div>
 
-                {/* Reg. Date */}
+                {/* Business Type */}
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  {formatDate(row.created_at)}
+                  {row.business_type || "—"}
+                </div>
+
+                {/* Next Billing Date */}
+                <div className="flex-1 text-center text-[13px] font-bold">
+                  {row.next_billing_date ? (
+                    <span
+                      className={
+                        row.subscription_status === "Overdue"
+                          ? "text-[#E91F22]"
+                          : "text-[#3A6131]"
+                      }
+                    >
+                      {formatDate(row.next_billing_date)}
+                    </span>
+                  ) : (
+                    <span className="text-[#3A6131]">—</span>
+                  )}
                 </div>
 
                 {/* Subscription pill */}
@@ -300,7 +364,9 @@ export default function ActiveTenantsTab() {
                 </div>
 
                 {/* Balance */}
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                <div className={`flex-1 text-center text-[13px] font-bold ${
+                  row.balance !== "—" ? "text-[#E91F22]" : "text-[#3A6131]"
+                }`}>
                   {row.balance || "—"}
                 </div>
 
@@ -311,14 +377,17 @@ export default function ActiveTenantsTab() {
                       setOpenDropdownId((prev) => prev === row.tenant_id ? null : row.tenant_id)
                     }
                     className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                      isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
+                      isOpen
+                        ? "bg-[#385E31] text-[#FFFCEB]"
+                        : "text-[#385E31] hover:bg-[#385E31]/10"
                     }`}
                   >
                     Action <ChevronDown />
                   </button>
 
                   {isOpen && (
-                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[150px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
+                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[160px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
+
                       <button
                         onClick={() => {
                           setOpenDropdownId(null);
@@ -330,7 +399,11 @@ export default function ActiveTenantsTab() {
                       </button>
 
                       <button
-                        onClick={() => handleSendNotification(row)}
+                        onClick={() => {
+                          setSelectedTenant(row);
+                          setOpenDropdownId(null);
+                          setShowNotifyModal(true);
+                        }}
                         className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                       >
                         Send Notification
@@ -357,6 +430,7 @@ export default function ActiveTenantsTab() {
                       >
                         Terminate Tenant
                       </button>
+
                     </div>
                   )}
                 </div>
@@ -373,7 +447,23 @@ export default function ActiveTenantsTab() {
         </button>
       </div>
 
-      {/* ── Confirm modals ── */}
+      {/* ── Modals ── */}
+
+      {/* Send Notification */}
+      <SendNotificationModal
+        isOpen={showNotifyModal}
+        tenantName={selectedTenant?.business_name ?? ""}
+        nextBillingDate={selectedTenant?.next_billing_date ?? null}
+        isLoading={actionLoading}
+        onConfirm={handleSendNotification}
+        onClose={() => {
+          setShowNotifyModal(false);
+          setSelectedTenant(null);
+          setActionError("");
+        }}
+      />
+
+      {/* Suspend */}
       <ConfirmActionModal
         isOpen={showSuspendModal}
         actionType="suspend"
@@ -387,6 +477,7 @@ export default function ActiveTenantsTab() {
         }}
       />
 
+      {/* Terminate */}
       <ConfirmActionModal
         isOpen={showTerminateModal}
         actionType="terminate"

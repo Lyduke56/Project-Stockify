@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getUserData } from "@/backend/hooks/getUserData";
+import { getUserData } from "@/backend/hooks/getUserRole";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { motion } from "framer-motion"; // <-- Imported Framer Motion
 

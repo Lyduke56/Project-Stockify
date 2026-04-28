@@ -104,6 +104,7 @@ export default function TerminatedTenantsTab() {
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Term. Date</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Remarks</div>
         </div>
 
         {/* Table Body */}
@@ -125,6 +126,9 @@ export default function TerminatedTenantsTab() {
                   </div>
                   <div className="flex-1 text-center text-[#3A6131] text-[#3A6131] text-[13px] font-bold">
                     {row.owner_name}
+                  </div>
+                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                    {formatDate(row.terminated_at)}
                   </div>
                   <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                     {formatDate(row.terminated_at)}

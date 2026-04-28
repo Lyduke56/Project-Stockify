@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import PendingTenantReviewModal from "@/components/modals/superadmin/PendingTenantReviewModal";
 
-
 interface PendingTenant {
   tenant_id: string;
   business_name: string;
   owner_full_name: string;
   created_at: string;
   owner_email: string;
+  business_type: string;
 }
 
 export default function PendingTenantsTab() {
@@ -17,7 +17,6 @@ export default function PendingTenantsTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Modal state — stores the tenantId currently being reviewed
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,7 +37,7 @@ export default function PendingTenantsTab() {
     }
   };
 
-  // ── Approve / Reject handlers (passed down to modal) ─────────────────────
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleApprove = async (tenantId: string) => {
     const res = await fetch("/api/superadmin/approve", {
@@ -46,11 +45,8 @@ export default function PendingTenantsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tenantId, action: "approve" }),
     });
-
     const result = await res.json();
     if (!result.success) throw new Error(result.error || "Approve failed.");
-
-    // Remove from local list
     setPendingData((prev) => prev.filter((t) => t.tenant_id !== tenantId));
   };
 
@@ -60,10 +56,8 @@ export default function PendingTenantsTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tenantId, action: "reject" }),
     });
-
     const result = await res.json();
     if (!result.success) throw new Error(result.error || "Reject failed.");
-
     setPendingData((prev) => prev.filter((t) => t.tenant_id !== tenantId));
   };
 
@@ -75,6 +69,16 @@ export default function PendingTenantsTab() {
       day: "2-digit",
       year: "numeric",
     });
+
+  /**
+   * Truncates email at the "@" symbol.
+   * e.g. "benideck@cit.edu" -> "benideck@..."
+   */
+  const truncateEmail = (email: string) => {
+    const parts = email.split("@");
+    if (parts.length < 2) return email;
+    return `${parts[0]}@...`;
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -95,12 +99,13 @@ export default function PendingTenantsTab() {
       )}
 
       <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
-
         {/* Table header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Reg. Date</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Type</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Contact Email</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Action</div>
         </div>
 
@@ -119,7 +124,6 @@ export default function PendingTenantsTab() {
                   !isLast ? "border-b border-[#385E31]/20" : ""
                 }`}
               >
-                {/* Business Name — clickable */}
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                   <span
                     onClick={() => setReviewingId(row.tenant_id)}
@@ -137,7 +141,20 @@ export default function PendingTenantsTab() {
                   {formatDate(row.created_at)}
                 </div>
 
-                {/* Single Review button */}
+                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                  {row.business_type}
+                </div>
+
+                {/* Email Column with Truncation + Hover */}
+                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                  <span 
+                    title={row.owner_email} 
+                    className="cursor-help hover:text-[#385E31]/70 transition-colors"
+                  >
+                    {truncateEmail(row.owner_email)}
+                  </span>
+                </div>
+
                 <div className="flex-1 flex justify-center items-center">
                   <button
                     onClick={() => setReviewingId(row.tenant_id)}
@@ -152,7 +169,6 @@ export default function PendingTenantsTab() {
         )}
       </div>
 
-      {/* Review Modal */}
       <PendingTenantReviewModal
         tenantId={reviewingId}
         onClose={() => setReviewingId(null)}
