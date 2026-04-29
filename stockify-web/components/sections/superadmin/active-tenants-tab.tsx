@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import ConfirmActionModal from "@/components/modals/confirm-tenant-action-modal";
 import SendNotificationModal from "@/components/modals/superadmin/send-notification-modal";
+import TenantProfileModal from "@/components/modals/superadmin/tenant-profile/tenant-profile-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ export default function ActiveTenantsTab() {
   const [showNotifyModal,    setShowNotifyModal]    = useState(false);
   const [showSuspendModal,   setShowSuspendModal]   = useState(false);
   const [showTerminateModal, setShowTerminateModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Close dropdown on outside click
   const tableRef = useRef<HTMLDivElement>(null);
@@ -392,8 +394,8 @@ export default function ActiveTenantsTab() {
 
                       <button
                         onClick={() => {
-                          setOpenDropdownId(null);
-                          router.push(`/superadmin/tenant-profile/${row.tenant_id}`);
+                          setSelectedTenant(row);
+                          setShowProfileModal(true);
                         }}
                         className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                       >
@@ -492,6 +494,22 @@ export default function ActiveTenantsTab() {
           setActionError("");
         }}
       />
+
+      <TenantProfileModal
+        isOpen={showProfileModal}
+        tenantId={selectedTenant?.tenant_id ?? null}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedTenant(null);
+        }}
+        onSuccess={(tenantId, action) => {
+          // Optional: update list after suspend/terminate
+          if (action === "suspend" || action === "terminate") {
+            setTenants((prev) => prev.filter((t) => t.tenant_id !== tenantId));
+          }
+        }}
+      />
+
     </>
   );
 }
