@@ -28,6 +28,7 @@ export async function GET() {
         subscription_id,
         billing_period,
         payment_status,
+        overdue_at,  
         amount
       )
     `
@@ -45,6 +46,7 @@ export async function GET() {
       subscription_id: string;
       billing_period: string;
       payment_status: string;
+      overdue_at: string | null;
       amount: number | null;
     }[] = tenant.subscription_records ?? [];
 
@@ -69,10 +71,13 @@ export async function GET() {
     // ── Next billing date ────────────────────────────────────────────────
     let next_billing_date: string | null = null;
 
+    // Replace next_billing_date logic for unpaid records:
     if (unpaidRecords.length > 0) {
-      // Earliest unpaid period IS the current due date
-      next_billing_date = unpaidRecords[0].billing_period;
-    } else {
+      // Use overdue_at as the due date, fall back to billing_period if null
+      next_billing_date = unpaidRecords[0].overdue_at
+        ? unpaidRecords[0].overdue_at.split("T")[0]
+        : unpaidRecords[0].billing_period;
+    }else {
       // All paid — advance latest paid by 1 month
       const paidRecords = records
         .filter((r) => r.payment_status === "Paid")

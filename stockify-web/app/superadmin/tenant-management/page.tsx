@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 // Components
 import Sidebar from "@/components/navbars/sidebar-superadmin";
@@ -12,50 +12,44 @@ import ActiveTenantsTab from "@/components/sections/superadmin/active-tenants-ta
 import TerminatedTenantsTab from "@/components/sections/superadmin/terminated-tenants-table";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
-import SuspendedTenantsTab from "@/components/sections/superadmin/suspended-tenant-tab";
+import SuspendedTenantsTab from "@/components/sections/superadmin/supend-tenant-modal";
+import TrialTenantsTab from "@/components/sections/superadmin/trial-tenants-tab";
 
-// Supabase Init
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// ── Singleton Supabase client ─────────────────────────────────────────────────
+let supabaseInstance: SupabaseClient | null = null;
+const getSupabase = () => {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return supabaseInstance;
+};
+const supabase = getSupabase();
 
+// ── Tabs ──────────────────────────────────────────────────────────────────────
 const tabs = ["Active", "Pending", "Suspended", "Terminated"];
 
-// --- HELPERS ---
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const getTabConfig = (tab: string) => {
   switch (tab) {
-    case "Active":    return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Pending":   return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
-    case "Suspended": return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
+    case "Active":     return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
+    case "Pending":    return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
+    case "Suspended":  return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
     case "Terminated": return { bg: "bg-[#E91F22]", text: "text-[#F7B71D]" };
     default:           return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
   }
 };
 
-const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
-
-const ChevronDown = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
-
-// --- STAT CARD COMPONENT ---
+// ── Stat Card ─────────────────────────────────────────────────────────────────
 interface StatCardProps {
-  title: string;
-  value: string | number;
-  trendText: string;
+  title:      string;
+  value:      string | number;
+  trendText:  string;
   className?: string;
-  svgName: string;
-  delay?: number;
+  svgName:    string;
+  delay?:     number;
 }
 
 function StatCard({ title, value, trendText, className = "", svgName, delay = 0 }: StatCardProps) {
@@ -78,54 +72,51 @@ function StatCard({ title, value, trendText, className = "", svgName, delay = 0 
   );
 }
 
-// --- MAIN PAGE ---
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function TenantManagement() {
-  const [activeTab, setActiveTab] = useState("Active");
-  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
+  const [activeTab,     setActiveTab]     = useState("Active");
+  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  // Stats State
   const [stats, setStats] = useState({
-    active: 0,
-    pending: 0,
-    suspended: 0,
-    terminated: 0
+    active:     0,
+    pending:    0,
+    suspended:  0,
+    terminated: 0,
   });
 
   useEffect(() => {
     const fetchAllStats = async () => {
       try {
         const [activeRes, pendingRes, suspendedRes, terminatedRes] = await Promise.all([
-          // 1. Total count of tenants that are marked as active/verified
           supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", true),
-          
-          // 2. Pending: tenants table where is_active = false
           supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", false),
-          
-          // 3. Suspended: actual records in the suspended_tenants table
           supabase.from("suspended_tenants").select("*", { count: "exact", head: true }),
-          
-          // 4. Terminated: actual records in the terminated_business table
-          supabase.from("terminated_business").select("*", { count: "exact", head: true })
+          supabase.from("terminated_business").select("*", { count: "exact", head: true }),
         ]);
 
-        const totalActiveVerified = activeRes.count || 0;
-        const totalSuspended = suspendedRes.count || 0;
+        const totalActiveVerified = activeRes.count   || 0;
+        const totalSuspended      = suspendedRes.count || 0;
 
         setStats({
-          // We subtract the suspended count from the total active count 
-          // to get only those who are active AND operational.
-          active: totalActiveVerified - totalSuspended,
-          pending: pendingRes.count || 0,
-          suspended: totalSuspended,
-          terminated: terminatedRes.count || 0
+          active:     totalActiveVerified - totalSuspended,
+          pending:    pendingRes.count    || 0,
+          suspended:  totalSuspended,
+          terminated: terminatedRes.count || 0,
         });
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       }
     };
 
+    // Initial fetch
     fetchAllStats();
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchAllStats, 5000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -151,35 +142,35 @@ export default function TenantManagement() {
           <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
         </div>
 
-        {/* --- DYNAMIC STAT CARDS --- */}
+        {/* Stat Cards */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard 
-            title="Active Tenants" 
-            value={stats.active} 
-            trendText="Verified and operational" 
-            svgName="SA-active-tenants" 
-            delay={0.1} 
+          <StatCard
+            title="Active Tenants"
+            value={stats.active}
+            trendText="Verified and operational"
+            svgName="SA-active-tenants"
+            delay={0.1}
           />
-          <StatCard 
-            title="Pending Applications" 
-            value={stats.pending} 
-            trendText={`${stats.pending} awaiting review`} 
-            svgName="SA-pending-app" 
-            delay={0.2} 
+          <StatCard
+            title="Pending Applications"
+            value={stats.pending}
+            trendText={`${stats.pending} awaiting review`}
+            svgName="SA-pending-app"
+            delay={0.2}
           />
-          <StatCard 
-            title="Suspended Tenants" 
-            value={stats.suspended} 
-            trendText="Temporary access restrictions" 
-            svgName="SA-suspended-tenants" 
-            delay={0.3} 
+          <StatCard
+            title="Suspended Tenants"
+            value={stats.suspended}
+            trendText="Temporary access restrictions"
+            svgName="SA-suspended-tenants"
+            delay={0.3}
           />
-          <StatCard 
-            title="Terminated Tenants" 
-            value={stats.terminated} 
-            trendText="Permanently closed accounts" 
-            svgName="SA-terminated-tenants" 
-            delay={0.4} 
+          <StatCard
+            title="Terminated Tenants"
+            value={stats.terminated}
+            trendText="Permanently closed accounts"
+            svgName="SA-terminated-tenants"
+            delay={0.4}
           />
         </div>
 
@@ -187,13 +178,12 @@ export default function TenantManagement() {
         <div className="w-full flex justify-center mb-8">
           <div className="relative flex w-full max-w-[800px] h-[45px] items-center my-2">
             <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
-            
-            {/* Slider Background */}
+
             <div
               className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
               style={{
                 width: "calc(25% + 4px)",
-                left: `calc(${tabs.indexOf(activeTab) * 25}% - 2px)`,
+                left:  `calc(${tabs.indexOf(activeTab) * 25}% - 2px)`,
               }}
             />
 
@@ -214,20 +204,23 @@ export default function TenantManagement() {
           </div>
         </div>
 
-        {/* Database section */}
+        {/* Tab content */}
         <div className="w-full flex flex-col items-center">
           <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-4">
-            {activeTab === "Pending" ? "Pending Applications Database" : `${activeTab} Tenants Database`}
+            {activeTab === "Pending"
+              ? "Pending Applications Database"
+              : `${activeTab} Tenants Database`}
           </h2>
 
-          {activeTab === "Active" && <ActiveTenantsTab />}
-          {activeTab === "Pending" && <PendingTenantsTab />}
+          {activeTab === "Active"     && <ActiveTenantsTab />}
+          {activeTab === "Active"     && <TrialTenantsTab />}
+          {activeTab === "Pending"    && <PendingTenantsTab />}
           {activeTab === "Terminated" && <TerminatedTenantsTab />}
-          {activeTab === "Suspended" && <SuspendedTenantsTab />}
+          {activeTab === "Suspended"  && <SuspendedTenantsTab />}
         </div>
       </motion.div>
 
-      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} />
+      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} />
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );

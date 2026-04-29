@@ -52,7 +52,7 @@ const COLUMNS = [
   "Business Name",
   "Owner",
   "Business Type",
-  "Next Billing Date",
+  "Due Date",
   "Subscription Status",
   "Balance",
   "Actions",
@@ -223,11 +223,13 @@ export default function ActiveTenantsTab() {
   // ── Date formatter ──────────────────────────────────────────────────────────
 
   const formatDate = (iso: string | null) => {
-    if (!iso) return "—";
-    return new Date(iso + "T00:00:00").toLocaleDateString("en-PH", {
-      month: "2-digit", day: "2-digit", year: "numeric",
-    });
-  };
+      if (!iso) return "—";
+      // If it's already a full timestamp, use it directly; otherwise treat as date-only
+      const date = iso.includes("T") ? new Date(iso) : new Date(iso + "T00:00:00");
+      return date.toLocaleDateString("en-PH", {
+        month: "2-digit", day: "2-digit", year: "numeric",
+      });
+    };
 
   // ── Loading state ───────────────────────────────────────────────────────────
 

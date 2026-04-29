@@ -142,7 +142,7 @@ export default function SendNotificationModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 18 }}
             transition={{ type: "spring", stiffness: 320, damping: 26 }}
-            className="relative z-10 w-full max-w-[540px] mx-4 bg-[#FFFCEB] rounded-[14px] shadow-2xl border border-[#385E31]/15 overflow-hidden max-h-[90vh] flex flex-col"
+            className="relative z-10 w-full max-w-xl mx-4 bg-[#FFFCEB] rounded-[14px] shadow-2xl border border-[#385E31]/15 overflow-hidden max-h-[90vh] flex flex-col"
           >
             {/* Accent bar */}
             <div className="h-[5px] w-full bg-[#385E31] shrink-0" />
