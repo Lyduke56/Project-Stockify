@@ -30,6 +30,7 @@ interface TerminatedBusiness {
   business_name: string;
   owner_name: string;
   terminated_at: string;
+  remarks: string;
 }
 
 export default function TerminatedTenantsTab() {
@@ -103,8 +104,8 @@ export default function TerminatedTenantsTab() {
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Term. Date</div>
           <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Remarks</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Term. Date</div>
         </div>
 
         {/* Table Body */}
@@ -128,7 +129,7 @@ export default function TerminatedTenantsTab() {
                     {row.owner_name}
                   </div>
                   <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                    {formatDate(row.terminated_at)}
+                    {row.remarks}
                   </div>
                   <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                     {formatDate(row.terminated_at)}
