@@ -1,8 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
 
-export default function NavbarEmployee() {
+interface NavbarEmployeeProps {
+  setActiveSection: (section: SectionKey) => void;
+  openProfile: () => void;
+  openNotifs: () => void;
+  openSettings: () => void;
+}
+
+export default function NavbarEmployee({ 
+  setActiveSection,
+  openProfile, 
+  openNotifs, 
+  openSettings 
+}: NavbarEmployeeProps) {
   const router = useRouter();
 
   return (
@@ -11,7 +24,7 @@ export default function NavbarEmployee() {
       {/* LEFT SIDE: Logo & Brand */}
       <div 
         className="flex items-center gap-2 cursor-pointer select-none" 
-        onClick={() => router.push("/")}
+        onClick={() => setActiveSection("dashboard")}
       >
         <div className="w-10 h-10 flex items-center justify-center">
           <img
@@ -20,18 +33,17 @@ export default function NavbarEmployee() {
             className="h-8 w-auto"
           />
         </div>
-        {/* Font changed to Inter Bold */}
         <div className="text-[#385E31] text-2xl font-bold font-['Inter'] tracking-tight">
           STOCKIFY
         </div>
       </div>
 
-      {/* RIGHT SIDE: Admin Quick Actions */}
+      {/* RIGHT SIDE: Quick Actions */}
       <div className="flex items-center gap-6">
         
         {/* Home Icon */}
         <button
-          onClick={() => router.push("/dashboard")} 
+          onClick={() => setActiveSection("dashboard")}
           className="w-6 h-6 hover:opacity-75 transition-opacity"
           title="Home"
         >
@@ -40,7 +52,7 @@ export default function NavbarEmployee() {
 
         {/* Notifications Icon */}
         <button
-          onClick={() => router.push("/notifications")} 
+          onClick={openNotifs}
           className="w-6 h-6 hover:opacity-75 transition-opacity"
           title="Notifications"
         >
@@ -49,7 +61,7 @@ export default function NavbarEmployee() {
 
         {/* Profile Settings Icon */}
         <button
-          onClick={() => router.push("/settings")} 
+          onClick={openProfile}
           className="w-6 h-6 hover:opacity-75 transition-opacity"
           title="Profile Settings"
         >
