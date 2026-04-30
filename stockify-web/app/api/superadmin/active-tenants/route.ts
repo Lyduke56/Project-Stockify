@@ -6,13 +6,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const MONTHLY_FEE = 1000; // ₱1,000 / month
-
 /**
  * GET /api/superadmin/active-tenants
  * Returns Active + Overdue tenants with business_type, balance (₱), and next_billing_date.
  */
 export async function GET() {
+  // ── Fetch billing settings ───────────────────────────────────────────────
+  const { data: settings } = await supabase
+    .from("billing_settings")
+    .select("monthly_price")
+    .single();
+
+  const MONTHLY_FEE = settings?.monthly_price ?? 1000;
+
+  // ── Fetch tenants ────────────────────────────────────────────────────────
   const { data: tenants, error } = await supabase
     .from("tenants")
     .select(
@@ -28,7 +35,7 @@ export async function GET() {
         subscription_id,
         billing_period,
         payment_status,
-        overdue_at,  
+        overdue_at,
         amount
       )
     `
@@ -50,7 +57,7 @@ export async function GET() {
       amount: number | null;
     }[] = tenant.subscription_records ?? [];
 
-    // ── Unpaid records (Pending or Overdue), sorted earliest first ──────
+    // ── Unpaid records (Pending or Overdue), sorted earliest first ────────
     const unpaidRecords = records
       .filter((r) => r.payment_status === "Pending" || r.payment_status === "Overdue")
       .sort(
@@ -58,7 +65,7 @@ export async function GET() {
           new Date(a.billing_period).getTime() - new Date(b.billing_period).getTime()
       );
 
-    // ── Balance: sum of unpaid amounts ───────────────────────────────────
+    // ── Balance: sum of unpaid amounts ─────────────────────────────────────
     const unpaidTotal = unpaidRecords.reduce(
       (sum, r) => sum + (r.amount ?? MONTHLY_FEE),
       0
@@ -68,16 +75,15 @@ export async function GET() {
         ? `₱${unpaidTotal.toLocaleString("en-PH")}`
         : "—";
 
-    // ── Next billing date ────────────────────────────────────────────────
+    // ── Next billing date ──────────────────────────────────────────────────
     let next_billing_date: string | null = null;
 
-    // Replace next_billing_date logic for unpaid records:
     if (unpaidRecords.length > 0) {
       // Use overdue_at as the due date, fall back to billing_period if null
       next_billing_date = unpaidRecords[0].overdue_at
         ? unpaidRecords[0].overdue_at.split("T")[0]
         : unpaidRecords[0].billing_period;
-    }else {
+    } else {
       // All paid — advance latest paid by 1 month
       const paidRecords = records
         .filter((r) => r.payment_status === "Paid")

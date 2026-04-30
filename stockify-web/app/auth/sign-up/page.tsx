@@ -16,7 +16,6 @@ interface OwnerForm {
   citizenship: string;
   contactNumber: string;
   address: string;
-  // ✅ Restored from original
   password: string;
   confirmPassword: string;
   profilePicture: File | null;

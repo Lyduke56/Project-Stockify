@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendApprovalEmail, sendRejectionEmail } from "@/lib/email";
+import { sendApprovalEmail, sendRejectionEmail } from "@/lib/mailer";
 
 // Service role client — bypasses RLS entirely
 const supabase = createClient(
@@ -47,9 +47,16 @@ export async function POST(req: NextRequest) {
   // ── APPROVE ─────────────────────────────────────────────────────────────────
   if (action === "approve") {
     // 7-day free trial starts from the moment of approval
+    const { data: settings } = await supabase
+    .from("billing_settings")
+    .select("trial_days")
+    .single();
+
+    const trialDays = settings?.trial_days ?? 30;
+
     const now = new Date();
     const trialEndsAt = new Date(now);
-    trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
     const { error: tenantUpdateError } = await supabase
       .from("tenants")
