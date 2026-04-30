@@ -1,12 +1,7 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/trial-check",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/billing",
-      "schedule": "5 0 * * *"
-    }
+    { "path": "/api/cron/trial-check",  "schedule": "5 0 * * *" },
+    { "path": "/api/cron/grace-check",  "schedule": "0 1 * * *" },
+    { "path": "/api/cron/billing",      "schedule": "0 2 1 * *" }
   ]
 }
