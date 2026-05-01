@@ -1,4 +1,3 @@
-
 import { createClient } from "@/lib/supabase/client";
 
 const supabase = createClient();
@@ -9,7 +8,8 @@ export async function getBusinessNameByUserId(userId: string) {
     .select(`
       tenant_id,
       tenants (
-        business_name
+        business_name,
+        business_type
       )
     `)
     .eq('user_id', userId)
@@ -20,5 +20,9 @@ export async function getBusinessNameByUserId(userId: string) {
     return null;
   }
 
-  return (data?.tenants as any)?.business_name || null;
+  const tenant = data?.tenants as any;
+  return tenant ? {
+    business_name: tenant.business_name || null,
+    business_type: tenant.business_type || null,
+  } : null;
 }

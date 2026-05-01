@@ -210,7 +210,6 @@ export default function SignUp() {
     citizenship: "",
     contactNumber: "",
     address: "",
-    // ✅ Restored from original
     password: "",
     confirmPassword: "",
     profilePicture: null,
