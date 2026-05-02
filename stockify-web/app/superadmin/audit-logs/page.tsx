@@ -1,50 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion"; // <-- Imported Framer Motion
+import { motion } from "framer-motion";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
 import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
 
 // Modals — swap for your actual superadmin modal components
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
-
-
-// --- MOCK DATA & HELPERS FOR SYSTEM UPTIME ---
-type StatusType = 'outage' | 'partial' | 'normal';
-
-const uptimeStatus: Record<string, StatusType> = {
-  'Jan-12': 'outage',
-  'Jan-24': 'outage',
-  'Feb-21': 'partial', // Adjusted dates to match heatmap pattern visually
-  'Mar-21': 'partial',
-  'Apr-21': 'partial',
-  'May-24': 'partial',
-  'Aug-11': 'partial',
-};
-
-const getHeatmapStatusClass = (monthAbbr: string, day: number): string => {
-  const key = `${monthAbbr}-${day}`;
-  const status = uptimeStatus[key];
-  if (status === 'outage') return "bg-[#EF4444]"; 
-  if (status === 'partial') return "bg-[#F59E0B]"; 
-  return "bg-[#22C55E]"; 
-};
-
-const months = [
-  { name: "January", abbr: "Jan", days: 31 },
-  { name: "February", abbr: "Feb", days: 29 }, 
-  { name: "March", abbr: "Mar", days: 31 },
-  { name: "April", abbr: "Apr", days: 30 },
-  { name: "May", abbr: "May", days: 31 },
-  { name: "June", abbr: "Jun", days: 30 },
-  { name: "July", abbr: "Jul", days: 31 },
-  { name: "August", abbr: "Aug", days: 31 },
-  { name: "September", abbr: "Sep", days: 30 },
-  { name: "October", abbr: "Oct", days: 31 },
-  { name: "November", abbr: "Nov", days: 30 },
-  { name: "December", abbr: "Dec", days: 31 },
-];
 
 // --- CUSTOM SVG COMPONENTS ---
 const SearchIcon = () => (
@@ -60,15 +23,135 @@ const ChevronDown = () => (
   </svg>
 );
 
-
+// --- MOCK DATA FOR AUDIT LOGS ---
+const auditLogsData = [
+  {
+    id: 1,
+    date: "04/27/2026 10:15 AM",
+    performedBy: "Superadmin (Axziel)",
+    businessName: "Cafe Cebu",
+    eventType: "PaymentRecorded",
+    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
+  },
+  {
+    id: 2,
+    date: "04/26/2026 09:00 AM",
+    performedBy: "Automated System",
+    businessName: "Tech Hub IT",
+    eventType: "NotificationSent",
+    description: "Automated 3-day payment reminder dispatched to owner's email.",
+  },
+  {
+    id: 3,
+    date: "04/25/2026 04:30 PM",
+    performedBy: "Superadmin (Benideck)",
+    businessName: "Ness LALAt",
+    eventType: "TenantSuspended",
+    description: "Automatic suspension triggered. Reason: 7 days past due on billing grace period.",
+  },
+  {
+    id: 4,
+    date: "04/25/2026 11:20 AM",
+    performedBy: "Superadmin (Axziel)",
+    businessName: "Apex Dynamics",
+    eventType: "TenantSuspended",
+    description: "Automatic Suspension triggered. Reason: 3 days past due on billing grace period.",
+  },
+  {
+    id: 5,
+    date: "04/24/2026 02:15 PM",
+    performedBy: "Automated System",
+    businessName: "Horizon Media",
+    eventType: "NotificationSent",
+    description: "Automated 3-day payment reminder dispatched to owner's email.",
+  },
+  {
+    id: 6,
+    date: "04/24/2026 09:45 AM",
+    performedBy: "Superadmin (Benideck)",
+    businessName: "Pioneer Foods",
+    eventType: "TenantCreated",
+    description: "Approved application and provisioned new tenant environment.",
+  },
+  {
+    id: 7,
+    date: "04/23/2026 03:10 PM",
+    performedBy: "Superadmin (Axziel)",
+    businessName: "Summit Finance",
+    eventType: "NotificationSent",
+    description: "Automated 3-day payment reminder dispatched to owner's email.",
+  },
+  {
+    id: 8,
+    date: "04/22/2026 10:05 AM",
+    performedBy: "Automated System",
+    businessName: "Vanguard Tech",
+    eventType: "TenantCreated",
+    description: "Approved application and provisioned new tenant environment.",
+  },
+  {
+    id: 9,
+    date: "04/21/2026 04:50 PM",
+    performedBy: "Superadmin (Benideck)",
+    businessName: "Quantum Retail",
+    eventType: "TenantRestored",
+    description: "Lifted suspension after verifying delayed wire transfer payment.",
+  },
+  {
+    id: 10,
+    date: "04/20/2026 01:30 PM",
+    performedBy: "Automated System",
+    businessName: "Nexus Health",
+    eventType: "TenantTerminated",
+    description: "Automatic Termination triggered. Reason: 30 days past due on billing grace period."
+  },
+  {
+    id: 11,
+    date: "04/19/2026 11:15 AM",
+    performedBy: "Superadmin (Axziel)",
+    businessName: "Global Logistics",
+    eventType: "TenantRestored",
+    description: "Lifted suspension after verifying delayed wire transfer payment.",
+  },
+  {
+    id: 12,
+    date: "04/18/2026 08:45 AM",
+    performedBy: "Superadmin (Benideck)",
+    businessName: "City Bakery",
+    eventType: "TenantRestored",
+    description: "Lifted suspension after verifying delayed wire transfer payment.",
+  },
+  {
+    id: 13,
+    date: "04/17/2026 05:20 PM",
+    performedBy: "Automated System",
+    businessName: "Urban Decor",
+    eventType: "PaymentRecorded",
+    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
+  },
+  {
+    id: 14,
+    date: "04/16/2026 02:00 PM",
+    performedBy: "Superadmin (Axziel)",
+    businessName: "Metro Clinics",
+    eventType: "PaymentRecorded",
+    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
+  },
+  {
+    id: 15,
+    date: "04/15/2026 10:30 AM",
+    performedBy: "Superadmin (Benideck)",
+    businessName: "Alpha Studios",
+    eventType: "PaymentRecorded",
+    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
+  },
+];
 
 // --- MAIN COMPONENT ---
 export default function AuditLogs() {
-  // Generate mock array for the 12 "Body" rows shown in the design
-  const mockTableRows = Array.from({ length: 12 }).map((_, i) => ({ id: i }));
-
   const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
       
@@ -84,17 +167,17 @@ export default function AuditLogs() {
       >
         
         <NavbarApp
-                          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                          openNotifs={() => setIsNotifsOpen(true)}
-                          openProfile={() => setIsProfileOpen(true)}
-                        />
+          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          openNotifs={() => setIsNotifsOpen(true)}
+          openProfile={() => setIsProfileOpen(true)}
+        />
 
-        {/* Page Header - Slight delay to trail the main wrapper */}
+        {/* Page Header */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="w-full flex flex-col items-center mt-10 mb-8 gap-2"
+          className="w-full flex flex-col items-center mt-10 mb-10 gap-2"
         >
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             AUDIT LOGS
@@ -102,66 +185,11 @@ export default function AuditLogs() {
           <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
         </motion.div>
 
-        {/* --- SYSTEM UPTIME COMPONENT - Pops in next --- */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
-          className="w-full p-6 bg-[#385E31] rounded-[10px] flex flex-col gap-4 mb-12 shadow-sm"
-        >
-          <div className="w-full text-[#FFFCEB] text-[20px] font-bold font-['Inter'] tracking-wide">
-            System Uptime
-          </div>
-          <div className="flex w-full gap-5">
-            <div className="w-[280px] bg-[#FFFCEB] rounded-[8px] flex flex-col justify-center items-center px-6 py-10 shrink-0">
-              <div className="text-[#3A6131] text-[64px] font-black tracking-tight leading-none mb-4">
-                99.98%
-              </div>
-              <p className="text-center text-[#3A6131] text-[12px] font-medium leading-relaxed">
-                All systems, including the multi-tenant SaaS inventory engine and database, are fully functional.
-              </p>
-            </div>
-            <div className="flex-1 bg-[#FFFCEB] rounded-[8px] px-6 py-6 flex flex-col justify-between overflow-x-auto">
-              <div className="grid grid-cols-[30px_repeat(31,minmax(0,1fr))] gap-x-[2px] gap-y-[3px] w-full min-w-[600px]">
-                {months.map((month) => (
-                  <React.Fragment key={month.abbr}>
-                    <div className="text-[#3A6131] text-[10px] font-bold self-center pr-2 text-right">
-                      {month.abbr}
-                    </div>
-                    {[...Array(31)].map((_, i) => {
-                      const day = i + 1;
-                      const isHidden = day > month.days;
-                      return (
-                        <div 
-                          key={day} 
-                          className={`w-full aspect-square max-w-[14px] max-h-[14px] rounded-[2px] mx-auto ${isHidden ? 'invisible' : getHeatmapStatusClass(month.abbr, day)}`}
-                          title={isHidden ? undefined : `${month.name} ${day}`}
-                        />
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
-                <div className="col-start-1"></div>
-                {[...Array(31)].map((_, i) => (
-                  <div key={i} className="text-[#3A6131] text-[9px] font-bold text-center mt-1">
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-              <div className="w-full flex items-center justify-center gap-6 mt-4 text-[#3A6131] text-[10px] font-bold">
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-[2px] bg-[#22C55E]"></div>100%</div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-[2px] bg-[#F59E0B]"></div>Partial Degradation</div>
-                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-[2px] bg-[#EF4444]"></div>Service Outage</div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* --- FILTERS & TABLE SECTION - Slides in last --- */}
+        {/* --- FILTERS & TABLE SECTION --- */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.3 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.2 }}
           className="w-full flex flex-col items-center"
         >
           
@@ -203,26 +231,35 @@ export default function AuditLogs() {
           </div>
 
           {/* Data Table */}
-          <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-hidden shadow-sm">
+          <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
             
             {/* Header Row */}
-            <div className="w-full flex bg-[#385E31] px-4 py-3">
-              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Date & Time</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Business Name</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Event Type</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Description/Notes</div>
+            <div className="w-full flex bg-[#385E31] px-6 py-3 rounded-t-[8px] gap-4">
+              <div className="w-[150px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold">Date & Time</div>
+              <div className="w-[160px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold">Performed By</div>
+              <div className="w-[140px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold">Business Name</div>
+              <div className="w-[180px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold">Event Type</div>
+              <div className="flex-1 text-left text-[#FFFCEB] text-[13px] font-bold">Description/Notes</div>
             </div>
 
             {/* Data Rows */}
-            <div className="flex flex-col w-full py-4">
-              {mockTableRows.map((row) => (
-                <div key={row.id} className="w-full flex px-4 py-[14px] items-center">
-                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
-                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
-                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
-                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">Body</div>
-                </div>
-              ))}
+            <div className="flex flex-col w-full py-2">
+              {auditLogsData.map((row, idx) => {
+                const isLast = idx === auditLogsData.length - 1;
+                return (
+                  <div key={row.id} className={`w-full flex px-6 py-4 items-start gap-4 hover:bg-[#385E31]/5 transition-colors ${!isLast ? "border-b border-[#385E31]/20" : ""}`}>
+                    <div className="w-[150px] shrink-0 text-[#3A6131] text-[13px] font-medium pt-0.5">{row.date}</div>
+                    <div className="w-[160px] shrink-0 text-[#3A6131] text-[13px] font-medium pt-0.5">{row.performedBy}</div>
+                    <div className="w-[140px] shrink-0 text-[#3A6131] text-[13px] font-bold pt-0.5">{row.businessName}</div>
+                    <div className="w-[180px] shrink-0 flex items-start">
+                      <span className="bg-[#E2E8F0] text-[#475569] font-mono text-[11px] px-2.5 py-1 rounded-md">
+                        {row.eventType}
+                      </span>
+                    </div>
+                    <div className="flex-1 text-[#3A6131] text-[13px] leading-relaxed pt-0.5">{row.description}</div>
+                  </div>
+                );
+              })}
             </div>
 
           </div>
@@ -235,8 +272,8 @@ export default function AuditLogs() {
           </div>
 
           {/* ── Modals ── */}
-            <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
-            <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+          <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+          <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
         </motion.div>
       </motion.div>
