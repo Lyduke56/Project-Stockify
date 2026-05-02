@@ -10,27 +10,28 @@ import NavbarApp from "@/components/navbars/navbar-superadmin";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 
-// MOCK DATA RA NIIIIIIIIII
+// ─── UPDATED MOCK DATA (Using Pending, Paid, Overdue, Missed) ────────────────
 const billingData = [
-  { id: 1, name: "Cafe Cebu", owner: "Clyde Justine Rosal", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-  { id: 2, name: "Tech Hub IT", owner: "Christopher John Rubio", date: "02/01/2026", status: "Late", balance: "₱5,000.00" },
-  { id: 3, name: "Fully Booked", owner: "Axziel Jay Bartolabac", date: "01/21/2026", status: "Active", balance: "₱8,000.00" },
-  { id: 4, name: "National Book Store", owner: "Axziel Jay Bartolabac", date: "02/21/2025", status: "Late", balance: "₱8,000.00" },
-  { id: 5, name: "TAMBAY Cafe", owner: "Benideck Longakit", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-  { id: 6, name: "Uncle Brew", owner: "Nesserain De la Cruz", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
-  { id: 7, name: "Elle's Boutique", owner: "Elle Bernante", date: "02/21/2026", status: "Missed", balance: "₱3,000.00" },
-  { id: 8, name: "Manok na Chicken", owner: "Tweetie Zapanta", date: "02/21/2026", status: "Active", balance: "₱3,000.00" },
+  { id: 1, name: "Cafe Cebu", owner: "Clyde Justine Rosal", billingPeriod: "Apr 2026", dueDate: "04/30/2026", lastPaid: "03/30/2026", status: "Paid", balance: "₱0.00" },
+  { id: 2, name: "Tech Hub IT", owner: "Christopher John Rubio", billingPeriod: "Apr 2026", dueDate: "04/15/2026", lastPaid: "02/15/2026", status: "Overdue", balance: "₱5,000.00" },
+  { id: 3, name: "Fully Booked", owner: "Axziel Jay Bartolabac", billingPeriod: "May 2026", dueDate: "05/01/2026", lastPaid: "04/01/2026", status: "Pending", balance: "₱8,000.00" },
+  { id: 4, name: "National Book Store", owner: "Axziel Jay Bartolabac", billingPeriod: "Mar 2026", dueDate: "03/31/2026", lastPaid: "02/28/2026", status: "Overdue", balance: "₱8,000.00" },
+  { id: 5, name: "TAMBAY Cafe", owner: "Benideck Longakit", billingPeriod: "Apr 2026", dueDate: "04/25/2026", lastPaid: "03/25/2026", status: "Paid", balance: "₱0.00" },
+  { id: 6, name: "Uncle Brew", owner: "Nesserain De la Cruz", billingPeriod: "May 2026", dueDate: "05/10/2026", lastPaid: "04/10/2026", status: "Pending", balance: "₱3,000.00" },
+  { id: 7, name: "Elle's Boutique", owner: "Elle Bernante", billingPeriod: "Feb 2026", dueDate: "02/28/2026", lastPaid: "01/28/2026", status: "Missed", balance: "₱6,000.00" },
+  { id: 8, name: "Manok na Chicken", owner: "Tweetie Zapanta", billingPeriod: "Apr 2026", dueDate: "04/20/2026", lastPaid: "03/20/2026", status: "Paid", balance: "₱0.00" },
 ];
 
 const tabs = ["Overall", "Overdue", "Missed"];
 
-// HELPERS HEH
+// ─── UPDATED PILL STYLES ─────────────────────────────────────────────────────
 const getPillStyles = (status: string) => {
   switch (status) {
-    case 'Active': return { bg: 'bg-[#385E31]', text: 'text-[#FFFCEB]' };
-    case 'Late': return { bg: 'bg-[#FFD980]', text: 'text-[#385E31]' }; 
-    case 'Missed': return { bg: 'bg-[#E91F22]', text: 'text-[#FFFCEB]' }; 
-    default: return { bg: 'bg-[#385E31]', text: 'text-[#FFFCEB]' };
+    case 'Paid': return { bg: 'bg-[#385E31]', text: 'text-[#FFFCEB]' };     // Green
+    case 'Pending': return { bg: 'bg-[#E5AD24]', text: 'text-[#385E31]' };  // Yellow
+    case 'Overdue': return { bg: 'bg-[#FFD980]', text: 'text-[#385E31]' };  // Light Yellow/Orange warning
+    case 'Missed': return { bg: 'bg-[#E91F22]', text: 'text-[#FFFCEB]' };   // Red
+    default: return { bg: 'bg-[#E2E8F0]', text: 'text-[#475569]' };         // Gray fallback
   }
 };
 
@@ -57,7 +58,7 @@ const ChevronDown = () => (
   </svg>
 );
 
-// STAT CARD COMPONENT (Updated with framer-motion and delay prop)
+// STAT CARD COMPONENT 
 interface StatCardProps {
   title: string;
   value: string | number;
@@ -102,14 +103,14 @@ export default function SubscriptionBilling() {
     setOpenDropdownId(prevId => (prevId === id ? null : id));
   };
 
-  const handleAction = (tenantId: number) => {
-    console.log(`Action triggered for ${tenantId}`);
+  const handleAction = (tenantId: number, actionType: string) => {
+    console.log(`${actionType} triggered for ${tenantId}`);
     setOpenDropdownId(null);
   };
 
-  // Filter data based on active tab
+  // Filter data based on active tab and updated statuses
   const getFilteredData = () => {
-    if (activeTab === "Overdue") return billingData.filter(d => d.status === "Late");
+    if (activeTab === "Overdue") return billingData.filter(d => d.status === "Overdue");
     if (activeTab === "Missed") return billingData.filter(d => d.status === "Missed");
     return billingData; // "Overall"
   };
@@ -125,7 +126,7 @@ export default function SubscriptionBilling() {
       
       <Sidebar />
 
-      {/* Main Content Wrapper with Slide/Fade-in */}
+      {/* Main Content Wrapper */}
       <motion.div 
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -134,13 +135,13 @@ export default function SubscriptionBilling() {
       >
         
         {/* ── Navbar ── */}
-                <NavbarApp
-                  onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                  openNotifs={() => setIsNotifsOpen(true)}
-                  openProfile={() => setIsProfileOpen(true)}
-                />
+        <NavbarApp
+          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          openNotifs={() => setIsNotifsOpen(true)}
+          openProfile={() => setIsProfileOpen(true)}
+        />
 
-        {/* Page Header - Slight delay to trail the main wrapper */}
+        {/* Page Header */}
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -154,7 +155,7 @@ export default function SubscriptionBilling() {
           </div>
         </motion.div>
 
-        {/* Top Stat Cards Row - Staggered Delays */}
+        {/* Top Stat Cards Row */}
         <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <StatCard 
             title="Total Paid" 
@@ -179,7 +180,7 @@ export default function SubscriptionBilling() {
           />
         </div>
 
-        {/* NAVIGATION TABS - Pops in after cards */}
+        {/* NAVIGATION TABS */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -228,7 +229,7 @@ export default function SubscriptionBilling() {
           </div>
         </motion.div>
 
-        {/* Database Section - Slides in last */}
+        {/* Database Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -268,12 +269,14 @@ export default function SubscriptionBilling() {
             
             {/* Header Row */}
             <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Reg. Date</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Subscription</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Balance</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Actions</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Business Name</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Owner</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Billing Period</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Due Date</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Last Paid</div>
+              <div className="flex-[0.8] text-center text-[#FFFCEB] text-[13px] font-bold">Payment Status</div>
+              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Balance</div>
+              <div className="flex-[0.8] text-center text-[#FFFCEB] text-[13px] font-bold">Actions</div>
             </div>
 
             {/* Data Rows */}
@@ -285,8 +288,7 @@ export default function SubscriptionBilling() {
                 
                 return (
                   <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                      {/* --- NEW CLICKABLE BUSINESS NAME LOGIC HERE --- */}
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">
                       <span 
                         onClick={() => router.push(`/superadmin/tenant-profile/${row.id}`)}
                         className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
@@ -294,21 +296,23 @@ export default function SubscriptionBilling() {
                         {row.name}
                       </span>
                     </div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.owner}</div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.date}</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.owner}</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.billingPeriod}</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.dueDate}</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.lastPaid}</div>
                     
-                    <div className="flex-1 flex justify-center items-center">
-                      <div className={`w-[75px] py-[4px] rounded-[40px] flex justify-center items-center ${bg}`}>
+                    <div className="flex-[0.8] flex justify-center items-center">
+                      <div className={`w-[65px] py-[4px] rounded-[40px] flex justify-center items-center ${bg}`}>
                         <span className={`${text} text-[10px] font-bold leading-3`}>{row.status}</span>
                       </div>
                     </div>
 
-                    <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">{row.balance}</div>
+                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.balance}</div>
                     
-                    <div className="flex-1 flex justify-center items-center relative">
+                    <div className="flex-[0.8] flex justify-center items-center relative">
                       <button 
                         onClick={() => toggleDropdown(row.id)}
-                        className={`border border-[#385E31] rounded-full px-4 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                        className={`border border-[#385E31] rounded-full px-3 py-1 text-[10px] font-bold flex items-center gap-1 transition-colors ${
                           isDropdownOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
                         }`}
                       >
@@ -316,18 +320,24 @@ export default function SubscriptionBilling() {
                       </button>
 
                       {isDropdownOpen && (
-                        <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
+                        <div className="absolute top-8 right-[50%] translate-x-1/2 w-[160px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
                           <button 
-                            onClick={() => handleAction(row.id)}
+                            onClick={() => handleAction(row.id, "Record Payment")}
                             className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                           >
-                            View Invoice
+                            Record Payment
                           </button>
                           <button 
-                            onClick={() => handleAction(row.id)}
+                            onClick={() => handleAction(row.id, "Send Notification")}
                             className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                           >
-                            Send Reminder
+                            Send Notification
+                          </button>
+                          <button 
+                            onClick={() => handleAction(row.id, "Trigger Suspension")}
+                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                          >
+                            Trigger Suspension
                           </button>
                         </div>
                       )}
@@ -346,8 +356,8 @@ export default function SubscriptionBilling() {
           </div>
 
           {/* ── Modals ── */}
-                <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
-                <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+          <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+          <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
 
         </motion.div>
       </motion.div>
