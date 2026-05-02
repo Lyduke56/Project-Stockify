@@ -1,90 +1,50 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation"; 
-import { motion } from "framer-motion"; 
-import Sidebar from "@/components/navbars/sidebar-superadmin";
-import NavbarApp from "@/components/navbars/navbar-superadmin";
+// app/superadmin/subscription-billing/page.tsx
 
-// Modals — swap for your actual superadmin modal components
-import NotificationModal from "@/components/modals/notification-modal";
+import { useCallback, useEffect, useState } from "react";
+import { createClient }   from "@supabase/supabase-js";
+import { motion }         from "framer-motion";
+
+import Sidebar    from "@/components/navbars/sidebar-superadmin";
+import NavbarApp  from "@/components/navbars/navbar-superadmin";
+import NotificationModal  from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 
-// ─── UPDATED MOCK DATA (Using Pending, Paid, Overdue, Missed) ────────────────
-const billingData = [
-  { id: 1, name: "Cafe Cebu", owner: "Clyde Justine Rosal", billingPeriod: "Apr 2026", dueDate: "04/30/2026", lastPaid: "03/30/2026", status: "Paid", balance: "₱0.00" },
-  { id: 2, name: "Tech Hub IT", owner: "Christopher John Rubio", billingPeriod: "Apr 2026", dueDate: "04/15/2026", lastPaid: "02/15/2026", status: "Overdue", balance: "₱5,000.00" },
-  { id: 3, name: "Fully Booked", owner: "Axziel Jay Bartolabac", billingPeriod: "May 2026", dueDate: "05/01/2026", lastPaid: "04/01/2026", status: "Pending", balance: "₱8,000.00" },
-  { id: 4, name: "National Book Store", owner: "Axziel Jay Bartolabac", billingPeriod: "Mar 2026", dueDate: "03/31/2026", lastPaid: "02/28/2026", status: "Overdue", balance: "₱8,000.00" },
-  { id: 5, name: "TAMBAY Cafe", owner: "Benideck Longakit", billingPeriod: "Apr 2026", dueDate: "04/25/2026", lastPaid: "03/25/2026", status: "Paid", balance: "₱0.00" },
-  { id: 6, name: "Uncle Brew", owner: "Nesserain De la Cruz", billingPeriod: "May 2026", dueDate: "05/10/2026", lastPaid: "04/10/2026", status: "Pending", balance: "₱3,000.00" },
-  { id: 7, name: "Elle's Boutique", owner: "Elle Bernante", billingPeriod: "Feb 2026", dueDate: "02/28/2026", lastPaid: "01/28/2026", status: "Missed", balance: "₱6,000.00" },
-  { id: 8, name: "Manok na Chicken", owner: "Tweetie Zapanta", billingPeriod: "Apr 2026", dueDate: "04/20/2026", lastPaid: "03/20/2026", status: "Paid", balance: "₱0.00" },
-];
+import BillingPaymentTable, { BillingRow } from "@/components/tables/subscription-billing/billing-payment-table";
 
-const tabs = ["Overall", "Overdue", "Missed"];
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-// ─── UPDATED PILL STYLES ─────────────────────────────────────────────────────
-const getPillStyles = (status: string) => {
-  switch (status) {
-    case 'Paid': return { bg: 'bg-[#385E31]', text: 'text-[#FFFCEB]' };     // Green
-    case 'Pending': return { bg: 'bg-[#E5AD24]', text: 'text-[#385E31]' };  // Yellow
-    case 'Overdue': return { bg: 'bg-[#FFD980]', text: 'text-[#385E31]' };  // Light Yellow/Orange warning
-    case 'Missed': return { bg: 'bg-[#E91F22]', text: 'text-[#FFFCEB]' };   // Red
-    default: return { bg: 'bg-[#E2E8F0]', text: 'text-[#475569]' };         // Gray fallback
-  }
-};
-
-const getTabConfig = (tab: string) => {
-  switch (tab) {
-    case "Overall": return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Overdue": return { bg: "bg-[#E53333]", text: "text-[#FFFCEB]" };
-    case "Missed": return { bg: "bg-[#CE0000]", text: "text-[#FFFCEB]" };
-    default: return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-  }
-};
-
-// CUSTOM SVG COMPONENTS 
-const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8"></circle>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  </svg>
-);
-
-const ChevronDown = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9"></polyline>
-  </svg>
-);
-
-// STAT CARD COMPONENT 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  trendText: string;
-  className?: string;
-  svgName: string;
-  delay?: number;
+interface Stats {
+  total_paid:    number;
+  overdue_count: number;
+  missed_count:  number;
+  avg_days_late: number;
 }
 
-function StatCard({ title, value, trendText, className = "", svgName, delay = 0 }: StatCardProps) {
+// ── Stat Card ─────────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  title:     string;
+  value:     string | number;
+  trendText: string;
+  svgName:   string;
+  delay?:    number;
+}
+
+function StatCard({ title, value, trendText, svgName, delay = 0 }: StatCardProps) {
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25, delay: delay }}
-      className={`bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31] ${className}`}
+      animate={{ opacity: 1, scale: 1,    y: 0  }}
+      transition={{ type: "spring", stiffness: 300, damping: 25, delay }}
+      className="bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-md border-2 border-[#385E31]"
     >
-      <h3 className="text-[#FFFCEB] text-[18px] font-bold mb-3">{title}</h3>
-      <div className="bg-[#FFFCEB] rounded-[6px] flex flex-col items-center justify-center py-5 flex-1 relative">
+      <h3 className="text-[#FFFCEB] text-[17px] font-bold mb-3">{title}</h3>
+      <div className="bg-[#FFFCEB] rounded-[6px] flex flex-col items-center justify-center py-5 flex-1">
         <div className="flex items-center justify-center gap-3">
-          <img 
-            src={`/${svgName}.svg`} 
-            alt={`${title} Icon`} 
-            className="w-15 h-15 object-contain" 
-          />
-          <span className="text-[#385E31] text-[3.5rem] font-black leading-none">{value}</span>
+          <img src={`/${svgName}.svg`} alt={title} className="w-14 h-14 object-contain" />
+          <span className="text-[#385E31] text-[3rem] font-black leading-none">{value}</span>
         </div>
         <p className="text-[#385E31] text-[11px] mt-2 font-bold">{trendText}</p>
       </div>
@@ -92,49 +52,86 @@ function StatCard({ title, value, trendText, className = "", svgName, delay = 0 
   );
 }
 
-// MAIN COMPONENT 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatStatValue(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${Math.round(n / 1_000)}k`;
+  return `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 0 })}`;
+}
+
+// ── Supabase browser client (for real-time) ───────────────────────────────────
+// Requires NEXT_PUBLIC_SUPABASE_ANON_KEY in your env vars.
+
+const supabaseBrowser = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function SubscriptionBilling() {
-  const router = useRouter(); 
+  const [rows,         setRows]         = useState<BillingRow[]>([]);
+  const [stats,        setStats]        = useState<Stats | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
+  const [isProfileOpen,setIsProfileOpen]= useState(false);
 
-  const [activeTab, setActiveTab] = useState("Overall");
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  const toggleDropdown = (id: number) => {
-    setOpenDropdownId(prevId => (prevId === id ? null : id));
-  };
+  const fetchData = useCallback(async () => {
+    try {
+      const res  = await fetch("/api/cron/billing");
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setRows(json.data   ?? []);
+      setStats(json.stats ?? null);
+    } catch (e) {
+      console.error("[SubscriptionBilling] fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const handleAction = (tenantId: number, actionType: string) => {
-    console.log(`${actionType} triggered for ${tenantId}`);
-    setOpenDropdownId(null);
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  // Filter data based on active tab and updated statuses
-  const getFilteredData = () => {
-    if (activeTab === "Overdue") return billingData.filter(d => d.status === "Overdue");
-    if (activeTab === "Missed") return billingData.filter(d => d.status === "Missed");
-    return billingData; // "Overall"
-  };
+  // ── Real-time subscriptions ────────────────────────────────────────────────
 
-  const currentData = getFilteredData();
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel("billing-realtime")
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "subscription_records" },
+        () => { fetchData(); }
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "tenants" },
+        () => { fetchData(); }
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "suspended_tenants" },
+        () => { fetchData(); }
+      )
+      .subscribe();
 
-  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  
+    return () => { supabaseBrowser.removeChannel(channel); };
+  }, [fetchData]);
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
-      
       <Sidebar />
 
-      {/* Main Content Wrapper */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
       >
-        
-        {/* ── Navbar ── */}
+        {/* Navbar */}
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           openNotifs={() => setIsNotifsOpen(true)}
@@ -142,7 +139,7 @@ export default function SubscriptionBilling() {
         />
 
         {/* Page Header */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
@@ -151,215 +148,84 @@ export default function SubscriptionBilling() {
           <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
             SUBSCRIPTION BILLING
           </h1>
-          <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full flex justify-center">
-          </div>
+          <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
         </motion.div>
 
-        {/* Top Stat Cards Row */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <StatCard 
-            title="Total Paid" 
-            value="790k" 
-            trendText="4 of 12 months" 
-            svgName="SA-rev-stat" 
-            delay={0.15}
-          />
-          <StatCard 
-            title="Late Payments" 
-            value="73" 
-            trendText="Avg. 24.8 days late" 
-            svgName="SA-late-payments" 
-            delay={0.25}
-          />
-          <StatCard 
-            title="Missed Payments" 
-            value="49" 
-            trendText="As of September 2026" 
-            svgName="SA-missed-payments" 
-            delay={0.35}
-          />
-        </div>
+        {/* Stat Cards */}
+        {loading ? (
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-[#385E31]/20 rounded-[8px] h-[140px] animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <StatCard
+              title="Total Paid"
+              value={stats ? formatStatValue(stats.total_paid) : "—"}
+              trendText={`Current year (${new Date().getFullYear()})`}
+              svgName="SA-rev-stat"
+              delay={0.15}
+            />
+            <StatCard
+              title="Late Payments"
+              value={stats?.overdue_count ?? 0}
+              trendText={
+                stats?.avg_days_late
+                  ? `Avg. ${stats.avg_days_late} days late`
+                  : "No overdue accounts"
+              }
+              svgName="SA-late-payments"
+              delay={0.25}
+            />
+            <StatCard
+              title="Missed Payments"
+              value={stats?.missed_count ?? 0}
+              trendText="Currently suspended"
+              svgName="SA-missed-payments"
+              delay={0.35}
+            />
+          </div>
+        )}
 
-        {/* NAVIGATION TABS */}
-        <motion.div 
+        {/* Payment Tracker header */}
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-[#385E31] text-[24px] font-extrabold mb-2 text-center"
+        >
+          Payment Tracker
+        </motion.h2>
+
+        {/* Table */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.45 }}
-          className="w-full flex justify-center mb-6"
+          className="w-full flex flex-col"
         >
-          <div className="relative flex w-full max-w-[600px] h-[45px] items-center my-2">
-            
-            {/* Background Outline */}
-            <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
-
-            {/* Static Vertical Dividers */}
-            <div className="absolute inset-0 flex pointer-events-none">
-              <div className="flex-1 border-r-2 border-[#385E31]" />
-              <div className="flex-1 border-r-2 border-[#385E31]" />
-              <div className="flex-1" />
+          {loading ? (
+            <div className="w-full text-center py-16 text-[#385E31] font-bold text-lg">
+              Loading billing data…
             </div>
+          ) : (
+            <BillingPaymentTable rows={rows} onRefresh={fetchData} />
+          )}
 
-            {/* Sliding Colored Box */}
-            <div
-              className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
-              style={{
-                width: 'calc(33.333% + 4px)',
-                left: `calc(${tabs.indexOf(activeTab) * 33.333}% - 2px)`,
-              }}
-            />
-
-            {/* Clickable Text Overlays */}
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setActiveTab(tab);
-                    setOpenDropdownId(null); 
-                  }}
-                  className={`flex-1 h-full z-20 text-center font-bold text-[18px] transition-colors duration-300 cursor-pointer ${
-                    isActive ? getTabConfig(tab).text : "text-[#385E31]"
-                  }`}
-                >
-                  {tab}
-                </button>
-              );
-            })}
-          </div>
+          {/* Load More */}
+          {!loading && rows.length > 0 && (
+            <div className="w-full flex justify-end mt-6">
+              <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
+                Load More
+              </button>
+            </div>
+          )}
         </motion.div>
-
-        {/* Database Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
-          className="w-full flex flex-col items-center"
-        >
           
-          {/* Subheader */}
-          <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-6">
-            Payment Tracker
-          </h2>
-
-          {/* Search and Filter Row */}
-          <div className="w-full flex justify-between items-center mb-4 gap-4">
-            <div className="relative flex-1 max-w-[60%]">
-              <input 
-                type="text" 
-                placeholder="Search" 
-                className="w-full border border-[#385E31] rounded-full px-5 py-2 bg-transparent text-[#385E31] placeholder-[#385E31] outline-none font-medium" 
-              />
-              <div className="absolute right-4 top-2.5 text-[#385E31]">
-                <SearchIcon />
-              </div>
-            </div>
-            <div className="relative w-[200px]">
-              <select className="w-full appearance-none border border-[#385E31] rounded-full px-5 py-2 bg-transparent text-[#385E31] outline-none font-medium cursor-pointer">
-                <option>Filter By</option>
-              </select>
-              <div className="absolute right-4 top-3.5 text-[#385E31] pointer-events-none">
-                <ChevronDown />
-              </div>
-            </div>
-          </div>
-
-          {/* Data Table */}
-          <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
-            
-            {/* Header Row */}
-            <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Business Name</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Owner</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Billing Period</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Due Date</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Last Paid</div>
-              <div className="flex-[0.8] text-center text-[#FFFCEB] text-[13px] font-bold">Payment Status</div>
-              <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">Balance</div>
-              <div className="flex-[0.8] text-center text-[#FFFCEB] text-[13px] font-bold">Actions</div>
-            </div>
-
-            {/* Data Rows */}
-            <div className="flex flex-col w-full">
-              {currentData.map((row, idx) => {
-                const { bg, text } = getPillStyles(row.status);
-                const isLast = idx === currentData.length - 1;
-                const isDropdownOpen = openDropdownId === row.id;
-                
-                return (
-                  <div key={row.id} className={`w-full flex px-4 py-[14px] items-center ${!isLast ? 'border-b border-[#385E31]/20' : ''}`}>
-                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">
-                      <span 
-                        onClick={() => router.push(`/superadmin/tenant-profile/${row.id}`)}
-                        className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
-                      >
-                        {row.name}
-                      </span>
-                    </div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.owner}</div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.billingPeriod}</div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.dueDate}</div>
-                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.lastPaid}</div>
-                    
-                    <div className="flex-[0.8] flex justify-center items-center">
-                      <div className={`w-[65px] py-[4px] rounded-[40px] flex justify-center items-center ${bg}`}>
-                        <span className={`${text} text-[10px] font-bold leading-3`}>{row.status}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex-1 text-center text-[#3A6131] text-[12px] font-bold">{row.balance}</div>
-                    
-                    <div className="flex-[0.8] flex justify-center items-center relative">
-                      <button 
-                        onClick={() => toggleDropdown(row.id)}
-                        className={`border border-[#385E31] rounded-full px-3 py-1 text-[10px] font-bold flex items-center gap-1 transition-colors ${
-                          isDropdownOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
-                        }`}
-                      >
-                        Action <ChevronDown />
-                      </button>
-
-                      {isDropdownOpen && (
-                        <div className="absolute top-8 right-[50%] translate-x-1/2 w-[160px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                          <button 
-                            onClick={() => handleAction(row.id, "Record Payment")}
-                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                          >
-                            Record Payment
-                          </button>
-                          <button 
-                            onClick={() => handleAction(row.id, "Send Notification")}
-                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                          >
-                            Send Notification
-                          </button>
-                          <button 
-                            onClick={() => handleAction(row.id, "Trigger Suspension")}
-                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                          >
-                            Trigger Suspension
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Load More Button */}
-          <div className="w-full flex justify-end mt-6">
-            <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold font-['Inter'] px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
-              Load More
-            </button>
-          </div>
-
-          {/* ── Modals ── */}
-          <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
-          <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-
-        </motion.div>
+        {/* Modals */}
+        <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+        <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       </motion.div>
     </div>
   );

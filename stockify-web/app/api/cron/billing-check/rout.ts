@@ -1,14 +1,7 @@
-// /app/api/cron/billing/route.ts
+// app/api/cron/billing/cron/route.ts
 //
 // Vercel Cron — runs daily at 00:05 UTC.
-// Add to vercel.json:
-//   {
-//     "crons": [{ "path": "/api/cron/billing", "schedule": "5 0 * * *" }]
-//   }
-//
-// Set CRON_SECRET env var and pass it as Authorization: Bearer <secret>
-// in the Vercel cron config, or Vercel will inject it automatically
-// for Vercel-managed cron jobs (framework-native crons).
+// vercel.json: { "path": "/api/cron/billing/cron", "schedule": "5 0 * * *" }
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -16,22 +9,21 @@ import {
   sendBillingInvoiceEmail,
   sendOverdueNotificationEmail,
   sendTrialEndingEmail,
-} from "@/lib/email";
+} from "@/lib/mailer";
+import { logAudit, AuditEvent } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ─── Auth guard ───────────────────────────────────────────────────────────────
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true; // dev: allow if no secret configured
+  if (!secret) return true;
   const auth = req.headers.get("authorization");
   return auth === `Bearer ${secret}`;
 }
 
-// ─── Main cron handler ────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -39,11 +31,11 @@ export async function GET(req: NextRequest) {
 
   const now = new Date();
   const results = {
-    trial_ended_upgraded: [] as string[],
+    trial_ended_upgraded:    [] as string[],
     billing_records_created: [] as string[],
-    overdue_marked: [] as string[],
-    trial_reminders_sent: [] as string[],
-    errors: [] as string[],
+    overdue_marked:          [] as string[],
+    trial_reminders_sent:    [] as string[],
+    errors:                  [] as string[],
   };
 
   // ── 1. Fetch all active / trial tenants ─────────────────────────────────────
@@ -60,13 +52,12 @@ export async function GET(req: NextRequest) {
 
   for (const tenant of tenants ?? []) {
     const trialEndsAt = tenant.trial_ends_at ? new Date(tenant.trial_ends_at) : null;
-    const isInTrial = trialEndsAt ? now < trialEndsAt : false;
+    const isInTrial   = trialEndsAt ? now < trialEndsAt : false;
 
     // ── 2. Send "trial ending soon" reminder (1 day before expiry) ─────────────
     if (isInTrial && trialEndsAt) {
       const hoursLeft = (trialEndsAt.getTime() - now.getTime()) / 3_600_000;
       if (hoursLeft <= 24 && hoursLeft > 0) {
-        // Check if we already sent today
         const { data: alreadySent } = await supabase
           .from("billing_notifications")
           .select("id")
@@ -79,11 +70,21 @@ export async function GET(req: NextRequest) {
           try {
             await sendTrialEndingEmail(tenant.owner_email, tenant.business_name, trialEndsAt);
             await supabase.from("billing_notifications").insert({
-              tenant_id: tenant.tenant_id,
+              tenant_id:         tenant.tenant_id,
               notification_type: "trial_ending_reminder",
-              recipient_email: tenant.owner_email,
-              subject: `Your free trial ends tomorrow — ${tenant.business_name}`,
+              recipient_email:   tenant.owner_email,
+              subject:           `Your free trial ends tomorrow — ${tenant.business_name}`,
             });
+
+            // Audit: trial reminder sent
+            await logAudit({
+              performedBy:  "Automated System",
+              eventType:    AuditEvent.TRIAL_REMINDER_SENT,
+              tenantId:     tenant.tenant_id,
+              businessName: tenant.business_name,
+              description:  "Automated trial-ending reminder dispatched to owner's email (24 h before expiry).",
+            });
+
             results.trial_reminders_sent.push(tenant.tenant_id);
           } catch (e) {
             results.errors.push(`Trial reminder email failed for ${tenant.tenant_id}: ${e}`);
@@ -100,8 +101,17 @@ export async function GET(req: NextRequest) {
         .eq("tenant_id", tenant.tenant_id);
 
       if (!upgradeError) {
+        // Audit: trial converted automatically
+        await logAudit({
+          performedBy:  "Cron: billing",
+          eventType:    AuditEvent.TRIAL_CONVERTED,
+          tenantId:     tenant.tenant_id,
+          businessName: tenant.business_name,
+          description:  "Trial period expired. Tenant automatically upgraded to Active.",
+        });
+
         results.trial_ended_upgraded.push(tenant.tenant_id);
-        tenant.subscription_status = "Active"; // mutate for step 4
+        tenant.subscription_status = "Active";
       } else {
         results.errors.push(`Upgrade failed for ${tenant.tenant_id}: ${upgradeError.message}`);
         continue;
@@ -122,7 +132,6 @@ export async function GET(req: NextRequest) {
         .maybeSingle();
 
       if (!existing) {
-        // Due on the 15th of next month
         const overdueAt = new Date(
           now.getFullYear(),
           now.getMonth() + 1,
@@ -132,11 +141,11 @@ export async function GET(req: NextRequest) {
         const { data: newRecord, error: insertError } = await supabase
           .from("subscription_records")
           .insert({
-            tenant_id: tenant.tenant_id,
+            tenant_id:      tenant.tenant_id,
             billing_period: billingPeriod,
             payment_status: "Pending",
-            amount: 1000.0,
-            overdue_at: overdueAt,
+            amount:         1000.0,
+            overdue_at:     overdueAt,
           })
           .select("subscription_id")
           .single();
@@ -148,7 +157,6 @@ export async function GET(req: NextRequest) {
         } else {
           results.billing_records_created.push(newRecord.subscription_id);
 
-          // Send invoice email + log notification
           try {
             await sendBillingInvoiceEmail(
               tenant.owner_email,
@@ -157,10 +165,25 @@ export async function GET(req: NextRequest) {
               1000
             );
             await supabase.from("billing_notifications").insert({
-              tenant_id: tenant.tenant_id,
+              tenant_id:         tenant.tenant_id,
               notification_type: "invoice_generated",
-              recipient_email: tenant.owner_email,
-              subject: `Monthly invoice for ${billingPeriod} — ${tenant.business_name}`,
+              recipient_email:   tenant.owner_email,
+              subject:           `Monthly invoice for ${billingPeriod} — ${tenant.business_name}`,
+            });
+
+            // Audit: invoice generated
+            await logAudit({
+              performedBy:  "Automated System",
+              eventType:    AuditEvent.INVOICE_GENERATED,
+              tenantId:     tenant.tenant_id,
+              businessName: tenant.business_name,
+              description:  `Monthly invoice generated for billing period ${billingPeriod}. Invoice email dispatched to owner.`,
+              metadata: {
+                subscriptionId: newRecord.subscription_id,
+                billingPeriod,
+                amount: 1000,
+                overdueAt,
+              },
             });
           } catch (e) {
             results.errors.push(`Invoice email failed for ${tenant.tenant_id}: ${e}`);
@@ -173,19 +196,22 @@ export async function GET(req: NextRequest) {
   // ── 5. Mark overdue records ──────────────────────────────────────────────────
   const { data: overdueRecords } = await supabase
     .from("subscription_records")
-    .select(
-      `
+    .select(`
       subscription_id,
       tenant_id,
       billing_period,
       notification_sent_at,
       tenants ( business_name, owner_email )
-    `
-    )
+    `)
     .eq("payment_status", "Pending")
     .lt("overdue_at", now.toISOString());
 
   for (const record of overdueRecords ?? []) {
+    const t = (Array.isArray(record.tenants) ? record.tenants[0] : record.tenants) as {
+      business_name: string;
+      owner_email: string;
+    };
+
     const { error: overdueError } = await supabase
       .from("subscription_records")
       .update({ payment_status: "Overdue" })
@@ -194,9 +220,7 @@ export async function GET(req: NextRequest) {
     if (!overdueError) {
       results.overdue_marked.push(record.subscription_id);
 
-      // Send overdue notification (once)
       if (!record.notification_sent_at) {
-       const t = (Array.isArray(record.tenants) ? record.tenants[0] : record.tenants) as { business_name: string; owner_email: string };
         try {
           await sendOverdueNotificationEmail(
             t.owner_email,
@@ -209,10 +233,20 @@ export async function GET(req: NextRequest) {
             .eq("subscription_id", record.subscription_id);
 
           await supabase.from("billing_notifications").insert({
-            tenant_id: record.tenant_id,
+            tenant_id:         record.tenant_id,
             notification_type: "overdue_notice",
-            recipient_email: t.owner_email,
-            subject: `Payment overdue for ${record.billing_period} — ${t.business_name}`,
+            recipient_email:   t.owner_email,
+            subject:           `Payment overdue for ${record.billing_period} — ${t.business_name}`,
+          });
+
+          // Audit: overdue notice sent
+          await logAudit({
+            performedBy:  "Automated System",
+            eventType:    AuditEvent.OVERDUE_NOTICE_SENT,
+            tenantId:     record.tenant_id,
+            businessName: t.business_name,
+            description:  `Payment overdue for billing period ${record.billing_period}. Overdue notification dispatched to owner's email.`,
+            metadata: { subscriptionId: record.subscription_id },
           });
         } catch (e) {
           results.errors.push(`Overdue email failed for ${record.subscription_id}: ${e}`);

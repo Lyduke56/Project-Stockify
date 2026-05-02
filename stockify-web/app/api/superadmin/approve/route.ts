@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendApprovalEmail, sendRejectionEmail } from "@/lib/mailer";
+import { logAudit, AuditEvent } from "@/lib/audit";
 
-// Service role client — bypasses RLS entirely
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -46,11 +46,10 @@ export async function POST(req: NextRequest) {
 
   // ── APPROVE ─────────────────────────────────────────────────────────────────
   if (action === "approve") {
-    // 7-day free trial starts from the moment of approval
     const { data: settings } = await supabase
-    .from("billing_settings")
-    .select("trial_days")
-    .single();
+      .from("billing_settings")
+      .select("trial_days")
+      .single();
 
     const trialDays = settings?.trial_days ?? 30;
 
@@ -80,12 +79,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: userUpdateError.message }, { status: 500 });
     }
 
-    // Log notification
     await supabase.from("billing_notifications").insert({
       tenant_id: tenantId,
       notification_type: "trial_started",
       recipient_email: tenant.owner_email,
       subject: `Your 7-day free trial has started — ${tenant.business_name}`,
+    });
+
+    // ── Audit: tenant approved + trial started ────────────────────────────
+    await logAudit({
+      performedBy:  "Superadmin",
+      eventType:    AuditEvent.TENANT_CREATED,
+      tenantId,
+      businessName: tenant.business_name,
+      description:  `Tenant approved. ${trialDays}-day free trial started, expires ${trialEndsAt.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" })}.`,
+      metadata: { trialEndsAt: trialEndsAt.toISOString(), trialDays },
     });
 
     try {
@@ -99,7 +107,6 @@ export async function POST(req: NextRequest) {
 
   // ── REJECT ───────────────────────────────────────────────────────────────────
   if (action === "reject") {
-    // 1. Get user_id (REQUIRED for auth deletion)
     const { data: publicUser, error: userFetchError } = await supabase
       .from("users")
       .select("user_id")
@@ -113,7 +120,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Save to terminated table
     const { error: terminatedError } = await supabase
       .from("terminated_business")
       .insert({
@@ -125,7 +131,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: terminatedError.message }, { status: 500 });
     }
 
-    // 3. Delete AUTH USER FIRST (cascades handled below)
+    // ── Audit: tenant rejected ─────────────────────────────────────────────
+    // Log BEFORE deletion so tenantId is still meaningful in the record
+    await logAudit({
+      performedBy:  "Superadmin",
+      eventType:    AuditEvent.TENANT_TERMINATED,
+      tenantId,
+      businessName: tenant.business_name,
+      description:  `Tenant application rejected. Account and auth user deleted.`,
+      metadata:     { ownerEmail: tenant.owner_email },
+    });
+
     const { error: authDeleteError } = await supabase.auth.admin.deleteUser(
       publicUser.user_id
     );
@@ -137,7 +153,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Delete tenant (cascade deletes public.users + billing records)
     const { error: deleteError } = await supabase
       .from("tenants")
       .delete()
@@ -147,7 +162,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
-    // 5. Email (non-blocking)
     try {
       await sendRejectionEmail(tenant.owner_email, tenant.business_name);
     } catch {

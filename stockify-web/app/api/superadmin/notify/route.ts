@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendBillingReminderEmail } from "@/lib/mailer";
+import { logAudit, AuditEvent } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,8 +44,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   }
 
-  const recipientEmail = (tenant as any).owner_email   as string;
-  const businessName   = (tenant as any).business_name as string;
+  const recipientEmail = (tenant as any).owner_email    as string;
+  const businessName   = (tenant as any).business_name  as string;
   const ownerName      = (tenant as any).owner_full_name as string;
 
   // ── 2. Resolve earliest unpaid billing period ─────────────────────────
@@ -102,6 +103,20 @@ export async function POST(req: Request) {
       .eq("tenant_id", tenantId)
       .eq("billing_period", unpaidRecords[0].billing_period);
   }
+
+  // ── 6. Audit: notification sent ───────────────────────────────────────
+  await logAudit({
+    performedBy:  "Superadmin",
+    eventType:    AuditEvent.NOTIFICATION_SENT,
+    tenantId,
+    businessName,
+    description:  `Billing reminder email sent to ${recipientEmail}. Subject: "${subject}"`,
+    metadata: {
+      recipientEmail,
+      subject,
+      billingPeriod: unpaidRecords[0]?.billing_period ?? null,
+    },
+  });
 
   return NextResponse.json({ success: true, sentTo: recipientEmail });
 }
