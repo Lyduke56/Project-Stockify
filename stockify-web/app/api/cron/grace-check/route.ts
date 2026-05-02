@@ -1,16 +1,17 @@
-// /app/api/cron/grace-check/route.ts
+// app/api/cron/grace-check/route.ts
 //
-// Vercel Cron — runs daily at 01:00 UTC
+// Vercel Cron — runs daily at 01:00 UTC.
 // vercel.json: { "path": "/api/cron/grace-check", "schedule": "0 1 * * *" }
 //
-// Lifecycle enforced here:
-//   Pending  → Overdue   (when overdue_at passes)
-//   Overdue  → Grace     (when overdue_at passes — same day, opens grace window)
-//   Grace    → suspended_tenants row created + tenant suspended  (when grace_ends_at passes)
+// Lifecycle:
+//   Pending  → Overdue   (overdue_at passed)
+//   Overdue  → Suspended (grace_ends_at passed → suspend tenant)
+//   Suspended → Terminated (suspension_expires_at passed → auto-terminate)
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendOverdueNotificationEmail } from "@/lib/email";
+import { sendOverdueNotificationEmail } from "@/lib/mailer";
+import { logAudit, AuditEvent } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,9 +24,7 @@ function isAuthorized(req: NextRequest): boolean {
   return req.headers.get("authorization") === `Bearer ${secret}`;
 }
 
-// Small email helper — add this to /lib/email.ts as well (shown at bottom)
-async function sendGraceStartEmail(email: string, businessName: string, graceEndsAt: Date, graceDays: number) {
-  // import and call your sendEmail helper — template shown below
+async function sendGraceStartEmail(email: string, businessName: string, graceEndsAt: Date) {
   console.log(`[email] Grace period started for ${businessName}, ends ${graceEndsAt.toISOString()}`);
 }
 
@@ -52,8 +51,9 @@ export async function GET(req: NextRequest) {
 
   const results = {
     moved_to_grace: [] as string[],
-    suspended: [] as string[],
-    errors: [] as string[],
+    suspended:      [] as string[],
+    terminated:     [] as string[],
+    errors:         [] as string[],
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
   for (const record of nowOverdue ?? []) {
     const t = (Array.isArray(record.tenants) ? record.tenants[0] : record.tenants) as {
       business_name: string;
-      owner_email: string;
+      owner_email:   string;
     };
 
     // Compute grace_ends_at if not already set
@@ -107,16 +107,30 @@ export async function GET(req: NextRequest) {
     if (!record.notification_sent_at) {
       try {
         await sendOverdueNotificationEmail(t.owner_email, t.business_name, record.billing_period);
-        // sendGraceStartEmail — add to /lib/email.ts, wired here
+        await sendGraceStartEmail(t.owner_email, t.business_name, graceEndsAt);
         await supabase
           .from("subscription_records")
           .update({ notification_sent_at: now.toISOString() })
           .eq("subscription_id", record.subscription_id);
         await supabase.from("billing_notifications").insert({
-          tenant_id: record.tenant_id,
+          tenant_id:         record.tenant_id,
           notification_type: "grace_period_started",
-          recipient_email: t.owner_email,
-          subject: `⚠️ Grace period started — ${t.business_name}`,
+          recipient_email:   t.owner_email,
+          subject:           `⚠️ Grace period started — ${t.business_name}`,
+        });
+
+        // Audit: grace period started
+        await logAudit({
+          performedBy:  "Cron: grace-check",
+          eventType:    AuditEvent.GRACE_PERIOD_STARTED,
+          tenantId:     record.tenant_id,
+          businessName: t.business_name,
+          description:  `Grace period started for billing period ${record.billing_period}. Grace window closes ${graceEndsAt.toISOString().split("T")[0]}. Overdue notification dispatched.`,
+          metadata: {
+            subscriptionId: record.subscription_id,
+            billingPeriod:  record.billing_period,
+            graceEndsAt:    graceEndsAt.toISOString(),
+          },
         });
       } catch (e) {
         results.errors.push(`Grace email failed for ${record.subscription_id}: ${e}`);
@@ -141,10 +155,10 @@ export async function GET(req: NextRequest) {
 
   for (const record of pastGrace ?? []) {
     const t = (Array.isArray(record.tenants) ? record.tenants[0] : record.tenants) as {
-      business_name: string;
-      owner_email: string;
+      business_name:  string;
+      owner_email:    string;
       owner_full_name: string;
-      is_suspended: boolean;
+      is_suspended:   boolean;
     };
 
     // Skip if already suspended
@@ -187,21 +201,44 @@ export async function GET(req: NextRequest) {
       .update({ is_active: false })
       .eq("tenant_id", record.tenant_id);
 
-    // 4. Mark billing record
+    // 4. Keep billing record as Overdue (still unpaid)
     await supabase
       .from("subscription_records")
-      .update({ payment_status: "Overdue" }) // keep Overdue — it IS still unpaid
+      .update({ payment_status: "Overdue" })
       .eq("subscription_id", record.subscription_id);
 
     results.suspended.push(record.tenant_id);
 
+    // Audit: tenant suspended
+    await logAudit({
+      performedBy:  "Automated System",
+      eventType:    AuditEvent.TENANT_SUSPENDED,
+      tenantId:     record.tenant_id,
+      businessName: t.business_name,
+      description:  `Automatic suspension triggered. Grace period expired without payment for billing period ${record.billing_period}. Account access disabled.`,
+      metadata: {
+        subscriptionId:   record.subscription_id,
+        billingPeriod:    record.billing_period,
+        suspensionEndsAt: suspensionEndsAt.toISOString(),
+      },
+    });
+
     try {
       await sendAutoSuspendEmail(t.owner_email, t.business_name, suspensionEndsAt);
       await supabase.from("billing_notifications").insert({
-        tenant_id: record.tenant_id,
+        tenant_id:         record.tenant_id,
         notification_type: "auto_suspended",
-        recipient_email: t.owner_email,
-        subject: `🚫 Account suspended — ${t.business_name}`,
+        recipient_email:   t.owner_email,
+        subject:           `🚫 Account suspended — ${t.business_name}`,
+      });
+
+      // Audit: suspension notice sent
+      await logAudit({
+        performedBy:  "Automated System",
+        eventType:    AuditEvent.SUSPENSION_NOTICE_SENT,
+        tenantId:     record.tenant_id,
+        businessName: t.business_name,
+        description:  "Suspension notification dispatched to owner's email.",
       });
     } catch (e) {
       results.errors.push(`Suspend email failed for ${record.tenant_id}: ${e}`);
@@ -217,7 +254,20 @@ export async function GET(req: NextRequest) {
     .lt("suspension_expires_at", now.toISOString());
 
   for (const row of expiredSuspensions ?? []) {
-    // 1. Archive to terminated_business
+    // 1. Audit BEFORE deletion (tenant_id FK will be set null after cascade)
+    await logAudit({
+      performedBy:  "Automated System",
+      eventType:    AuditEvent.TENANT_TERMINATED,
+      tenantId:     row.tenant_id,
+      businessName: row.business_name,
+      description:  "Automatic termination triggered. Suspension window expired without payment. Account and all associated data permanently removed.",
+      metadata: {
+        ownerName:  row.owner_name,
+        ownerEmail: row.owner_email,
+      },
+    });
+
+    // 2. Archive to terminated_business
     await supabase.from("terminated_business").insert({
       business_name: row.business_name,
       owner_name:    row.owner_name,
@@ -225,7 +275,7 @@ export async function GET(req: NextRequest) {
       remarks:       "Auto-terminated: suspension window expired without payment.",
     });
 
-    // 2. Get user_id for auth deletion
+    // 3. Get user_id for auth deletion
     const { data: user } = await supabase
       .from("users")
       .select("user_id")
@@ -236,12 +286,15 @@ export async function GET(req: NextRequest) {
       await supabase.auth.admin.deleteUser(user.user_id);
     }
 
-    // 3. Delete tenant (cascades users, billing records)
+    // 4. Delete tenant (cascades users, billing records)
     await supabase.from("tenants").delete().eq("tenant_id", row.tenant_id);
 
-    // 4. Remove from suspended_tenants
+    // 5. Remove from suspended_tenants
     await supabase.from("suspended_tenants").delete().eq("id", row.id);
+
+    results.terminated.push(row.tenant_id);
   }
 
+  console.log("[cron/grace-check] Completed:", results);
   return NextResponse.json({ success: true, results });
 }

@@ -1,7 +1,12 @@
-// /app/api/cron/trial-check/route.ts
+// app/api/cron/trial-check/route.ts
+//
+// Vercel Cron — runs daily.
+// vercel.json: { "path": "/api/cron/trial-check", "schedule": "0 0 * * *" }
+
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendBillingInvoiceEmail, sendTrialEndingEmail } from "@/lib/email";
+import { sendBillingInvoiceEmail, sendTrialEndingEmail } from "@/lib/mailer";
+import { logAudit, AuditEvent } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,8 +38,8 @@ export async function GET(req: NextRequest) {
 
   const results = {
     trial_reminders_sent: [] as string[],
-    converted_to_active: [] as string[],
-    errors: [] as string[],
+    converted_to_active:  [] as string[],
+    errors:               [] as string[],
   };
 
   // ── Fetch all Trial tenants ────────────────────────────────────────────────
@@ -68,11 +73,21 @@ export async function GET(req: NextRequest) {
         try {
           await sendTrialEndingEmail(tenant.owner_email, tenant.business_name, trialEndsAt);
           await supabase.from("billing_notifications").insert({
-            tenant_id: tenant.tenant_id,
+            tenant_id:         tenant.tenant_id,
             notification_type: "trial_ending_reminder",
-            recipient_email: tenant.owner_email,
-            subject: `Your free trial ends tomorrow — ${tenant.business_name}`,
+            recipient_email:   tenant.owner_email,
+            subject:           `Your free trial ends tomorrow — ${tenant.business_name}`,
           });
+
+          // Audit: trial reminder sent
+          await logAudit({
+            performedBy:  "Automated System",
+            eventType:    AuditEvent.TRIAL_REMINDER_SENT,
+            tenantId:     tenant.tenant_id,
+            businessName: tenant.business_name,
+            description:  "Automated trial-ending reminder dispatched to owner's email (24 h before expiry).",
+          });
+
           results.trial_reminders_sent.push(tenant.tenant_id);
         } catch (e) {
           results.errors.push(`Trial reminder failed for ${tenant.tenant_id}: ${e}`);
@@ -82,16 +97,13 @@ export async function GET(req: NextRequest) {
 
     // ── Trial expired → convert to Active + generate first invoice ───────────
     if (now >= trialEndsAt) {
-      // billing_period = first day of current month (YYYY-MM-DD)
       const billingPeriod = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
         .split("T")[0];
 
-      // due_date = billing_due_days after trial ends (e.g. 30 days)
       const overdueAt = new Date(trialEndsAt);
       overdueAt.setDate(overdueAt.getDate() + settings.billing_due_days);
 
-      // grace_ends_at = overdue_at + grace_period_days
       const graceEndsAt = new Date(overdueAt);
       graceEndsAt.setDate(graceEndsAt.getDate() + settings.grace_period_days);
 
@@ -103,7 +115,7 @@ export async function GET(req: NextRequest) {
         .maybeSingle();
 
       if (!existing) {
-        const { error: insertError } = await supabase
+        const { data: newRecord, error: insertError } = await supabase
           .from("subscription_records")
           .insert({
             tenant_id:      tenant.tenant_id,
@@ -112,7 +124,9 @@ export async function GET(req: NextRequest) {
             amount:         settings.monthly_price,
             overdue_at:     overdueAt.toISOString(),
             grace_ends_at:  graceEndsAt.toISOString(),
-          });
+          })
+          .select("subscription_id")
+          .single();
 
         if (insertError) {
           results.errors.push(`Billing insert failed for ${tenant.tenant_id}: ${insertError.message}`);
@@ -127,10 +141,26 @@ export async function GET(req: NextRequest) {
             settings.monthly_price
           );
           await supabase.from("billing_notifications").insert({
-            tenant_id: tenant.tenant_id,
+            tenant_id:         tenant.tenant_id,
             notification_type: "invoice_generated",
-            recipient_email: tenant.owner_email,
-            subject: `Monthly invoice — ${tenant.business_name}`,
+            recipient_email:   tenant.owner_email,
+            subject:           `Monthly invoice — ${tenant.business_name}`,
+          });
+
+          // Audit: invoice generated on trial conversion
+          await logAudit({
+            performedBy:  "Automated System",
+            eventType:    AuditEvent.INVOICE_GENERATED,
+            tenantId:     tenant.tenant_id,
+            businessName: tenant.business_name,
+            description:  `First monthly invoice generated after trial expiry. Billing period: ${billingPeriod}. Invoice email dispatched.`,
+            metadata: {
+              subscriptionId: newRecord.subscription_id,
+              billingPeriod,
+              amount:       settings.monthly_price,
+              overdueAt:    overdueAt.toISOString(),
+              graceEndsAt:  graceEndsAt.toISOString(),
+            },
           });
         } catch (e) {
           results.errors.push(`Invoice email failed for ${tenant.tenant_id}: ${e}`);
@@ -142,6 +172,20 @@ export async function GET(req: NextRequest) {
         .from("tenants")
         .update({ subscription_status: "Active", trial_ends_at: null })
         .eq("tenant_id", tenant.tenant_id);
+
+      // Audit: trial converted to active
+      await logAudit({
+        performedBy:  "Cron: trial-check",
+        eventType:    AuditEvent.TRIAL_CONVERTED,
+        tenantId:     tenant.tenant_id,
+        businessName: tenant.business_name,
+        description:  `Trial period expired. Tenant automatically converted to Active and first billing record created for period ${billingPeriod}.`,
+        metadata: {
+          billingPeriod,
+          overdueAt:   overdueAt.toISOString(),
+          graceEndsAt: graceEndsAt.toISOString(),
+        },
+      });
 
       results.converted_to_active.push(tenant.tenant_id);
     }

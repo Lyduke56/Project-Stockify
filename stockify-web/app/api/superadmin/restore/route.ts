@@ -1,18 +1,7 @@
-// /app/api/superadmin/restore/route.ts
-//
-// POST /api/superadmin/restore
-// Body: { tenantId, suspendedRowId, remarks? }
-//
-// Steps:
-//  1. Fetch tenant + suspension info
-//  2. Update tenants: clear is_suspended + suspended_until
-//  3. Delete row from suspended_tenants
-//  4. Send restoration confirmation email to owner
-//  5. Return success
-
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendRestorationEmail } from "@/lib/mailer";
+import { logAudit, AuditEvent } from "@/lib/audit";
 
 export async function POST(req: Request) {
   const supabase = createClient(
@@ -23,9 +12,9 @@ export async function POST(req: Request) {
 
   const body = await req.json();
   const { tenantId, suspendedRowId, remarks } = body as {
-    tenantId: string;
+    tenantId:       string;
     suspendedRowId: string;
-    remarks?: string;
+    remarks?:       string;
   };
 
   if (!tenantId || !suspendedRowId) {
@@ -53,12 +42,12 @@ export async function POST(req: Request) {
       subscription_status: "Active",
       is_suspended:        false,
       suspended_until:     null,
-      is_active:           true,   // ← add this
+      is_active:           true,
     })
     .eq("tenant_id", tenantId);
 
-    if (unsuspendErr) {
-      return NextResponse.json({ error: unsuspendErr.message }, { status: 500 });
+  if (unsuspendErr) {
+    return NextResponse.json({ error: unsuspendErr.message }, { status: 500 });
   }
 
   // ── 3. Delete from suspended_tenants ─────────────────────────────────────
@@ -67,28 +56,37 @@ export async function POST(req: Request) {
     .delete()
     .eq("id", suspendedRowId);
 
-    if (deleteErr) {
-      console.error("[restore] Failed to delete suspended_tenants row:", deleteErr.message);
+  if (deleteErr) {
+    console.error("[restore] Failed to delete suspended_tenants row:", deleteErr.message);
   }
 
-
-  // ── 4. Send restoration email ─────────────────────────────────────────────
-
+  // ── 4. Reactivate users ───────────────────────────────────────────────────
   await supabase
-  .from("users")
-  .update({ is_active: true })
-  .eq("tenant_id", tenantId);
-  
+    .from("users")
+    .update({ is_active: true })
+    .eq("tenant_id", tenantId);
+
+  // ── 5. Audit: tenant restored ─────────────────────────────────────────────
+  await logAudit({
+    performedBy:  "Superadmin",
+    eventType:    AuditEvent.TENANT_RESTORED,
+    tenantId,
+    businessName: tenant.business_name,
+    description:  `Tenant manually restored. Suspension lifted by administrator. Remarks: "${remarks?.trim() || "Suspension lifted by administrator."}"`,
+    metadata:     { suspendedRowId, remarks: remarks?.trim() ?? null },
+  });
+
+  // ── 6. Send restoration email ─────────────────────────────────────────────
   try {
-  await sendRestorationEmail(
-    tenant.owner_email,
-    tenant.business_name,
-    tenant.owner_full_name,
-    remarks?.trim() || "Suspension lifted by administrator.",
-  );
-} catch (e) {
-  console.error("[restore] Email failed:", e);
-}
+    await sendRestorationEmail(
+      tenant.owner_email,
+      tenant.business_name,
+      tenant.owner_full_name,
+      remarks?.trim() || "Suspension lifted by administrator.",
+    );
+  } catch (e) {
+    console.error("[restore] Email failed:", e);
+  }
 
   return NextResponse.json({ success: true });
 }

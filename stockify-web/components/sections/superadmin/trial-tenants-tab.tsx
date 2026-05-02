@@ -173,7 +173,7 @@ export default function TrialTenantsTab() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/cron/billing");
+      const res = await fetch("/api/cron/active-trial");
       const result = await res.json();
       if (result.error) throw new Error(result.error);
 
@@ -234,7 +234,7 @@ export default function TrialTenantsTab() {
     setActionLoading(true);
     setActionError("");
     try {
-      const res = await fetch("/api/cron/billing", {
+      const res = await fetch("/api/cron/active-trial", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
             body:    JSON.stringify({ tenantId: selectedTenant.tenant_id }),

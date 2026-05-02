@@ -1,13 +1,12 @@
 import { sendManualSuspendEmail } from "@/lib/mailer";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-
+import { logAudit, AuditEvent } from "@/lib/audit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
-
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -64,7 +63,7 @@ export async function POST(req: Request) {
     .update({ is_active: false })
     .eq("tenant_id", tenantId);
 
-  // ── 5. Audit log ──────────────────────────────────────────────────────────
+  // ── 5. Insert into suspended_tenants ──────────────────────────────────────
   const { error: insertErr } = await supabase.from("suspended_tenants").insert({
     tenant_id:             tenantId,
     business_name:         tenant.business_name,
@@ -78,16 +77,30 @@ export async function POST(req: Request) {
     console.error("[suspend] suspended_tenants insert error:", insertErr.message);
   }
 
-  // ── 6. Send suspension email ──────────────────────────────────────────────
+  // ── 6. Audit: tenant suspended ────────────────────────────────────────────
+  await logAudit({
+    performedBy:  "Superadmin",
+    eventType:    AuditEvent.TENANT_SUSPENDED,
+    tenantId,
+    businessName: tenant.business_name,
+    description:  `Tenant manually suspended. Reason: "${reason?.trim() || "Overdue subscription payment"}". Suspension expires ${expiryLabel}.`,
+    metadata: {
+      reason:                reason?.trim() ?? null,
+      suspensionDays,
+      suspensionExpiresAt:   suspensionExpiresAt.toISOString(),
+    },
+  });
+
+  // ── 7. Send suspension email ──────────────────────────────────────────────
   try {
-  await sendManualSuspendEmail(
-    tenant.owner_email,
-    tenant.business_name,
-    tenant.owner_full_name,
-    reason?.trim() || "overdue subscription payment",
-    expiryLabel,
-    suspensionDays,
-  );
+    await sendManualSuspendEmail(
+      tenant.owner_email,
+      tenant.business_name,
+      tenant.owner_full_name,
+      reason?.trim() || "overdue subscription payment",
+      expiryLabel,
+      suspensionDays,
+    );
   } catch (e) {
     console.error("[suspend] Email failed:", e);
   }
