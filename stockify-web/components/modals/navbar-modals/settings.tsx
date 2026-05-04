@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { createClient } from "@/lib/supabase/client"; 
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -155,9 +156,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen || !mounted) return null;
 
 
-  const handlePasswordSave = () => {
+  const handlePasswordSave = async () => {
+    const supabase = createClient();
     setPassError("");
     setPassSaved(false);
+
+    // 1. Basic Frontend Validation
     if (!currentPass || !newPass || !confirmPass) {
       setPassError("All password fields are required.");
       return;
@@ -170,11 +174,47 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setPassError("New passwords do not match.");
       return;
     }
-    setPassSaved(true);
-    setCurrentPass("");
-    setNewPass("");
-    setConfirmPass("");
-    setTimeout(() => setPassSaved(false), 3000);
+
+    try {
+      // 2. Re-authenticate to verify the 'Current Password'
+      // Supabase requires a fresh login to change sensitive data
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userEmail = sessionData.session?.user.email;
+
+      if (!userEmail) throw new Error("User session not found.");
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: currentPass,
+      });
+
+      if (signInError) {
+        setPassError("The 'Current Password' you entered is incorrect.");
+        return;
+      }
+
+      // 3. Perform the actual update
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPass,
+      });
+
+      if (updateError) {
+        setPassError(updateError.message);
+        return;
+      }
+
+      // 4. Success State (Matches image_98c05a.jpg layout)
+      setPassSaved(true);
+      setCurrentPass("");
+      setNewPass("");
+      setConfirmPass("");
+      
+      // Clear success message after 5 seconds
+      setTimeout(() => setPassSaved(false), 5000);
+
+    } catch (err: any) {
+      setPassError("An unexpected error occurred. Please try again.");
+    }
   };
 
   const tabs: { key: Tab; label: string; Icon: React.FC }[] = [
