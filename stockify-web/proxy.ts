@@ -9,13 +9,9 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll() { return request.cookies.getAll(); },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
@@ -25,17 +21,32 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 🔒 Protect dashboard routes — redirect to home if not logged in
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/", request.url));
+  const isProtectedRoute = 
+    request.nextUrl.pathname.startsWith("/superadmin") || 
+    request.nextUrl.pathname.includes("/administrator") ||
+    request.nextUrl.pathname.startsWith("/dashboard");
+
+  // 1. Handle Unauthenticated Access
+  if (!user && isProtectedRoute) {
+    const redirectResponse = NextResponse.redirect(new URL("/", request.url));
+    redirectResponse.headers.set('Cache-Control', 'no-store, max-age=0');
+    return redirectResponse;
+  }
+
+  // 2. Handle Authenticated Access (Add this part!)
+  // This tells the browser: "Even if I am logged in, do not cache this page snapshot."
+  if (isProtectedRoute) {
+    supabaseResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    supabaseResponse.headers.set('Pragma', 'no-cache');
+    supabaseResponse.headers.set('Expires', '0');
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // Added "Dashboard Icons" to the exclusion list so assets load even if not logged in
+  matcher: ["/((?!_next/static|_next/image|Dashboard Icons|favicon.ico).*)"],
 };

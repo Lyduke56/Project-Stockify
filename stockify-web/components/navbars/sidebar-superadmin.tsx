@@ -2,8 +2,9 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client"; // Ensure this import exists
 import LogoutModal from "../modals/logout-modal";
-import SettingsModal from "../modals/navbar-modals/settings"; // <-- NEW
+import SettingsModal from "../modals/navbar-modals/settings";
 
 interface NavItemProps {
   label: string;
@@ -42,9 +43,10 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
 export default function SidebarSuperAdmin() {
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient(); // Initialize supabase client
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false); // <-- NEW
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const adminNavItems = [
     { label: "Dashboard",            iconFileName: "icon-dashboard",            path: "/superadmin/dashboard" },
@@ -63,7 +65,6 @@ export default function SidebarSuperAdmin() {
       setShowLogoutModal(true);
       return;
     }
-    // Open modal for Settings instead of navigating
     if (label === "Settings") {
       setShowSettingsModal(true);
       return;
@@ -71,16 +72,23 @@ export default function SidebarSuperAdmin() {
     router.push(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem("token");
+    
     setShowLogoutModal(false);
-    router.push("/");
+
+    // Replace the current history entry with the home page first
+    router.replace("/");
+
+    // Then force a hard reload to ensure all state is wiped
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 100);
   };
 
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-between shrink-0 sticky top-0 overflow-y-auto">
-
-      {/* Top Navigation */}
       <div className="w-full flex flex-col gap-1">
         {adminNavItems.map((item) => (
           <NavItem
@@ -102,7 +110,6 @@ export default function SidebarSuperAdmin() {
               key={item.label}
               label={item.label}
               iconFileName={item.iconFileName}
-              // Settings is never "active" in the URL sense — it opens a modal
               isActive={item.label !== "Settings" && pathname === item.path}
               onClick={() => handleNavigation(item.label, item.path)}
             />
@@ -117,10 +124,9 @@ export default function SidebarSuperAdmin() {
         onConfirm={handleLogout}
       />
       <SettingsModal 
-      isOpen={showSettingsModal}
-              onClose={() => setShowSettingsModal(false)}
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
       />
-            
     </div>
   );
 }
