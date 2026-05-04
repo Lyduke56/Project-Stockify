@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import {
   AreaChart,
   Area,
@@ -19,6 +20,19 @@ import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 
+// ── Singleton Supabase client ─────────────────────────────────────────────────
+let supabaseInstance: SupabaseClient | null = null;
+const getSupabase = () => {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return supabaseInstance;
+};
+const supabase = getSupabase();
+
 // ─── MRR Chart Data ──────────────────────────────────────────────────────────
 const mrrData = [
   { month: "Jan", revenue: 45000 },
@@ -29,129 +43,15 @@ const mrrData = [
   { month: "Jun", revenue: 75000 },
 ];
 
-// ─── Activity Log data (15 Items) ────────────────────────────────────────────
-const activityLogData = [
-  {
-    id: 1,
-    date: "04/27/2026 10:15 AM",
-    performedBy: "Superadmin (Axziel)",
-    businessName: "Cafe Cebu",
-    eventType: "PaymentRecorded",
-    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
-  },
-  {
-    id: 2,
-    date: "04/26/2026 09:00 AM",
-    performedBy: "Automated System",
-    businessName: "Tech Hub IT",
-    eventType: "NotificationSent",
-    description: "Automated 3-day payment reminder dispatched to owner's email.",
-  },
-  {
-    id: 3,
-    date: "04/25/2026 04:30 PM",
-    performedBy: "Superadmin (Benideck)",
-    businessName: "Ness LALAt",
-    eventType: "TenantSuspended",
-    description: "Automatic suspension triggered. Reason: 7 days past due on billing grace period.",
-  },
-  {
-    id: 4,
-    date: "04/25/2026 11:20 AM",
-    performedBy: "Superadmin (Axziel)",
-    businessName: "Apex Dynamics",
-    eventType: "TenantSuspended",
-    description: "Automatic Suspension triggered. Reason: 3 days past due on billing grace period. ",
-  },
-  {
-    id: 5,
-    date: "04/24/2026 02:15 PM",
-    performedBy: "Automated System",
-    businessName: "Horizon Media",
-    eventType: "NotificationSent",
-    description: "Automated 3-day payment reminder dispatched to owner's email.",
-  },
-  {
-    id: 6,
-    date: "04/24/2026 09:45 AM",
-    performedBy: "Superadmin (Benideck)",
-    businessName: "Pioneer Foods",
-    eventType: "TenantCreated",
-    description: "Approved application and provisioned new tenant environment.",
-  },
-  {
-    id: 7,
-    date: "04/23/2026 03:10 PM",
-    performedBy: "Superadmin (Axziel)",
-    businessName: "Summit Finance",
-    eventType: "NotificationSent",
-    description: "Automated 3-day payment reminder dispatched to owner's email.",
-  },
-  {
-    id: 8,
-    date: "04/22/2026 10:05 AM",
-    performedBy: "Automated System",
-    businessName: "Vanguard Tech",
-    eventType: "TenantCreated",
-    description: "Approved application and provisioned new tenant environment.",
-  },
-  {
-    id: 9,
-    date: "04/21/2026 04:50 PM",
-    performedBy: "Superadmin (Benideck)",
-    businessName: "Quantum Retail",
-    eventType: "TenantRestored",
-    description: "Lifted suspension after verifying delayed wire transfer payment.",
-  },
-  {
-    id: 10,
-    date: "04/20/2026 01:30 PM",
-    performedBy: "Automated System",
-    businessName: "Nexus Health",
-    eventType: "TenantTerminated",
-    description: "Automatic Termination triggered. Reason: 3 days past due on billing grace period. "
-  },
-  {
-    id: 11,
-    date: "04/19/2026 11:15 AM",
-    performedBy: "Superadmin (Axziel)",
-    businessName: "Global Logistics",
-    eventType: "TenantRestored",
-    description: "Lifted suspension after verifying delayed wire transfer payment.",
-  },
-  {
-    id: 12,
-    date: "04/18/2026 08:45 AM",
-    performedBy: "Superadmin (Benideck)",
-    businessName: "City Bakery",
-    eventType: "TenantRestored",
-    description: "Lifted suspension after verifying delayed wire transfer payment.",
-  },
-  {
-    id: 13,
-    date: "04/17/2026 05:20 PM",
-    performedBy: "Automated System",
-    businessName: "Urban Decor",
-    eventType: "PaymentRecorded",
-    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
-  },
-  {
-    id: 14,
-    date: "04/16/2026 02:00 PM",
-    performedBy: "Superadmin (Axziel)",
-    businessName: "Metro Clinics",
-    eventType: "PaymentRecorded",
-    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
-  },
-  {
-    id: 15,
-    date: "04/15/2026 10:30 AM",
-    performedBy: "Superadmin (Benideck)",
-    businessName: "Alpha Studios",
-    eventType: "PaymentRecorded",
-    description: "Logged manual GCash payment for April 2026 billing cycle. Status set to Paid.",
-  },
-];
+// ─── Audit Log Type ───────────────────────────────────────────────────────────
+interface AuditLog {
+  id:            string;
+  created_at:    string;
+  performed_by:  string;
+  business_name: string | null;
+  event_type:    string;
+  description:   string;
+}
 
 // Custom Tooltip for the chart
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -172,6 +72,72 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SuperadminDashboard() {
   const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const [stats, setStats] = useState({
+    active:  0,
+    pending: 0,
+  });
+
+  const [auditLogs,    setAuditLogs]    = useState<AuditLog[]>([]);
+  const [logsLoading,  setLogsLoading]  = useState(true);
+
+  // ── Fetch audit logs ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchAuditLogs = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("audit_logs")
+          .select("id, created_at, performed_by, business_name, event_type, description")
+          .order("created_at", { ascending: false })
+          .limit(15);
+
+        if (error) throw error;
+        setAuditLogs(data ?? []);
+      } catch (error) {
+        console.error("Error fetching audit logs:", error);
+      } finally {
+        setLogsLoading(false);
+      }
+    };
+
+    fetchAuditLogs();
+
+    // Poll every 10 seconds
+    const interval = setInterval(fetchAuditLogs, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Fetch stat counts ───────────────────────────────────────────────────────
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [activeRes, pendingRes, suspendedRes] = await Promise.all([
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", true),
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", false),
+          supabase.from("suspended_tenants").select("*", { count: "exact", head: true }),
+        ]);
+
+        const totalActiveVerified = activeRes.count   || 0;
+        const totalSuspended      = suspendedRes.count || 0;
+
+        setStats({
+          active:  totalActiveVerified - totalSuspended,
+          pending: pendingRes.count || 0,
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+      }
+    };
+
+    // Initial fetch
+    fetchStats();
+
+    // Poll every 5 seconds
+    const interval = setInterval(fetchStats, 5000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
@@ -211,10 +177,22 @@ export default function SuperadminDashboard() {
         {/* ── Stat Cards ── */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.15 }}>
-            <StatCard title="Active Tenants" value="1.24k" trendText="↑ 5% this month (January)" className="w-full pb-5 h-full" svgName="SA-active-tenants" />
+            <StatCard
+              title="Active Tenants"
+              value={stats.active}
+              trendText="Verified and operational"
+              className="w-full pb-5 h-full"
+              svgName="SA-active-tenants"
+            />
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.25 }}>
-            <StatCard title="Pending Applications" value="39" trendText="39 new applications await review" className="w-full pb-5 h-full" svgName="SA-pending-app" />
+            <StatCard
+              title="Pending Applications"
+              value={stats.pending}
+              trendText={`${stats.pending} new applications await review`}
+              className="w-full pb-5 h-full"
+              svgName="SA-pending-app"
+            />
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.35 }}>
             <StatCard title="Pending Invoices" value="124" trendText="Review their payment status and take action" className="w-full pb-5 h-full" svgName="SA-late-payments" />
@@ -292,22 +270,40 @@ export default function SuperadminDashboard() {
 
             {/* Data Rows */}
             <div className="flex flex-col w-full">
-              {activityLogData.map((row, idx) => {
-                const isLast = idx === activityLogData.length - 1;
-                return (
-                  <div key={row.id} className={`w-full flex px-6 py-4 items-start gap-4 hover:bg-[#385E31]/5 transition-colors ${!isLast ? "border-b border-[#385E31]/20" : ""}`}>
-                    <div className="w-[150px] shrink-0 text-[#3A6131] text-[13px] font-medium pt-0.5">{row.date}</div>
-                    <div className="w-[160px] shrink-0 text-[#3A6131] text-[13px] font-medium pt-0.5">{row.performedBy}</div>
-                    <div className="w-[140px] shrink-0 text-[#3A6131] text-[13px] font-bold pt-0.5">{row.businessName}</div>
-                    <div className="w-[180px] shrink-0 flex items-start">
-                      <span className="bg-[#E2E8F0] text-[#475569] font-mono text-[11px] px-2.5 py-1 rounded-md">
-                        {row.eventType}
-                      </span>
+              {logsLoading ? (
+                <div className="w-full flex items-center justify-center py-10 text-[#385E31] text-[14px] font-medium">
+                  Loading activity logs…
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div className="w-full flex items-center justify-center py-10 text-[#385E31] text-[14px] font-medium">
+                  No activity logs found.
+                </div>
+              ) : (
+                auditLogs.map((row, idx) => {
+                  const isLast = idx === auditLogs.length - 1;
+                  const formattedDate = new Date(row.created_at).toLocaleString("en-US", {
+                    month:  "2-digit",
+                    day:    "2-digit",
+                    year:   "numeric",
+                    hour:   "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  });
+                  return (
+                    <div key={row.id} className={`w-full flex px-6 py-4 items-start gap-4 hover:bg-[#385E31]/5 transition-colors ${!isLast ? "border-b border-[#385E31]/20" : ""}`}>
+                      <div className="w-[150px] shrink-0 text-[#3A6131] text-[13px] font-medium pt-0.5">{formattedDate}</div>
+                      <div className="w-[160px] shrink-0 text-[#3A6131] text-[13px] font-medium pt-0.5">{row.performed_by}</div>
+                      <div className="w-[140px] shrink-0 text-[#3A6131] text-[13px] font-bold pt-0.5">{row.business_name ?? "—"}</div>
+                      <div className="w-[180px] shrink-0 flex items-start">
+                        <span className="bg-[#E2E8F0] text-[#475569] font-mono text-[11px] px-2.5 py-1 rounded-md">
+                          {row.event_type}
+                        </span>
+                      </div>
+                      <div className="flex-1 text-[#3A6131] text-[13px] leading-relaxed pt-0.5">{row.description}</div>
                     </div>
-                    <div className="flex-1 text-[#3A6131] text-[13px] leading-relaxed pt-0.5">{row.description}</div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </motion.div>
