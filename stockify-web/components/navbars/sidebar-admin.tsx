@@ -53,16 +53,11 @@ export default function SidebarAdmin({
 
   useEffect(() => {
     const fetchBusinessName = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
       const name = await getBusinessNameByUserId(user.id);
       setShopName(name);
     };
-
     fetchBusinessName();
   }, [supabase]);
 
@@ -71,49 +66,24 @@ export default function SidebarAdmin({
     iconFileName: string;
     section: SectionKey;
   }[] = [
-    {
-      label: "Dashboard",
-      iconFileName: "icon-dashboard",
-      section: "dashboard",
-    },
-    {
-      label: "User Administration",
-      iconFileName: "icon-user-administration",
-      section: "user-admin",
-    },
-    {
-      label: "Storefront",
-      iconFileName: "icon-storefront",
-      section: "storefront",
-    },
-    {
-      label: "Store Settings",
-      iconFileName: "icon-store-settings",
-      section: "store-settings",
-    },
-  ];
-
-  const bottomNavItems: {
-    label: string;
-    iconFileName: string;
-    section: SectionKey;
-  }[] = [
-    {
-      label: "Settings",
-      iconFileName: "icon-settings",
-      section: "admin-settings",
-    },
+    { label: "Dashboard", iconFileName: "icon-dashboard", section: "dashboard" },
+    { label: "User Administration", iconFileName: "icon-user-administration", section: "user-admin" },
+    { label: "Storefront", iconFileName: "icon-storefront", section: "storefront" },
+    { label: "Store Settings", iconFileName: "icon-store-settings", section: "store-settings" },
   ];
 
   const handleLogout = async () => {
-    await supabase.auth.signOut(); // ✅ proper logout
+    await supabase.auth.signOut();
     setShowLogoutModal(false);
-    router.push("/");
+    
+    // FIX for image_b5f226.jpg: 
+    // window.location.replace prevents the user from going "back" to the dashboard
+    window.location.replace("/");
   };
 
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
-      {/* Top Navigation */}
+      {/* Top Navigation Links */}
       <div className="flex flex-col gap-1">
         {adminNavItems.map((item) => (
           <NavItem
@@ -126,32 +96,29 @@ export default function SidebarAdmin({
         ))}
       </div>
 
-      {/* Bottom Section */}
+      {/* Bottom Section: Settings and Logout */}
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
 
         <div className="w-full flex flex-col gap-1">
-          {bottomNavItems.map((item) => (
-            <NavItem
-              key={item.label}
-              label={item.label}
-              iconFileName={item.iconFileName}
-              isActive={activeSection === item.section}
-              onClick={() => setActiveSection(item.section)}
-            />
-          ))}
+          {/* Settings Button */}
+          <NavItem
+            label="Settings"
+            iconFileName="icon-settings"
+            isActive={activeSection === "admin-settings"}
+            onClick={() => setActiveSection("admin-settings")}
+          />
 
-          {/* Logout */}
+          {/* Logout Button */}
           <NavItem
             label="Logout"
             iconFileName="icon-logout"
             isActive={false}
-            onClick={() => setShowLogoutModal(true)} // ✅ open modal instead
+            onClick={() => setShowLogoutModal(true)}
           />
         </div>
       </div>
 
-      {/* Logout Modal */}
       <LogoutModal
         isOpen={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}

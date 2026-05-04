@@ -16,11 +16,14 @@ import NavbarApp from "@/components/navbars/navbar-superadmin";
 import StatCard from "@/components/cards/stat-cards";
 import SidebarSuperAdmin from "@/components/navbars/sidebar-superadmin";
 
-// Modals — swap for your actual superadmin modal components
+// Modals
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 
-// ── Singleton Supabase client ─────────────────────────────────────────────────
+// 1. ADD 'export' to fix the import error in navbar-superadmin.tsx
+export type SectionKey = "dashboard" | "inventory" | "reports" | "users" | "profile";
+
+// Singleton Supabase client
 let supabaseInstance: SupabaseClient | null = null;
 const getSupabase = () => {
   if (!supabaseInstance) {
@@ -33,7 +36,7 @@ const getSupabase = () => {
 };
 const supabase = getSupabase();
 
-// ─── MRR Chart Data ──────────────────────────────────────────────────────────
+// MRR Chart Data
 const mrrData = [
   { month: "Jan", revenue: 45000 },
   { month: "Feb", revenue: 52000 },
@@ -43,17 +46,15 @@ const mrrData = [
   { month: "Jun", revenue: 75000 },
 ];
 
-// ─── Audit Log Type ───────────────────────────────────────────────────────────
 interface AuditLog {
-  id:            string;
-  created_at:    string;
-  performed_by:  string;
+  id: string;
+  created_at: string;
+  performed_by: string;
   business_name: string | null;
-  event_type:    string;
-  description:   string;
+  event_type: string;
+  description: string;
 }
 
-// Custom Tooltip for the chart
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -68,20 +69,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// ─── Page ────────────────────────────────────────────────────────────────────
 export default function SuperadminDashboard() {
-  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const [stats, setStats] = useState({
-    active:  0,
+    active: 0,
     pending: 0,
   });
 
-  const [auditLogs,    setAuditLogs]    = useState<AuditLog[]>([]);
-  const [logsLoading,  setLogsLoading]  = useState(true);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
 
-  // ── Fetch audit logs ────────────────────────────────────────────────────────
+  // Fetch audit logs
   useEffect(() => {
     const fetchAuditLogs = async () => {
       try {
@@ -101,13 +102,11 @@ export default function SuperadminDashboard() {
     };
 
     fetchAuditLogs();
-
-    // Poll every 10 seconds
     const interval = setInterval(fetchAuditLogs, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // ── Fetch stat counts ───────────────────────────────────────────────────────
+  // Fetch stat counts
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -117,11 +116,11 @@ export default function SuperadminDashboard() {
           supabase.from("suspended_tenants").select("*", { count: "exact", head: true }),
         ]);
 
-        const totalActiveVerified = activeRes.count   || 0;
-        const totalSuspended      = suspendedRes.count || 0;
+        const totalActiveVerified = activeRes.count || 0;
+        const totalSuspended = suspendedRes.count || 0;
 
         setStats({
-          active:  totalActiveVerified - totalSuspended,
+          active: totalActiveVerified - totalSuspended,
           pending: pendingRes.count || 0,
         });
       } catch (error) {
@@ -129,37 +128,33 @@ export default function SuperadminDashboard() {
       }
     };
 
-    // Initial fetch
     fetchStats();
-
-    // Poll every 5 seconds
     const interval = setInterval(fetchStats, 5000);
-
-    // Cleanup on unmount
     return () => clearInterval(interval);
   }, []);
 
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
-
-      {/* Sidebar */}
       <SidebarSuperAdmin />
 
-      {/* Main content */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
         className="flex-1 flex flex-col h-full overflow-y-auto px-16 pt-4 pb-10"
       >
-        {/* ── Navbar ── */}
+        {/* FIX: Props changed from onHome to setActiveSection to match the Navbar interface */}
         <NavbarApp
-          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          setActiveSection={(section) => {
+            if (section === "dashboard") {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+            setActiveSection(section);
+          }}
           openNotifs={() => setIsNotifsOpen(true)}
           openProfile={() => setIsProfileOpen(true)}
         />
 
-        {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -174,7 +169,7 @@ export default function SuperadminDashboard() {
           </div>
         </motion.div>
 
-        {/* ── Stat Cards ── */}
+        {/* Stat Cards */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.15 }}>
             <StatCard
@@ -199,7 +194,7 @@ export default function SuperadminDashboard() {
           </motion.div>
         </div>
 
-        {/* ── MRR Chart ── */}
+        {/* MRR Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -247,7 +242,7 @@ export default function SuperadminDashboard() {
           </div>
         </motion.div>
 
-        {/* ── Activity Log ── */}
+        {/* Activity Log */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -259,7 +254,6 @@ export default function SuperadminDashboard() {
           </h2>
 
           <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm mb-10">
-            {/* Header Row */}
             <div className="w-full flex bg-[#385E31] px-6 py-3 rounded-t-[8px] gap-4">
               <div className="w-[150px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold">Date & Time</div>
               <div className="w-[160px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold">Performed By</div>
@@ -268,7 +262,6 @@ export default function SuperadminDashboard() {
               <div className="flex-1 text-left text-[#FFFCEB] text-[13px] font-bold">Description/Notes</div>
             </div>
 
-            {/* Data Rows */}
             <div className="flex flex-col w-full">
               {logsLoading ? (
                 <div className="w-full flex items-center justify-center py-10 text-[#385E31] text-[14px] font-medium">
@@ -282,12 +275,7 @@ export default function SuperadminDashboard() {
                 auditLogs.map((row, idx) => {
                   const isLast = idx === auditLogs.length - 1;
                   const formattedDate = new Date(row.created_at).toLocaleString("en-US", {
-                    month:  "2-digit",
-                    day:    "2-digit",
-                    year:   "numeric",
-                    hour:   "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
+                    month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true,
                   });
                   return (
                     <div key={row.id} className={`w-full flex px-6 py-4 items-start gap-4 hover:bg-[#385E31]/5 transition-colors ${!isLast ? "border-b border-[#385E31]/20" : ""}`}>
@@ -307,11 +295,9 @@ export default function SuperadminDashboard() {
             </div>
           </div>
         </motion.div>
-
       </motion.div>
 
-      {/* ── Modals ── */}
-      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)}  />
+      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} />
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );

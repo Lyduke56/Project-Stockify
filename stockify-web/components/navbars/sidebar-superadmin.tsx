@@ -72,9 +72,13 @@ export default function SidebarSuperAdmin() {
   };
 
   const handleLogout = () => {
+    // 1. Clear session data
     localStorage.removeItem("token");
     setShowLogoutModal(false);
-    router.push("/");
+
+    // 2. Prevent "Back" button access:
+    // This replaces the history entry and reloads the browser to clear state
+    window.location.replace("/"); 
   };
 
   return (
