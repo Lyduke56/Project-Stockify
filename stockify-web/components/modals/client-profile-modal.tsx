@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, ChangeEvent } from "react";
+import { useEffect, useState, useRef, ChangeEvent } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface ClientProfileForm {
   businessName: string;
@@ -191,6 +192,94 @@ export default function ClientProfileModal({
     set("businessOwnerValidIdName", file.name);
   };
 
+  useEffect(() => {
+  if (isOpen) {
+    const fetchProfile = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // Fetch from BOTH tables
+        const { data: tenantData } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('owner_id', user.id)
+          .single();
+
+        const { data: userData } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (tenantData && userData) {
+          setForm({
+            ...form,
+  // Business Info (from tenantData)
+  businessName: tenantData.business_name || "",
+  businessContact: tenantData.business_contact || "",
+  businessType: tenantData.business_type || "",
+  businessWarehouseAddress: tenantData.business_address || "",
+  validBusinessPermitName: tenantData.permit_url ? "Current Permit Saved" : "",
+  businessOwnerValidIdName: tenantData.owner_id_url ? "Current ID Saved" : "",
+
+  // Personal Info (from userData)
+  firstName: userData.first_name || "",
+  lastName: userData.last_name || "",
+  middleName: userData.middle_name || "",
+  gender: userData.gender || "",
+  email: userData.email || "", // Note: Auth email is usually read-only
+  contactNumber: userData.contact_number || "",
+  profilePicturePreview: userData.avatar_url || "" 
+});
+        }
+      }
+    };
+    fetchProfile();
+  }
+}, [isOpen]);
+
+  const handleFinalSave = async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("No user found.");
+      return;
+    }
+
+    try {
+      const uploadFile = async (file: File | null, bucket: string) => {
+        if (!file) return null;
+        const filePath = `${user.id}/${Date.now()}-${file.name}`;
+        await supabase.storage.from(bucket).upload(filePath, file);
+        return supabase.storage.from(bucket).getPublicUrl(filePath).data.publicUrl;
+      };
+
+      const permitUrl = await uploadFile(form.validBusinessPermit, 'registration-docs');
+      const idUrl = await uploadFile(form.businessOwnerValidId, 'registration-docs');
+      const avatarUrl = await uploadFile(form.profilePicture, 'profile-assets');
+
+      // Update Database
+      await supabase.from('tenants').update({
+        business_name: form.businessName,
+        business_type: form.businessType,
+        business_address: form.businessWarehouseAddress,
+        permit_url: permitUrl,
+      }).eq('owner_id', user.id);
+
+      await supabase.from('users').update({
+        first_name: form.firstName,
+        last_name: form.lastName,
+        avatar_url: avatarUrl
+      }).eq('id', user.id);
+
+      alert("Saved!");
+      onClose();
+    } catch (err) {
+      alert("Error saving!");
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div
@@ -368,12 +457,12 @@ export default function ClientProfileModal({
               CANCEL CHANGES
             </button>
             <button
-              onClick={() => onSave?.(form)}
-              className="px-10 py-2.5 rounded-[10px] font-bold font-['Inter'] text-sm transition-all hover:brightness-105 active:scale-95"
-              style={{ backgroundColor: "#E5AC24", color: "#24481F" }}
-            >
-              SAVE CHANGES
-            </button>
+  onClick={handleFinalSave} // <--- CHANGE THIS LINE
+  className="px-10 py-2.5 rounded-[10px] font-bold font-['Inter'] text-sm transition-all hover:brightness-105 active:scale-95"
+  style={{ backgroundColor: "#E5AC24", color: "#24481F" }}
+>
+  SAVE CHANGES
+</button>
           </div>
         </footer>
       </div>
