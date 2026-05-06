@@ -39,6 +39,34 @@ export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
 
+  useEffect(() => {
+    const handlePopState = () => {
+      // Look at the URL and update our state to match
+      const params = new URLSearchParams(window.location.search);
+      const section = params.get("section") as SectionKey;
+      if (section && SECTIONS[section]) {
+        setActiveSection(section);
+      } else {
+        setActiveSection("dashboard");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // If the page is being loaded from the browser cache (back button)
+        // reload the window to trigger a middleware session check
+        window.location.reload();
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -52,7 +80,7 @@ export default function EmployeeDashboard() {
 
   const handleSetSection = (section: SectionKey) => {
     setActiveSection(section);
-    window.history.pushState(null, "", `?section=${section}`);
+    window.history.replaceState(null, "", `?section=${section}`);
   };
 
   return (

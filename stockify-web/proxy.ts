@@ -26,12 +26,16 @@ export async function proxy(request: NextRequest) {
   const isProtectedRoute = 
     request.nextUrl.pathname.startsWith("/superadmin") || 
     request.nextUrl.pathname.includes("/administrator") ||
-    request.nextUrl.pathname.startsWith("/dashboard");
+    request.nextUrl.pathname.startsWith("/dashboard") ||
+    request.nextUrl.pathname.includes("/employee");
 
   // 1. Handle Unauthenticated Access
   if (!user && isProtectedRoute) {
     const redirectResponse = NextResponse.redirect(new URL("/", request.url));
-    redirectResponse.headers.set('Cache-Control', 'no-store, max-age=0');
+    // Kill the cache on the redirect itself to stop "Back" button access
+    redirectResponse.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    redirectResponse.headers.set('Pragma', 'no-cache');
+    redirectResponse.headers.set('Expires', '0');
     return redirectResponse;
   }
 

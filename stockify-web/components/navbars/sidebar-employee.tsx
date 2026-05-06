@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
-import { getUserData } from "@/backend/hooks/getUserData";
+import { getUserData } from "@/backend/hooks/getUserRole";
 import { createClient } from "@/lib/supabase/client";
 import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
 
@@ -54,7 +54,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/access-denied");
+        window.location.replace("/");
         return;
       }
 
@@ -66,7 +66,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
       const normalized = userRole?.toLowerCase();
 
       if (!normalized || !["employee", "manager"].includes(normalized)) {
-        router.push("/access-denied");
+        window.location.replace("/access-denied");
         return;
       }
 
@@ -134,14 +134,30 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
           ))}
 
           {bottomItems.map((item) => (
-            <NavItem
-              key={item.label}
-              label={item.label}
-              iconFileName={item.iconFileName}
-              isActive={false}
-              onClick={() => router.push(item.path)}
-            />
-          ))}
+  <NavItem
+    key={item.label}
+    label={item.label}
+    iconFileName={item.iconFileName}
+    isActive={false}
+    onClick={async () => {
+  if (item.label === "Logout") {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    
+    // 1. Wipe local storage if you use it (like in SuperAdmin)
+    localStorage.removeItem("token");
+
+    // 2. SuperAdmin Strategy: Replace history first
+    router.replace("/");
+
+    // 3. Force a hard reload to kill all remaining state/cache
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 100);
+  }
+}}
+  />
+))}
 
         </div>
       </div>
