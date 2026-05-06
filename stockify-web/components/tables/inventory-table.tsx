@@ -1,25 +1,27 @@
 "use client";
 
 import { useState } from "react";
+// Don't forget to update this interface in your types/product file!
 import { Product } from "@/types/product";
 import ProductModal from "./inventory-modals/product-modal";
 import DeleteModal from "./inventory-modals/delete-modals";
 import ManageCategoriesModal from "./inventory-modals/manage-categories-modal";
 
-const INITIAL_PRODUCTS: Product[] = [
-  { id: 1, name: "Espresso",   img: null, sku: "ESP-01", category: "Coffee", price: 120, stock: 15, stockUnit: "kg", alertLimit: "<= 5kg", visible: true },
-  { id: 2, name: "Cappuccino", img: null, sku: "CAP-01", category: "Coffee", price: 150, stock: 20, stockUnit: "kg", alertLimit: "<= 5kg", visible: true },
-  { id: 3, name: "Latte",      img: null, sku: "LAT-01", category: "Coffee", price: 140, stock: 12, stockUnit: "kg", alertLimit: "<= 5kg", visible: false },
-  { id: 4, name: "Americano",  img: null, sku: "AME-01", category: "Coffee", price: 110, stock: 8,  stockUnit: "kg", alertLimit: "<= 5kg", visible: true },
-  { id: 5, name: "Macchiato",  img: null, sku: "MAC-01", category: "Coffee", price: 130, stock: 5,  stockUnit: "kg", alertLimit: "<= 5kg", visible: true },
+// Updated mock data to reflect the new Bill of Materials (BOM) concept
+const INITIAL_PRODUCTS: any[] = [
+  { id: 1, name: "Espresso",   img: null, sku: "ESP-01", category: "Coffee", unitCost: 45, price: 120, maxYield: 45, visible: true },
+  { id: 2, name: "Cappuccino", img: null, sku: "CAP-01", category: "Coffee", unitCost: 65, price: 150, maxYield: 32, visible: true },
+  { id: 3, name: "Latte",      img: null, sku: "LAT-01", category: "Coffee", unitCost: 60, price: 140, maxYield: 15, visible: false },
+  { id: 4, name: "Americano",  img: null, sku: "AME-01", category: "Coffee", unitCost: 35, price: 110, maxYield: 45, visible: true },
+  { id: 5, name: "Macchiato",  img: null, sku: "MAC-01", category: "Coffee", unitCost: 55, price: 130, maxYield: 8,  visible: true },
 ];
 
 export default function InventoryTable() {
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<any[]>(INITIAL_PRODUCTS);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [editTarget, setEditTarget] = useState<Product | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
 
@@ -28,20 +30,22 @@ export default function InventoryTable() {
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.sku.toLowerCase().includes(search.toLowerCase()) ||
       p.category.toLowerCase().includes(search.toLowerCase());
+      
+    // Removed the "low stock" filter since alerts now belong to Raw Materials
     const matchFilter =
       filter === "all" ||
       (filter === "visible" && p.visible) ||
-      (filter === "hidden" && !p.visible) ||
-      (filter === "low" && p.stock <= 5);
+      (filter === "hidden" && !p.visible);
+      
     return matchSearch && matchFilter;
   });
 
-  const handleAdd = (data: Omit<Product, "id">) => {
+  const handleAdd = (data: Omit<any, "id">) => {
     setProducts([...products, { ...data, id: Date.now() }]);
     setShowAdd(false);
   };
 
-  const handleEdit = (data: Omit<Product, "id">) => {
+  const handleEdit = (data: Omit<any, "id">) => {
     setProducts(products.map((p) => (p.id === editTarget!.id ? { ...data, id: p.id } : p)));
     setEditTarget(null);
   };
@@ -72,7 +76,7 @@ export default function InventoryTable() {
             <option value="all">Select Action</option>
             <option value="visible">Visible</option>
             <option value="hidden">Hidden</option>
-            <option value="low">Low Stock</option>
+            {/* Low Stock option removed */}
           </select>
         </div>
         <div className="flex items-center gap-2 ml-auto">
@@ -90,7 +94,8 @@ export default function InventoryTable() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-[#385E31] text-white">
-              {["Name", "Img", "SKU", "Category", "Price", "Stock", "Alert Limit", "Visible", "Actions"].map((h) => (
+              {/* Updated Table Headers */}
+              {["Name", "Img", "SKU", "Category", "Unit Cost", "Price", "Max Yield", "Visible", "Actions"].map((h) => (
                 <th key={h} className="px-4 py-3 text-center font-bold tracking-wide text-xs uppercase first:text-left">
                   {h}
                 </th>
@@ -115,13 +120,22 @@ export default function InventoryTable() {
                   </td>
                   <td className="px-4 py-3 text-center text-[#4A6545] font-mono">{p.sku}</td>
                   <td className="px-4 py-3 text-center text-[#4A6545]">{p.category}</td>
-                  <td className="px-4 py-3 text-center text-[#2A3F25] font-semibold">₱{p.price.toFixed(2)}</td>
+                  
+                  {/* New Unit Cost Column */}
+                  <td className="px-4 py-3 text-center text-[#4A6545] font-semibold">₱{(p.unitCost || 0).toFixed(2)}</td>
+                  
+                  <td className="px-4 py-3 text-center text-[#2A3F25] font-semibold">₱{(p.price || 0).toFixed(2)}</td>
+                  
+                  {/* Updated Stock to Max Yield */}
                   <td className="px-4 py-3 text-center">
-                    <span className={`font-semibold ${p.stock <= 5 ? "text-red-500" : "text-[#2A3F25]"}`}>
-                      {p.stock} {p.stockUnit}
+                    {/* Kept a simple low-yield color change just for visual warning */}
+                    <span className={`font-semibold ${p.maxYield <= 10 ? "text-red-500" : "text-[#2A3F25]"}`}>
+                      {p.maxYield} Servings
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center text-[#4A6545]">{p.alertLimit}</td>
+                  
+                  {/* Alert Limit column completely removed here */}
+                  
                   <td className="px-4 py-3 text-center">
                     <span className={`inline-flex items-center justify-center w-7 h-7 rounded border-2 font-bold text-xs ${p.visible ? "border-[#385E31] text-[#385E31] bg-[#e8f5e4]" : "border-gray-300 text-gray-300 bg-gray-50"}`}>
                       {p.visible ? "✓" : ""}

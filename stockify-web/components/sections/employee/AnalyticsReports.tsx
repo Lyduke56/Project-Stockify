@@ -147,7 +147,8 @@ function DonutChart({ cod, qr }: { cod: number; qr: number }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function AnalyticsReports() {
+// Renamed to match the SECTIONS object in EmployeeDashboard
+export default function AnalyticsReportsSection() {
   const [dateRange, setDateRange] = useState("Last 30 Days");
   const [category, setCategory] = useState("All");
   const [item, setItem] = useState("All Items");
@@ -187,7 +188,17 @@ export default function AnalyticsReports() {
     v >= 1000 ? `₱${(v / 1000).toFixed(0)}k` : `₱${v}`;
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    // Added font-['Inter'] here to match your design system
+    <div className="w-full flex flex-col font-['Inter'] gap-6">
+      
+      {/* ── Header Added Here ── */}
+      <div className="w-full flex flex-col items-center mt-2 mb-4">
+        <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+          Analytics & Orders
+        </h1>
+        <div className="w-[900px] max-w-full h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
+      </div>
+
       {/* ── Filter Bar ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-[#385E31] text-sm font-semibold">Filter by:</span>

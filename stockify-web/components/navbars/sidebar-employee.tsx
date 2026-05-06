@@ -25,7 +25,16 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
       }`}
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
-        <img src={`/${iconFileName}.svg`} alt={label} className="w-full h-full object-contain" />
+        <img 
+          src={`/${iconFileName}.svg`} 
+          alt={label} 
+          className="w-full h-full object-contain" 
+          style={
+            isActive
+              ? { filter: "brightness(0) saturate(100%) invert(32%) sepia(16%) saturate(1553%) hue-rotate(69deg) brightness(97%) contrast(85%)" }
+              : {}
+          }
+        />
       </div>
       <div className="text-base whitespace-nowrap">{label}</div>
     </div>
@@ -74,18 +83,19 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
     };
 
     init();
-  }, []);
+  }, [router, supabase.auth]);
 
   const isEmployee = role?.toLowerCase() === "employee";
 
   const allNavItems: { label: string; iconFileName: string; section: SectionKey }[] = [
     { label: "Dashboard",           iconFileName: "icon-dashboard",          section: "dashboard"           },
-    { label: "Inventory",           iconFileName: "icon-inventory",           section: "inventory"           },
-    { label: "Orders",              iconFileName: "icon-orders",              section: "orders"              },
+    { label: "Products",            iconFileName: "icon-inventory",          section: "products"            },
+    { label: "Stock Inventory",     iconFileName: "icon-ingredients",        section: "ingredients"         },
+    { label: "Orders",              iconFileName: "icon-orders",             section: "orders"              },
     { label: "Analytics & Orders",  iconFileName: "icon-chart2",             section: "analytics"           },
-    { label: "Stock Notifications", iconFileName: "icon-stocknotifications",  section: "stock-notifications" },
-    { label: "Audit Logs",          iconFileName: "icon-audit-logs",          section: "audit-logs"          },
-    { label: "Transactions",        iconFileName: "icon-transactions",        section: "transactions"        },
+    { label: "Stock Notifications", iconFileName: "icon-stocknotifications", section: "stock-notifications" },
+    { label: "Audit Logs",          iconFileName: "icon-audit-logs",         section: "audit-logs"          },
+    { label: "Transactions",        iconFileName: "icon-transactions",       section: "transactions"        },
   ];
 
   const navItems = isEmployee
