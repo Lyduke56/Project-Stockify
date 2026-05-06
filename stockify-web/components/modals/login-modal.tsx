@@ -39,64 +39,72 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  setLoading(false);
+
+  if (error) {
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      setError("Please check your email and confirm your address before logging in.");
+    } else {
+      setError(error.message);
+    }
+    return;
+  }
+
+  if (data?.user) {
+    const result = await getBusinessNameByUserId(data.user.id);
+    const shopName = typeof result === "string" ? result : result?.business_name ??  null;
+    const userRole = await getUserData(data.user.id);
+
+    // ── Role Guard ────────────────────────────────────────────────────────────
+    // Only Superadmin and Administrator may pass. Every other role gets
+    // an immediate sign-out and an "Access denied" error — no redirect.
+    const ALLOWED_ROLES = ["Superadmin", "Administrator"];
+    if (!ALLOWED_ROLES.includes(userRole)) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      setError("Access denied. You don't have permission to log in here.");
+      return;
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     setLoading(false);
 
-    if (error) {
-      if (error.message.toLowerCase().includes("email not confirmed")) {
-        setError("Please check your email and confirm your address before logging in.");
-      } else {
-        setError(error.message);
-      }
+    if (userRole === "Superadmin") {
+      onClose();
+      router.push(`/superadmin/dashboard`);
+      router.refresh();
       return;
     }
 
-    if (data?.user) {
-      const shopName = await getBusinessNameByUserId(data.user.id);
-      const userRole = await getUserData(data.user.id); 
+    // Administrator path
+    const { data: userData } = await supabase
+      .from("users")
+      .select("is_active")
+      .eq("user_id", data.user.id)
+      .single();
 
-      setLoading(false);
-
-      if (userRole === "Superadmin") {
-        onClose();
-        router.push(`/superadmin/dashboard`);
-        router.refresh();
-        return; 
-      }
-
-      const { data: userData } = await supabase
-        .from("users")
-        .select("is_active")
-        .eq("user_id", data.user.id)
-        .single();
-
-      if (!userData?.is_active) {
-        await supabase.auth.signOut(); 
-        onClose();
-        router.push("/auth/account/waiting-approved");
-        return;
-      }
-
-      if (shopName) {
-        onClose();
-        
-        if (userRole === "Administrator") {
-          router.push(`/${shopName}/administrator/dashboard`); 
-        } else {
-          router.push(`/${shopName}/employee/dashboard`);
-        }
-        
-        router.refresh();   
-      } else {
-        setError("Could not find your business name. Please contact support.");
-      }
+    if (!userData?.is_active) {
+      await supabase.auth.signOut();
+      onClose();
+      router.push("/auth/account/waiting-approved");
+      return;
     }
-  };
+
+    if (shopName) {
+      onClose();
+      router.push(`/${shopName}/stockify-client-side/Dashboard`);
+      router.refresh();
+    } else {
+      setError("Could not find your business name. Please contact support.");
+    }
+  }
+};
 
   return (
    

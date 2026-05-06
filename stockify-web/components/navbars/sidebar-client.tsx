@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 
 type SidebarClientProps = {
   active?: "dashboard" | "billing" | "settings";
@@ -7,6 +7,11 @@ type SidebarClientProps = {
 
 export default function SidebarClient({ active = "dashboard" }: SidebarClientProps) {
   const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+
+  // Fallback: extract shopName from the URL path if params doesn't resolve it
+  const shopName = (params?.shopName as string) || pathname?.split("/")[1];
 
   const go = (href: string) => router.push(href);
 
@@ -15,8 +20,7 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
         <div data-showaccounts="true" data-showanalytics="true" data-showaudit="false" data-showdashboard="true" data-showinventory="false" data-showorders="false" data-showrestockalert="false" data-showstockifyhub="false" data-showstorefront="false" data-showstoresettings="false" data-showsubscriptionbilling="true" data-showtenantmanagement="false" data-showuseradmin="false" className="self-stretch h-[563px] flex flex-col justify-start items-center gap-2.5 overflow-hidden">
             <button
               type="button"
-              // ROUTING: point this to the route that renders the client dashboard UI.
-              onClick={() => go("/stockify-client-side/Dashboard")}
+              onClick={() => go(`/${shopName}/stockify-client-side/Dashboard`)}
               data-icon="true"
               data-property-1={active === "dashboard" ? "Hover" : "Main"}
               className={
@@ -48,8 +52,7 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
             </button>
             <button
               type="button"
-              // ROUTING: point this to the route that renders the client dashboard UI.
-              onClick={() => go("/stockify-client-side/billing")}
+              onClick={() => go(`/${shopName}/stockify-client-side/billing`)}
               data-icon="true"
               data-property-1={active === "billing" ? "Hover" : "Main"}
               className={

@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     ? filtered.filter((r) => {
         const q = search.toLowerCase();
         return (
-          r.business_name?.toLowerCase().includes(q) ||
+          r.business_name?.toLowerCase().includes(q) || 
           r.owner_full_name?.toLowerCase().includes(q)
         );
       })
