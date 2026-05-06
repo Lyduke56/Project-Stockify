@@ -3,6 +3,7 @@ export interface SubscriptionRecord {
   billing_period:  string;
   payment_status:  "Pending" | "Paid" | "Overdue";
   amount:          number;
+  amount_paid:     number | null;
   paid_at:         string | null;
   overdue_at:      string | null;
   grace_ends_at:   string | null;

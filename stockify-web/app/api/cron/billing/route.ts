@@ -1,4 +1,4 @@
-// app/api/superadmin/billing/route.ts
+// app/api/cron/billing/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -9,193 +9,260 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ─── GET: all billing rows + dashboard stats ──────────────────────────────────
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const tab    = searchParams.get("tab")    ?? "Overall";
-  const search = searchParams.get("search") ?? "";
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  // 1. Fetch tenants + their subscription records
-  const { data: tenants, error } = await supabase
-    .from("tenants")
-    .select(`
-      tenant_id,
-      business_name,
-      owner_full_name,
-      owner_email,
-      subscription_status,
-      subscription_records (
+function nextBillingPeriod(billingPeriod: string): string {
+  const d = new Date(billingPeriod + "T00:00:00");
+  d.setMonth(d.getMonth() + 1);
+  d.setDate(1);
+  return d.toISOString().slice(0, 10);
+}
+
+function calcOverdueAt(billingPeriod: string, billingDueDays: number): string {
+  const d = new Date(billingPeriod + "T00:00:00");
+  d.setDate(d.getDate() + billingDueDays);
+  return d.toISOString();
+}
+
+function calcGraceEndsAt(overdueAt: string, gracePeriodDays: number): string {
+  const d = new Date(overdueAt);
+  d.setDate(d.getDate() + gracePeriodDays);
+  return d.toISOString();
+}
+
+// ── GET ───────────────────────────────────────────────────────────────────────
+// Feeds the data and stats to the Superadmin Billing Dashboard
+
+export async function GET(req: NextRequest) {
+  try {
+    // 1. Fetch records joined with tenant info
+    const { data: records, error } = await supabase
+      .from("subscription_records")
+      .select(`
         subscription_id,
+        tenant_id,
         billing_period,
         payment_status,
         amount,
+        amount_paid,
         paid_at,
         overdue_at,
-        grace_ends_at
-      )
-    `)
-    .in("subscription_status", ["Trial", "Active", "Suspended"])
-    .order("created_at", { ascending: false });
+        grace_ends_at,
+        tenants (
+          business_name,
+          owner_full_name,
+          owner_email,
+          subscription_status
+        )
+      `)
+      .order("billing_period", { ascending: false });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) throw error;
 
-  // 2. Build display rows
-  const rows = (tenants ?? []).map((t) => {
-    const records = ((t.subscription_records as any[]) ?? []).sort(
-      (a, b) => new Date(b.billing_period).getTime() - new Date(a.billing_period).getTime()
-    );
+    let totalPaid = 0;
+    let overdueCount = 0;
+    let missedCount = 0;
 
-    const latest   = records[0] ?? null;
-    const lastPaid = records.find((r) => r.payment_status === "Paid") ?? null;
+    // 2. Format the data to match your frontend's `BillingRow` interface
+    const rows = (records || []).map((r: any) => {
+      const billed = Number(r.amount || 0);
+      const paid = Number(r.amount_paid || 0);
+      const balance = Math.max(0, billed - paid);
+      
+      const tenant = r.tenants || {};
+      let displayStatus = r.payment_status;
+      
+      // If tenant is suspended, mark the record display as "Missed"
+      if (tenant.subscription_status === "Suspended") {
+        displayStatus = "Missed";
+      }
 
-    let displayStatus: string;
-    if (t.subscription_status === "Suspended") {
-      displayStatus = "Missed";
-    } else if (!latest) {
-      displayStatus = "Pending";
-    } else {
-      displayStatus = latest.payment_status;
-    }
+      // Tally up stats while we loop
+      if (displayStatus === "Paid") {
+        // Accumulate paid amount if it happened this year (simple check)
+        if (r.paid_at && new Date(r.paid_at).getFullYear() === new Date().getFullYear()) {
+          totalPaid += paid;
+        }
+      } else if (displayStatus === "Overdue") {
+        overdueCount++;
+      } else if (displayStatus === "Missed") {
+        missedCount++;
+      }
 
-    const balance =
-      latest && latest.payment_status !== "Paid" ? Number(latest.amount) : 0;
+      return {
+        tenant_id: r.tenant_id,
+        business_name: tenant.business_name || "Unknown Business",
+        owner_full_name: tenant.owner_full_name || "Unknown Owner",
+        owner_email: tenant.owner_email || "",
+        subscription_status: tenant.subscription_status || "Active",
+        display_status: displayStatus,
+        billing_period: r.billing_period,
+        due_date: r.overdue_at,
+        grace_ends_at: r.grace_ends_at,
+        last_paid_at: r.paid_at,
+        balance: balance,
+        subscription_id: r.subscription_id,
+        next_billing_date: null, 
+      };
+    });
 
-    return {
-      tenant_id:           t.tenant_id,
-      business_name:       t.business_name,
-      owner_full_name:     t.owner_full_name,
-      owner_email:         t.owner_email,
-      subscription_status: t.subscription_status,
-      display_status:      displayStatus,
-      billing_period:      latest?.billing_period  ?? null,
-      due_date:            latest?.overdue_at      ?? null,
-      grace_ends_at:       latest?.grace_ends_at   ?? null,
-      last_paid_at:        lastPaid?.paid_at        ?? null,
-      balance,
-      subscription_id:     latest?.subscription_id ?? null,
-      next_billing_date:   latest?.overdue_at      ?? null,
-    };
-  });
-
-  // 3. Tab filter
-  const filtered =
-    tab === "Overall" ? rows : rows.filter((r) => r.display_status === tab);
-
-  // 4. Search filter
-  const searched = search.trim()
-    ? filtered.filter((r) => {
-        const q = search.toLowerCase();
-        return (
-          r.business_name?.toLowerCase().includes(q) || 
-          r.owner_full_name?.toLowerCase().includes(q)
-        );
-      })
-    : filtered;
-
-  // 5. Stats
-  const year = new Date().getFullYear();
-  const { data: paidRecs } = await supabase
-    .from("subscription_records")
-    .select("amount")
-    .eq("payment_status", "Paid")
-    .gte("paid_at", `${year}-01-01T00:00:00.000Z`);
-
-  const totalPaid = (paidRecs ?? []).reduce((s, r) => s + Number(r.amount), 0);
-
-  const now = new Date();
-  const { data: overdueRecs } = await supabase
-    .from("subscription_records")
-    .select("overdue_at")
-    .eq("payment_status", "Overdue");
-
-  let avgDaysLate = 0;
-  if (overdueRecs && overdueRecs.length > 0) {
-    const sum = overdueRecs.reduce((s, r) => {
-      const diff = (now.getTime() - new Date(r.overdue_at).getTime()) / 86_400_000;
-      return s + Math.max(0, diff);
-    }, 0);
-    avgDaysLate = Math.round((sum / overdueRecs.length) * 10) / 10;
-  }
-
-  const overdueCount = rows.filter((r) => r.display_status === "Overdue").length;
-  const missedCount  = rows.filter((r) => r.display_status === "Missed").length;
-
-  return NextResponse.json({
-    data: searched,
-    stats: {
-      total_paid:    totalPaid,
+    // 3. Construct the Stats object expected by your StatCards
+    const stats = {
+      total_paid: totalPaid,
       overdue_count: overdueCount,
-      missed_count:  missedCount,
-      avg_days_late: avgDaysLate,
-    },
-  });
+      missed_count: missedCount,
+      avg_days_late: 0, 
+    };
+
+    // 4. Return exactly what page.tsx expects: { data, stats }
+    return NextResponse.json({
+      success: true,
+      data: rows,
+      stats: stats
+    });
+
+  } catch (err: any) {
+    console.error("[Billing GET Error]:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
-// ─── PATCH: record a payment ──────────────────────────────────────────────────
+// ── PATCH ─────────────────────────────────────────────────────────────────────
+// Superadmin manually records a cash payment.
+
 export async function PATCH(req: NextRequest) {
-  const { subscriptionId, recordedBy } = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const { subscriptionId, tenantId, recordedBy, amountOverride } = body as {
+    subscriptionId:  string;
+    tenantId:        string;
+    recordedBy?:     string;
+    amountOverride?: number;
+  };
 
   if (!subscriptionId) {
     return NextResponse.json({ error: "subscriptionId is required." }, { status: 400 });
   }
 
-  // 1. Fetch the subscription record with business name for the audit log
-  const { data: existingRecord } = await supabase
+  // ── 1. Fetch current record ────────────────────────────────────────────────
+  const { data: subRecord, error: srErr } = await supabase
     .from("subscription_records")
-    .select("tenant_id, billing_period, amount, tenants(business_name)")
+    .select("subscription_id, tenant_id, billing_period, amount, amount_paid, payment_status")
     .eq("subscription_id", subscriptionId)
     .single();
 
-  const businessName =
-    (Array.isArray(existingRecord?.tenants)
-      ? existingRecord?.tenants[0]
-      : existingRecord?.tenants
-    )?.business_name ?? null;
+  if (srErr || !subRecord) {
+    return NextResponse.json({ error: "Subscription record not found." }, { status: 404 });
+  }
 
-  // 2. Mark the record as Paid
-  const { data: record, error } = await supabase
+  if (subRecord.payment_status === "Paid") {
+    return NextResponse.json({ error: "This record is already marked as Paid." }, { status: 409 });
+  }
+
+  // ── 2. Calculate new amount_paid ──────────────────────────────────────────
+  const billedAmount   = Number(subRecord.amount);
+  const prevAmountPaid = Number(subRecord.amount_paid ?? 0);
+  const paymentAmount  =
+    amountOverride !== undefined && amountOverride > 0
+      ? amountOverride
+      : billedAmount - prevAmountPaid; // default: pay the full remaining balance
+
+  const newAmountPaid = prevAmountPaid + paymentAmount;
+  const isFullyPaid   = newAmountPaid >= billedAmount;
+  const now           = new Date().toISOString();
+
+  // ── 3. Update subscription_record ─────────────────────────────────────────
+  const { error: updateErr } = await supabase
     .from("subscription_records")
     .update({
-      payment_status: "Paid",
-      paid_at:        new Date().toISOString(),
+      amount_paid:    newAmountPaid,
+      payment_status: isFullyPaid ? "Paid" : subRecord.payment_status,
+      paid_at:        isFullyPaid ? now : null,
       recorded_by:    recordedBy ?? null,
     })
-    .eq("subscription_id", subscriptionId)
-    .select("subscription_id, tenant_id, billing_period, amount")
+    .eq("subscription_id", subscriptionId);
+
+  if (updateErr) {
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
+
+  // ── 4. Fetch tenant + billing_settings ────────────────────────────────────
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("business_name, subscription_status")
+    .eq("tenant_id", subRecord.tenant_id)
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const businessName = tenant?.business_name ?? null;
 
-  // 3. Audit: payment recorded
+  // ── 5. Create next billing row if fully paid ──────────────────────────────
+  if (isFullyPaid) {
+    const { data: settings } = await supabase
+      .from("billing_settings")
+      .select("monthly_price, billing_due_days, grace_period_days")
+      .limit(1)
+      .single();
+
+    const monthlyPrice    = Number(settings?.monthly_price    ?? 1000);
+    const billingDueDays  = Number(settings?.billing_due_days  ?? 30);
+    const gracePeriodDays = Number(settings?.grace_period_days ?? 7);
+
+    const nextPeriod    = nextBillingPeriod(subRecord.billing_period);
+    const nextOverdueAt = calcOverdueAt(nextPeriod, billingDueDays);
+    const nextGraceAt   = calcGraceEndsAt(nextOverdueAt, gracePeriodDays);
+
+    const { error: insertErr } = await supabase
+      .from("subscription_records")
+      .upsert(
+        {
+          tenant_id:      subRecord.tenant_id,
+          billing_period: nextPeriod,
+          payment_status: "Pending",
+          amount:         monthlyPrice,
+          amount_paid:    0,
+          overdue_at:     nextOverdueAt,
+          grace_ends_at:  nextGraceAt,
+        },
+        { onConflict: "tenant_id,billing_period", ignoreDuplicates: true }
+      );
+
+    if (insertErr) {
+      console.error("[billing PATCH] Failed to create next billing row:", insertErr.message);
+    }
+  }
+
+  // ── 6. Audit log ──────────────────────────────────────────────────────────
+  const balance = Math.max(0, billedAmount - newAmountPaid);
+
   await logAudit({
     performedBy:  recordedBy ?? "Superadmin",
     eventType:    AuditEvent.PAYMENT_RECORDED,
-    tenantId:     record.tenant_id,
-    businessName: businessName,
-    description:  `Logged manual payment for billing period ${record.billing_period}. Status set to Paid.`,
+    tenantId:     subRecord.tenant_id,
+    businessName,
+    description: isFullyPaid
+      ? `Manual payment recorded. Record fully paid (₱${newAmountPaid.toFixed(2)}).`
+      : `Manual partial payment of ₱${paymentAmount.toFixed(2)} recorded. Remaining balance: ₱${balance.toFixed(2)}.`,
     metadata: {
-      subscriptionId: record.subscription_id,
-      amount:         record.amount,
-      billingPeriod:  record.billing_period,
+      subscriptionId,
+      paymentAmount,
+      newAmountPaid,
+      billedAmount,
+      balance,
+      isFullyPaid,
+      billingPeriod: subRecord.billing_period,
     },
   });
 
-  // 4. If tenant was Suspended and has no remaining unpaid records → restore
-  const { data: unpaid } = await supabase
-    .from("subscription_records")
-    .select("subscription_id")
-    .eq("tenant_id", record.tenant_id)
-    .in("payment_status", ["Pending", "Overdue"])
-    .limit(1);
+  // ── 7. Restore suspended tenant if fully paid + no other unpaid ───────────
+  if (isFullyPaid) {
+    const { data: unpaid } = await supabase
+      .from("subscription_records")
+      .select("subscription_id")
+      .eq("tenant_id", subRecord.tenant_id)
+      .in("payment_status", ["Pending", "Overdue"])
+      .neq("subscription_id", subscriptionId)
+      .limit(1);
 
-  if (!unpaid || unpaid.length === 0) {
-    const { data: tenant } = await supabase
-      .from("tenants")
-      .select("subscription_status")
-      .eq("tenant_id", record.tenant_id)
-      .single();
-
-    if (tenant?.subscription_status === "Suspended") {
+    if ((!unpaid || unpaid.length === 0) && tenant?.subscription_status === "Suspended") {
       await supabase
         .from("tenants")
         .update({
@@ -204,29 +271,33 @@ export async function PATCH(req: NextRequest) {
           suspended_until:     null,
           is_active:           true,
         })
-        .eq("tenant_id", record.tenant_id);
+        .eq("tenant_id", subRecord.tenant_id);
 
       await supabase
         .from("users")
         .update({ is_active: true })
-        .eq("tenant_id", record.tenant_id);
+        .eq("tenant_id", subRecord.tenant_id);
 
       await supabase
         .from("suspended_tenants")
         .delete()
-        .eq("tenant_id", record.tenant_id);
+        .eq("tenant_id", subRecord.tenant_id);
 
-      // Audit: tenant restored after payment
       await logAudit({
         performedBy:  recordedBy ?? "Superadmin",
         eventType:    AuditEvent.TENANT_RESTORED,
-        tenantId:     record.tenant_id,
-        businessName: businessName,
-        description:  `Suspension lifted after verifying payment for billing period ${record.billing_period}.`,
-        metadata: { subscriptionId: record.subscription_id },
+        tenantId:     subRecord.tenant_id,
+        businessName,
+        description:  `Suspension lifted after manual payment cleared the balance.`,
+        metadata:     { subscriptionId },
       });
     }
   }
 
-  return NextResponse.json({ success: true, data: record });
+  return NextResponse.json({
+    success:      true,
+    isFullyPaid,
+    newAmountPaid,
+    balance:      Math.max(0, billedAmount - newAmountPaid),
+  });
 }

@@ -3,12 +3,12 @@
 // POST — superadmin manually creates a payment record (manual entry path)
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logAudit, AuditEvent } from "@/lib/audit";
 
 // ── GET: list submissions ─────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-  const supabase = createClient(); 
+  const supabase = await createClient(); 
   const { searchParams } = new URL(req.url);
   const status   = searchParams.get("status");   // "Pending" | "Accepted" | "Rejected" | null = all
   const tenantId = searchParams.get("tenantId"); // optional filter

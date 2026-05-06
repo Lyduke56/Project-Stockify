@@ -331,7 +331,7 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
 
             return (
               <div
-                key={row.tenant_id}
+                key={row.subscription_id || `${row.tenant_id}-${idx}`}
                 className={`w-full grid px-4 py-[13px] items-center transition-colors hover:bg-[#385E31]/[0.02] ${
                   !isLast ? "border-b border-[#385E31]/15" : ""
                 }`}
