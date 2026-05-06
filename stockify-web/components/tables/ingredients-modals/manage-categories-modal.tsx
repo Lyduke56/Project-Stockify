@@ -3,11 +3,20 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ModalBackdrop from "./modals-backdrop";
-import { CATEGORIES } from "@/types/product";
 import { X, Tag, Plus, Trash2, FolderOpen } from "lucide-react";
 
-export default function ManageCategoriesModal({ onClose }: { onClose: () => void }) {
-  const [cats, setCats] = useState<string[]>([...CATEGORIES]);
+// Initial supply-chain categories
+const MATERIAL_CATEGORIES = [
+  "Coffee", 
+  "Dairy", 
+  "Syrup", 
+  "Packaging", 
+  "Condiments", 
+  "Cleaning"
+];
+
+export default function ManageMaterialCategoriesModal({ onClose }: { onClose: () => void }) {
+  const [cats, setCats] = useState<string[]>([...MATERIAL_CATEGORIES]);
   const [newCat, setNewCat] = useState("");
 
   const addCat = () => {
@@ -31,7 +40,7 @@ export default function ManageCategoriesModal({ onClose }: { onClose: () => void
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="w-full max-w-[680px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row font-inter"
+        className="w-full h-[650px] max-w-[700px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row font-inter"
       >
         {/* ── LEFT SIDEBAR ── */}
         <div className="w-full md:w-[260px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
@@ -43,7 +52,7 @@ export default function ManageCategoriesModal({ onClose }: { onClose: () => void
               Manage Categories
             </h2>
             <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-10">
-              Organise your menu by adding or removing product categories. Changes apply across your entire storefront.
+              Organise your stock by adding or removing material categories. Changes apply across your entire inventory system.
             </p>
 
             {/* Icon accent */}
@@ -78,7 +87,7 @@ export default function ManageCategoriesModal({ onClose }: { onClose: () => void
 
             <div className="mb-8 pr-12">
               <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                Storefront
+                Inventory
               </span>
               <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">
                 Category List
@@ -91,7 +100,7 @@ export default function ManageCategoriesModal({ onClose }: { onClose: () => void
               <div className="flex gap-3">
                 <input
                   className={inputStyle}
-                  placeholder="e.g. Seasonal Specials"
+                  placeholder="e.g. Cleaning Supplies"
                   value={newCat}
                   onChange={(e) => setNewCat(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addCat()}

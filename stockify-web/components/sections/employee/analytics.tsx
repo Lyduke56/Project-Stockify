@@ -3,27 +3,18 @@
 import AnalyticsReports from "@/components/sections/employee/AnalyticsReports";
 
 export default function EmployeeAnalytics() {
-
   return (
-
-    <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
+    // 1. Changed h-screen to min-h-screen and removed overflow-hidden.
+    // This allows the background to stretch downward as far as the content needs.
+    <div className="flex min-h-screen w-full bg-[#FFFCEB] font-['Inter']">
     
           {/* RIGHT SIDE: Main Content */}
-          <div className="flex-1 flex flex-col h-full overflow-y-auto px-20 pt-5 pb-12">
-    
-            {/* Header */}
-            <div className="w-full flex flex-col items-center mt-10 mb-10">
-              <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
-                Employee Dashboard
-              </h1>
-              <div className="w-[900px] h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
-            </div>
-
+          {/* 2. Removed min-h-0 and overflow-y-auto. 
+              The content will now push the page down naturally! */}
+          <div className="flex-1 flex flex-col w-full font-['Inter']">
             <AnalyticsReports />
           </div>
 
     </div>
-
   );
-
 }

@@ -8,17 +8,21 @@ import SidebarEmployee from "@/components/navbars/sidebar-employee";
 import DashboardSection from "@/components/sections/employee/dashboard-home-employee";
 import AnalyticsReportsSection from "@/components/sections/employee/analytics";
 import AuditLogsSection from "@/components/sections/employee/audit-logs";
-import InventorySection from "@/components/sections/employee/inventory";
+import ProductsSection from "@/components/sections/employee/products";
 import OrdersSection from "@/components/sections/employee/orders";
 import StockNotificationsSection from "@/components/sections/employee/stock-notifications";
 import TransactionsSection from "@/components/sections/employee/transactions";  
 import SettingsSection from "@/components/sections/employee/store-settings";
+import IngredientsSection from "@/components/sections/employee/ingredients";
 
+// Removed the import type { SectionKey } from... line above! 
+// This file is the "source of truth" for this type.
 export type SectionKey =
   | "dashboard"
   | "analytics"
   | "audit-logs"
-  | "inventory"
+  | "products"
+  | "ingredients"
   | "orders"
   | "stock-notifications"
   | "transactions"
@@ -28,7 +32,8 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "dashboard": <DashboardSection />,
   "analytics": <AnalyticsReportsSection />,
   "audit-logs": <AuditLogsSection />,
-  "inventory": <InventorySection />,
+  "products": <ProductsSection />,
+  "ingredients": <IngredientsSection />,
   "orders": <OrdersSection />,
   "stock-notifications": <StockNotificationsSection />,
   "transactions": <TransactionsSection />,
@@ -55,24 +60,31 @@ export default function EmployeeDashboard() {
     window.history.pushState(null, "", `?section=${section}`);
   };
 
+  // --- ADDED THESE MISSING FUNCTIONS ---
+  // These connect your Navbar buttons to your modal state!
+  const handleOpenProfile = () => setIsProfileOpen(true);
+  const handleOpenNotifs = () => setIsNotifsOpen(true);
+  const handleOpenSettings = () => setIsSettingsOpen(true);
+
   return (
     <div className="flex min-h-screen bg-[#FFFCEB]">
       <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} />
 
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-20 pt-5 pb-12">
+      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pt-5 pb-12">
         <NavbarEmployee
-          setActiveSection={handleSetSection}
-          openProfile={() => setIsProfileOpen(true)}
-          openNotifs={() => setIsNotifsOpen(true)}
-          openSettings={() => setIsSettingsOpen(true)}
+         setActiveSection={setActiveSection}
+         openProfile={handleOpenProfile} 
+         openNotifs={handleOpenNotifs}
+         openSettings={handleOpenSettings}
         />
 
-        <main className="p-10">
+        <main className="py-10 px-20">
           {SECTIONS[activeSection]}
         </main>
       </div>
 
       {/* MODALS RENDER HERE */}
+      {/* Once you uncomment these, the Navbar buttons will make them pop up! */}
       {/* <EmployeeProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} /> */}
       {/* <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} /> */}
       {/* <EmployeeSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} /> */}
