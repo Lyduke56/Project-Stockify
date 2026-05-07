@@ -260,7 +260,12 @@ export default function ClientBillingPage() {
           {!isLoading && <SubmissionHistory submissions={submissions} />}
 
           {/* ── Billing History Table ── */}
-          <BillingHistoryTable isLoading={isLoading} records={records} />
+          <BillingHistoryTable
+            isLoading={isLoading}
+            records={records}
+            tenant={tenant}
+            submissions={submissions}
+          />
 
           {/* ── Help Section ── */}
           <section className="w-full h-10 relative flex items-start gap-2.5">

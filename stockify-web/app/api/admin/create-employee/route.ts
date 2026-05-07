@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 export async function POST(req: NextRequest) {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_USER!,
+      pass: process.env.GMAIL_APP_PASSWORD!,
+    },
+  });
 
   try {
     const body = await req.json();
@@ -16,7 +22,6 @@ export async function POST(req: NextRequest) {
       role: string;
     };
 
-    // --- 1. Validate inputs ---
     if (!name || !email || !password || !role) {
       return NextResponse.json(
         { error: "All fields are required." },
@@ -24,7 +29,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- 2. Verify the logged-in owner/admin session ---
     const supabase: SupabaseClient = await createServerClient();
     const { data: { user: currentUser }, error: sessionError } = await supabase.auth.getUser();
 
@@ -35,7 +39,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- 3. Get the owner's tenant_id ---
     const { data: ownerData, error: ownerError } = await supabase
       .from("users")
       .select("tenant_id")
@@ -58,7 +61,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- 4. Create the auth user ---
     const adminSupabase: SupabaseClient = createAdminClient();
 
     const { data: newAuthUser, error: createError } =
@@ -68,7 +70,6 @@ export async function POST(req: NextRequest) {
         email_confirm: true,
       });
 
-    // ✅ Check BEFORE doing anything else
     if (createError || !newAuthUser?.user) {
       console.error("[create-employee] Auth creation failed:", createError?.message);
       return NextResponse.json(
@@ -79,7 +80,6 @@ export async function POST(req: NextRequest) {
 
     const newUserId = newAuthUser.user.id;
 
-    // --- 5. Insert into public.users ---
     const { error: insertError } = await adminSupabase
       .from("users")
       .insert({
@@ -93,37 +93,36 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       console.error("[create-employee] DB insert failed:", insertError.message);
-      await adminSupabase.auth.admin.deleteUser(newUserId); // rollback
+      await adminSupabase.auth.admin.deleteUser(newUserId);
       return NextResponse.json(
         { error: insertError.message },
         { status: 400 }
       );
     }
 
-    // --- 6. Send email ONLY after both auth + DB succeed ---
-      const { error: emailError } = await resend.emails.send({
-      from: "Stockify <onboarding@resend.dev>", // ← match exactly what works
-      to: email,
-      subject: "Your Stockify Employee Account is Ready",
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:auto;">
-          <h2 style="color:#385E31;">Welcome, ${name}!</h2>
-          <p>Your employee account has been created with the role: <strong>${role}</strong>.</p>
-          <p>You can now log in using your email and the password set by your administrator.</p>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/login"
-            style="display:inline-block;margin-top:16px;padding:10px 24px;background:#385E31;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
-            Log In Now
-          </a>
-          <p style="margin-top:24px;font-size:12px;color:#888;">
-            If you weren't expecting this, please ignore this email.
-          </p>
-        </div>
-      `,
-    });
-
-    // ✅ Email failure is non-fatal — account already created, just log it
-    if (emailError) {
-      console.error("[create-employee] Email failed:", emailError.message);
+    // Non-fatal — account already created, just log failures
+    try {
+      await transporter.sendMail({
+        from: `"Stockify" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: "Your Stockify Employee Account is Ready",
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:auto;">
+            <h2 style="color:#385E31;">Welcome, ${name}!</h2>
+            <p>Your employee account has been created with the role: <strong>${role}</strong>.</p>
+            <p>You can now log in using your email and the password set by your administrator.</p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/login"
+              style="display:inline-block;margin-top:16px;padding:10px 24px;background:#385E31;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold;">
+              Log In Now
+            </a>
+            <p style="margin-top:24px;font-size:12px;color:#888;">
+              If you weren't expecting this, please ignore this email.
+            </p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      console.error("[create-employee] Email failed:", emailErr);
     }
 
     return NextResponse.json({ success: true }, { status: 201 });

@@ -21,6 +21,7 @@ export interface TenantData {
 
 export interface PaymentSubmission {
   submission_id:   string;
+  subscription_id: string | null;  // ← add this
   status:          "Pending" | "Accepted" | "Rejected";
   amount_declared: number | null;
   remarks_admin:   string | null;

@@ -298,7 +298,7 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
       {/* ── Data Table ───────────────────────────────────────────────────────── */}
       <div
         ref={tableRef}
-        className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm"
+        className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col shadow-sm"
       >
         {/* Header */}
         <div className="w-full grid px-4 py-3 rounded-t-[8px] bg-[#385E31]"
@@ -319,7 +319,8 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
           filtered.map((row, idx) => {
             const { bg, text } = getPillStyles(row.display_status);
             const isLast = idx === filtered.length - 1;
-            const isOpen = openDropdownId === row.tenant_id;
+            const rowKey = row.subscription_id ?? `${row.tenant_id}-${idx}`;
+            const isOpen = openDropdownId === rowKey;
 
             // Grace window warning
             const inGrace = row.grace_ends_at && row.display_status === "Overdue";
@@ -395,7 +396,7 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
                 {/* Actions dropdown */}
                 <div className="flex justify-center items-center relative">
                   <button
-                    onClick={() => setOpenDropdownId((p) => (p === row.tenant_id ? null : row.tenant_id))}
+                    onClick={() => setOpenDropdownId((p) => (p === rowKey ? null : rowKey))}
                     className={`border border-[#385E31] rounded-full px-3 py-1 text-[10px] font-bold flex items-center gap-1 transition-colors ${
                       isOpen
                         ? "bg-[#385E31] text-[#FFFCEB]"
@@ -406,7 +407,7 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
                   </button>
 
                   {isOpen && (
-                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[172px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[6px] z-30 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col">
+                    <div className="absolute top-8 right-0 w-[172px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[6px] z-30 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col">
 
                       {/* Record Payment — always shown */}
                       <button

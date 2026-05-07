@@ -342,7 +342,9 @@ export default function TenantProfileModal({
                     transition={{ duration: 0.18 }}
                   >
                     {activeTab === "details"  && <BusinessDetailsTab tenant={tenant} />}
-                    {activeTab === "payments" && <PaymentHistoryTab />}
+                    {activeTab === "payments" && tenant && (
+                      <PaymentHistoryTab tenantId={tenant.tenant_id} />
+                    )}
                   </motion.div>
                 </AnimatePresence>
               )}
