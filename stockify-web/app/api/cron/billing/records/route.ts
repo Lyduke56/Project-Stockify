@@ -1,6 +1,3 @@
-// app/api/superadmin/billing/records/route.ts
-// Read-only — fetches a single tenant's full billing history.
-// No mutations here so no audit logging needed.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -31,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   }
 
-  // All subscription records, newest first
+  // All subscription records, newest first — now includes amount_paid
   const { data: records, error: rErr } = await supabase
     .from("subscription_records")
     .select(`
@@ -39,6 +36,7 @@ export async function GET(req: NextRequest) {
       billing_period,
       payment_status,
       amount,
+      amount_paid,
       paid_at,
       overdue_at,
       grace_ends_at,

@@ -3,6 +3,7 @@ export interface SubscriptionRecord {
   billing_period:  string;
   payment_status:  "Pending" | "Paid" | "Overdue";
   amount:          number;
+  amount_paid:     number | null;
   paid_at:         string | null;
   overdue_at:      string | null;
   grace_ends_at:   string | null;
@@ -20,6 +21,7 @@ export interface TenantData {
 
 export interface PaymentSubmission {
   submission_id:   string;
+  subscription_id: string | null;  // ← add this
   status:          "Pending" | "Accepted" | "Rejected";
   amount_declared: number | null;
   remarks_admin:   string | null;

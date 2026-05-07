@@ -35,6 +35,12 @@ export default function PaymentMethodCard({
               src={paymentSettings.payment_qr_url}
               alt="Stockify Payment QR Code"
               className="w-40 h-40 object-contain"
+              onError={(e) => {
+                console.error("❌ Image failed to load! The URL is either broken or the bucket is private:", paymentSettings.payment_qr_url);
+                // Temporarily hide the broken image icon
+                e.currentTarget.style.display = 'none';
+              }}
+              onLoad={() => console.log("✅ QR Image loaded successfully!")}
             />
           ) : (
             <div className="w-40 h-40 bg-gray-100 rounded flex flex-col items-center justify-center gap-2">

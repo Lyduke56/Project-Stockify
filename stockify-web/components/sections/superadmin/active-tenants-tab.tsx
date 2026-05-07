@@ -55,7 +55,6 @@ const COLUMNS = [
   "Business Type",
   "Due Date",
   "Subscription Status",
-  "Balance",
   "Actions",
 ];
 
@@ -365,13 +364,6 @@ export default function ActiveTenantsTab() {
                       {row.subscription_status}
                     </span>
                   </div>
-                </div>
-
-                {/* Balance */}
-                <div className={`flex-1 text-center text-[13px] font-bold ${
-                  row.balance !== "—" ? "text-[#E91F22]" : "text-[#3A6131]"
-                }`}>
-                  {row.balance || "—"}
                 </div>
 
                 {/* Actions dropdown */}

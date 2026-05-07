@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 import SidebarClient      from "@/components/navbars/sidebar-client";
@@ -11,7 +11,7 @@ import CancelConfirmModal from "@/components/modals/client/billing/cancel-confir
 import SubscriptionStatusCard from "@/components/cards/client/billing/SubscriptionStatusCard";
 import PaymentMethodCard      from "@/components/cards/client/billing/PaymentMethodCard";
 import SubmissionHistory      from "@/components/cards/client/billing/SubmissionHistory";
-import BillingHistoryTable    from "@/components/tables/client/billing/BillingHistoryTable"; 
+import BillingHistoryTable    from "@/components/tables/client/billing/BillingHistoryTable";
 
 import type {
   SubscriptionRecord,
@@ -23,6 +23,8 @@ import type {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ClientBillingPage() {
+  const supabase = useMemo(() => createClient(), []);
+
   const [tenant,          setTenant]          = useState<TenantData | null>(null);
   const [records,         setRecords]         = useState<SubscriptionRecord[]>([]);
   const [submissions,     setSubmissions]     = useState<PaymentSubmission[]>([]);
@@ -32,8 +34,6 @@ export default function ClientBillingPage() {
     payment_gcash_number: "",
     payment_instructions: "Scan the QR code using GCash or any e-wallet, then upload your screenshot.",
   });
-
-  const supabase = createClient();
 
   const [currentUserId,   setCurrentUserId]   = useState<string | null>(null);
   const [currentTenantId, setCurrentTenantId] = useState<string | null>(null);
@@ -88,29 +88,45 @@ export default function ClientBillingPage() {
     );
 
     return () => { subscription.unsubscribe(); };
-  }, [resolveSession]);
+  }, [supabase, resolveSession]);
 
-  // ── Step 2: fetch billing data once tenant_id is known ───────────────────
+  // ── Step 2: fetch billing data safely ─────────────────────────────────────
 
   const fetchAll = useCallback(async () => {
     if (!currentTenantId) return;
     setDataLoading(true);
     try {
+      // 1. Fetch all three endpoints simultaneously
       const [recordsRes, subsRes, settingsRes] = await Promise.all([
         fetch(`/api/cron/billing/records?tenantId=${currentTenantId}`),
         fetch(`/api/client/payment-submit?tenantId=${currentTenantId}`),
         fetch("/api/payment-settings"),
       ]);
 
-      const [recordsJson, subsJson, settingsJson] = await Promise.all([
-        recordsRes.json(),
-        subsRes.json(),
-        settingsRes.json(),
-      ]);
+      // 2. Safe parse helper to prevent entire page crash if one endpoint fails
+      const safeParse = async (res: Response) => {
+        if (!res.ok) {
+          console.warn(`[API Warning] ${res.url} returned status ${res.status}`);
+          return {};
+        }
+        try {
+          return await res.json();
+        } catch (e) {
+          console.error(`[API Error] Could not parse JSON from ${res.url}`);
+          return {};
+        }
+      };
 
+      // 3. Parse safely
+      const recordsJson  = await safeParse(recordsRes);
+      const subsJson     = await safeParse(subsRes);
+      const settingsJson = await safeParse(settingsRes);
+
+      // 4. Update state only with valid data
       if (recordsJson.records)   setRecords(recordsJson.records);
       if (subsJson.submissions)  setSubmissions(subsJson.submissions);
       if (settingsJson.settings) setPaymentSettings((prev) => ({ ...prev, ...settingsJson.settings }));
+      
     } catch (e) {
       console.error("[ClientBilling] fetchAll error:", e);
     } finally {
@@ -122,31 +138,51 @@ export default function ClientBillingPage() {
 
   // ── Step 3: real-time updates ─────────────────────────────────────────────
 
+  const fetchAllRef = useRef(fetchAll);
+  useEffect(() => { fetchAllRef.current = fetchAll; }, [fetchAll]);
+
   useEffect(() => {
     if (!currentTenantId) return;
+
+    const channelName = `client-billing-rt:${currentTenantId}`;
+
     const channel = supabase
-      .channel("client-billing-rt")
-      .on("postgres_changes",
+      .channel(channelName)
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "payment_submissions",
           filter: `tenant_id=eq.${currentTenantId}` },
-        () => fetchAll()
+        () => { fetchAllRef.current(); }
       )
-      .on("postgres_changes",
+      .on(
+        "postgres_changes",
         { event: "*", schema: "public", table: "subscription_records",
           filter: `tenant_id=eq.${currentTenantId}` },
-        () => fetchAll()
+        () => { fetchAllRef.current(); }
       )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [currentTenantId, fetchAll]);
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          console.debug("[ClientBilling] realtime subscribed for tenant", currentTenantId);
+        }
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[ClientBilling] realtime channel error:", status);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, currentTenantId]);
 
   // ── Derived values ────────────────────────────────────────────────────────
 
   const latestRecord  = records[0] ?? null;
   const hasPendingSub = submissions.some((s) => s.status === "Pending");
+  
+  // Updated totalUnpaid calculation: amount - amount_paid
   const totalUnpaid   = records
     .filter((r) => r.payment_status !== "Paid")
-    .reduce((sum, r) => sum + Number(r.amount), 0);
+    .reduce((sum, r) => sum + (Number(r.amount) - Number(r.amount_paid || 0)), 0);
 
   const isLoading = !sessionReady || dataLoading;
 
@@ -189,7 +225,7 @@ export default function ClientBillingPage() {
           <section className="w-full h-12 inline-flex flex-col justify-start items-start gap-[3.23px]">
             <div className="self-stretch h-7 relative">
               <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800 text-2xl font-bold font-['Inter'] leading-7">
-                Billing &amp; Subscription
+                Billing & Subscription
               </div>
             </div>
             <div className="self-stretch h-5 relative">
@@ -224,7 +260,12 @@ export default function ClientBillingPage() {
           {!isLoading && <SubmissionHistory submissions={submissions} />}
 
           {/* ── Billing History Table ── */}
-          <BillingHistoryTable isLoading={isLoading} records={records} />
+          <BillingHistoryTable
+            isLoading={isLoading}
+            records={records}
+            tenant={tenant}
+            submissions={submissions}
+          />
 
           {/* ── Help Section ── */}
           <section className="w-full h-10 relative flex items-start gap-2.5">

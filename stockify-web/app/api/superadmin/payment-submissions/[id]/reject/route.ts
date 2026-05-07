@@ -5,14 +5,14 @@
 //   • Logs audit event
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { logAudit, AuditEvent } from "@/lib/audit";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { id: submissionId } = await params;
 
   const body = await req.json().catch(() => ({}));

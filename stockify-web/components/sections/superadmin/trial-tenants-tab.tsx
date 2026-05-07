@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import TenantProfileModal from "@/components/modals/superadmin/tenant-profile/tenant-profile-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,7 @@ export default function TrialTenantsTab() {
   // Action state
   const [selectedTenant,  setSelectedTenant]  = useState<TrialTenant | null>(null);
   const [showEndTrialModal, setShowEndTrialModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [actionLoading,   setActionLoading]   = useState(false);
   const [actionError,     setActionError]     = useState("");
   const [successMsg,      setSuccessMsg]      = useState("");
@@ -349,7 +351,10 @@ export default function TrialTenantsTab() {
                 {/* Business Name */}
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                   <span
-                    onClick={() => router.push(`/superadmin/tenant-profile/${row.tenant_id}`)}
+                    onClick={() => {
+                      setSelectedTenant(row);
+                      setShowProfileModal(true);
+                    }}
                     className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
@@ -408,8 +413,9 @@ export default function TrialTenantsTab() {
 
                       <button
                         onClick={() => {
+                          setSelectedTenant(row);
                           setOpenDropdownId(null);
-                          router.push(`/superadmin/tenant-profile/${row.tenant_id}`);
+                          setShowProfileModal(true);
                         }}
                         className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                       >
@@ -442,8 +448,9 @@ export default function TrialTenantsTab() {
           Load More
         </button>
       </div>
+      
 
-      {/* End Trial Modal */}
+      {/* Modals */}
       {showEndTrialModal && selectedTenant && (
         <EndTrialModal
           tenant={selectedTenant}
@@ -458,6 +465,22 @@ export default function TrialTenantsTab() {
           }}
         />
       )}
+
+      <TenantProfileModal
+        isOpen={showProfileModal}
+        tenantId={selectedTenant?.tenant_id ?? null}
+        onClose={() => {
+          setShowProfileModal(false);
+          setSelectedTenant(null);
+        }}
+        onSuccess={(tenantId, action) => {
+          // Optional: handle updates if actions like suspend/terminate exist in the profile modal
+          if (action === "suspend" || action === "terminate") {
+            setTenants((prev) => prev.filter((t) => t.tenant_id !== tenantId));
+          }
+        }}
+      />
+      
     </>
   );
 }

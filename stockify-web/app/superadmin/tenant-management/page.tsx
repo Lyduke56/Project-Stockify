@@ -7,6 +7,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // Components
 import Sidebar from "@/components/navbars/sidebar-superadmin";
 import NavbarApp from "@/components/navbars/navbar-superadmin";
+
 import PendingTenantsTab from "@/components/sections/superadmin/pending-tenants-tab";
 import ActiveTenantsTab from "@/components/sections/superadmin/active-tenants-tab";
 import TerminatedTenantsTab from "@/components/sections/superadmin/terminated-tenants-table";

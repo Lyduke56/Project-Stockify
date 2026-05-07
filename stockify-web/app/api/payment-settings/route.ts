@@ -1,100 +1,64 @@
 // app/api/payment-settings/route.ts
-// GET  — public: fetch payment QR URL and GCash details for the client billing page
-// PATCH — superadmin: update settings (qr url, name, number, instructions)
 
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-const KEYS = [
-  "payment_qr_url",
-  "payment_gcash_name",
-  "payment_gcash_number",
-  "payment_instructions",
-] as const;
+// ✅ Changed from ANON_KEY to SERVICE_ROLE_KEY to bypass RLS blocks
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY! 
+);
 
-  const supabase = createClient();
-// ── GET ───────────────────────────────────────────────────────────────────────
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-
-
-  
-  const { data, error } = await supabase
-    .from("stockify_settings")
-    .select("key, value")
-    .in("key", KEYS as unknown as string[]);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const settings: Record<string, string | null> = {};
-  for (const row of data ?? []) {
-    settings[row.key] = row.value;
-  }
-
-  return NextResponse.json({ settings });
-}
-
-// ── PATCH ─────────────────────────────────────────────────────────────────────
-export async function PATCH(req: NextRequest) {
-  
-  const body = await req.json().catch(() => ({}));
-
-  const updates = KEYS.filter((k) => k in body).map((k) => ({
-    key:        k,
-    value:      body[k] ?? null,
-    updated_at: new Date().toISOString(),
-  }));
-
-  if (updates.length === 0) {
-    return NextResponse.json({ error: "No valid keys provided." }, { status: 400 });
-  }
-
-  const { error } = await supabase
-    .from("stockify_settings")
-    .upsert(updates, { onConflict: "key" });
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ success: true });
-}
-
-// ── POST: upload QR image to storage ─────────────────────────────────────────
-export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const qrImage  = formData.get("qrImage") as File | null;
+    const keysToFetch = [
+      "payment_qr_url",
+      "payment_gcash_name",
+      "payment_gcash_number",
+      "payment_instructions",
+    ];
 
-    if (!qrImage) {
-      return NextResponse.json({ error: "qrImage is required." }, { status: 400 });
+    // 1. Fetch raw rows from the database
+    const { data, error } = await supabase
+      .from("stockify_settings")
+      .select("key, value")
+      .in("key", keysToFetch);
+
+    if (error) throw error;
+
+    // 2. Transform array into a flat object
+    const settingsObject = data.reduce((acc, row) => {
+      acc[row.key] = row.value;
+      return acc;
+    }, {} as Record<string, string | null>);
+
+    // 3. STORAGE BUCKET LOGIC (Using Signed URLs for Private Buckets)
+    const qrValue = settingsObject.payment_qr_url;
+    
+    if (qrValue && !qrValue.startsWith("http")) {
+      // Ask Supabase for a secure, signed URL valid for 1 hour (3600 seconds)
+      const { data: signedUrlData, error: signErr } = await supabase
+        .storage
+        .from("payment-proofs")
+        .createSignedUrl(qrValue, 3600);
+        
+      if (signErr) {
+        console.error("Failed to sign URL:", signErr);
+      } else if (signedUrlData) {
+        // Replace the raw path with the secure, temporary image link
+        settingsObject.payment_qr_url = signedUrlData.signedUrl;
+      }
     }
-
-    const ext      = qrImage.name.split(".").pop() ?? "png";
-    const fileName = `stockify-payment-qr.${ext}`;
-    const buffer   = Buffer.from(await qrImage.arrayBuffer());
-
-    // Upsert so re-uploads replace the existing QR
-    const { error: uploadErr } = await supabase.storage
-      .from("payment-proofs")
-      .upload(`qr/${fileName}`, buffer, {
-        contentType: qrImage.type,
-        upsert:      true,
-      });
-
-    if (uploadErr) {
-      return NextResponse.json({ error: uploadErr.message }, { status: 500 });
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("payment-proofs")
-      .getPublicUrl(`qr/${fileName}`);
-
-    // Persist URL to settings
-    await supabase.from("stockify_settings").upsert(
-      { key: "payment_qr_url", value: urlData.publicUrl, updated_at: new Date().toISOString() },
-      { onConflict: "key" }
-    );
-
-    return NextResponse.json({ success: true, url: urlData.publicUrl });
+    // 4. Return the fully resolved object
+    return NextResponse.json({
+      success: true,
+      settings: settingsObject,
+    });
+    
   } catch (err: any) {
-    return NextResponse.json({ error: err.message ?? "Upload failed." }, { status: 500 });
+    console.error("[Payment Settings GET Error]:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

@@ -1,5 +1,11 @@
 "use client";
 import { useRouter, useParams, usePathname } from "next/navigation";
+import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+// Note: Adjust these import paths if your file structure for the client sidebar differs from the superadmin one
+import LogoutModal from "../modals/logout-modal";
+import SettingsModal from "../modals/navbar-modals/settings";
 
 type SidebarClientProps = {
   active?: "dashboard" | "billing" | "settings";
@@ -9,11 +15,36 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
+  const supabase = createClient();
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Fallback: extract shopName from the URL path if params doesn't resolve it
   const shopName = (params?.shopName as string) || pathname?.split("/")[1];
 
   const go = (href: string) => router.push(href);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("token");
+    
+    setShowLogoutModal(false);
+
+    // Replace the current history entry with the home page first
+    router.replace("/");
+
+    // Then force a hard reload to ensure all state is wiped
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 100);
+  };
+
+  // This filter approximates the amber-400 color when the item is active. 
+  // You can adjust the hex-to-filter values if you need a slightly different shade.
+  const activeIconStyle = { 
+    filter: "brightness(0) saturate(100%) invert(74%) sepia(85%) saturate(3783%) hue-rotate(348deg) brightness(101%) contrast(104%)" 
+  };
 
   return (
     <div className="w-64 h-screen fixed left-0 pt-20 pb-2.5 bg-amber-400 shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-7 overflow-hidden">
@@ -29,13 +60,12 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
                   : "w-64 h-14 pl-5 pr-12 py-6 bg-amber-400 inline-flex justify-start items-center gap-2.5"
               }
             >
-            <div className="w-10 h-10 relative overflow-hidden">
-                <div
-                  className={
-                    active === "dashboard"
-                      ? "w-9 h-7 left-[3.42px] top-[6.83px] absolute bg-amber-400"
-                      : "w-9 h-7 left-[3.42px] top-[6.83px] absolute bg-lime-900"
-                  }
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                <img
+                  src="/icon-dashboard.svg"
+                  alt="Dashboard"
+                  className="w-full h-full object-contain"
+                  style={active === "dashboard" ? activeIconStyle : {}}
                 />
             </div>
             <div data-property-1="x1" className="w-16 h-9 relative">
@@ -50,6 +80,7 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
                 </div>
             </div>
             </button>
+            
             <button
               type="button"
               onClick={() => go(`/${shopName}/stockify-client-side/billing`)}
@@ -61,13 +92,12 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
                   : "w-64 h-14 pl-5 pr-12 py-6 bg-amber-400 inline-flex justify-start items-center gap-2.5"
               }
             >
-            <div className="w-10 h-10 relative overflow-hidden">
-                <div
-                  className={
-                    active === "billing"
-                      ? "w-9 h-7 left-[3.42px] top-[6.83px] absolute bg-amber-400"
-                      : "w-9 h-7 left-[3.42px] top-[6.83px] absolute bg-lime-900"
-                  }
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                <img
+                  src="/icon-subscription-billing.svg"
+                  alt="Subscription Billing"
+                  className="w-full h-full object-contain"
+                  style={active === "billing" ? activeIconStyle : {}}
                 />
             </div>
             <div data-property-1="x1" className="w-16 h-9 relative">
@@ -86,23 +116,51 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
         </div>
         <div className="w-60 h-0 outline outline-[3px] outline-offset-[-1.50px] outline-green-950/20" />
         <div className="w-32 flex flex-col justify-center items-center gap-2.5">
-            <div data-showicon="true" className="self-stretch h-10 inline-flex justify-start items-start gap-2.5">
-            <div className="w-9 h-9 relative">
-                <div className="w-8 h-8 left-[3.09px] top-[3.17px] absolute bg-lime-900" />
+            <div 
+              data-showicon="true" 
+              onClick={() => setShowSettingsModal(true)}
+              className="self-stretch h-10 inline-flex justify-start items-start gap-2.5 cursor-pointer"
+            >
+            <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                <img
+                  src="/icon-settings.svg"
+                  alt="Settings"
+                  className="w-full h-full object-contain"
+                />
             </div>
             <div data-property-1="x2" className="w-16 h-9 relative">
                 <div className="left-0 top-[10px] absolute justify-center text-lime-900 text-base font-semibold font-['Inter']">Settings</div>
             </div>
             </div>
-            <div data-showicon="true" className="self-stretch h-10 inline-flex justify-start items-start gap-2.5">
-            <div className="w-9 h-9 relative overflow-hidden">
-                <div className="w-7 h-7 left-[4.75px] top-[4.75px] absolute bg-lime-900" />
+            
+            <div 
+              data-showicon="true" 
+              onClick={() => setShowLogoutModal(true)}
+              className="self-stretch h-10 inline-flex justify-start items-start gap-2.5 cursor-pointer"
+            >
+            <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                <img
+                  src="/icon-logout.svg"
+                  alt="Logout"
+                  className="w-full h-full object-contain"
+                />
             </div>
             <div data-property-1="x2" className="w-16 h-9 relative">
                 <div className="left-0 top-[10px] absolute justify-center text-lime-900 text-base font-semibold font-['Inter']">Logout</div>
             </div>
             </div>
         </div>
+
+        {/* Modals */}
+        <LogoutModal
+          isOpen={showLogoutModal}
+          onCancel={() => setShowLogoutModal(false)}
+          onConfirm={handleLogout}
+        />
+        <SettingsModal 
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+        />
     </div>
   );
 }
