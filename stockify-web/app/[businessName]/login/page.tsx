@@ -1,11 +1,12 @@
 "use client";
 
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getUserData } from "@/backend/hooks/getUserRole";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
-import { motion, AnimatePresence } from "framer-motion";
+
 
 // ─── Slideshow slides ────────────────────────────────────────────────────────
 const SLIDES = [
@@ -36,6 +37,31 @@ const SLIDES = [
 ];
 
 const SLIDE_DURATION = 5000;
+
+// ─── Animation Variants ──────────────────────────────────────────────────────
+const containerVariants: Variants = {
+  hidden: { opacity: 0, x: 40 },
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      type: "spring",
+      stiffness: 280,
+      damping: 28,
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { type: "spring", stiffness: 300, damping: 24 } 
+  },
+};
 
 export default function BusinessLoginPage() {
   const router = useRouter();
@@ -85,7 +111,6 @@ export default function BusinessLoginPage() {
       if (data?.user) {
         const userRole = await getUserData(data.user.id);
 
-        // Block Superadmin from this page
         if (userRole === "Superadmin") {
           await supabase.auth.signOut();
           setLoading(false);
@@ -99,7 +124,6 @@ export default function BusinessLoginPage() {
           return;
         }
 
-        // Check if active
         const { data: userData } = await supabase
           .from("users")
           .select("is_active")
@@ -113,21 +137,19 @@ export default function BusinessLoginPage() {
           return;
         }
 
-        // Verify user belongs to this tenant
-            // AFTER
-                const tenantData = await getBusinessNameByUserId(data.user.id);
-                const shopName = tenantData?.business_name;
-                const businessType = tenantData?.business_type;
+        const tenantData = await getBusinessNameByUserId(data.user.id);
+        const shopName = tenantData?.business_name;
+        const businessType = tenantData?.business_type;
 
-                const normalizedShop = shopName?.toLowerCase().replace(/\s+/g, "-").trim();
-                const normalizedParam = businessName?.toLowerCase().trim();
+        const normalizedShop = shopName?.toLowerCase().replace(/\s+/g, "-").trim();
+        const normalizedParam = businessName?.toLowerCase().trim();
 
-                if (!shopName || normalizedShop !== normalizedParam) {
-                await supabase.auth.signOut();
-                setLoading(false);
-                setError(`Access denied. Shop: "${shopName}", URL: "${businessName}"`);
-                return;
-                }
+        if (!shopName || normalizedShop !== normalizedParam) {
+          await supabase.auth.signOut();
+          setLoading(false);
+          setError(`Access denied. Shop: "${shopName}", URL: "${businessName}"`);
+          return;
+        }
         setLoading(false);
 
         switch (userRole) {
@@ -140,14 +162,14 @@ export default function BusinessLoginPage() {
           case "Employee":
             router.push(`/${businessName}/employee/dashboard`);
             break;
-        case "Customer": {
+          case "Customer": {
             const typeSlug =
-                businessType === "Food & Beverage"
+              businessType === "Food & Beverage"
                 ? "food-and-beverage"
                 : "non-food-and-beverage";
-        router.push(`/${businessName}/customer/${typeSlug}/storefront`);
-        break;
-        }
+            router.push(`/${businessName}/customer/${typeSlug}/storefront`);
+            break;
+          }
           default:
             setError("Unrecognized role. Please contact support.");
         }
@@ -161,15 +183,15 @@ export default function BusinessLoginPage() {
   const slide = SLIDES[currentSlide];
 
   return (
-    <div className="relative w-full min-h-screen overflow-hidden flex items-center justify-end pr-0 md:pr-16">
+    <div className="relative w-full min-h-screen overflow-hidden flex items-center justify-center md:justify-end md:pr-[5%] lg:pr-[8%]">
       {/* ── Animated Slideshow Background ── */}
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.id}
-          initial={{ opacity: 0, scale: 1.04 }}
+          initial={{ opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 1.4, ease: "easeInOut" }}
           className="absolute inset-0 z-0"
           style={{
             background: slide.gradient,
@@ -183,53 +205,51 @@ export default function BusinessLoginPage() {
           />
           {/* Noise grain */}
           <div
-            className="absolute inset-0 opacity-20"
+            className="absolute inset-0 opacity-20 mix-blend-overlay"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.4'/%3E%3C/svg%3E")`,
             }}
           />
+          {/* Vignette effect for depth */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
         </motion.div>
       </AnimatePresence>
 
       {/* ── Slide headline (left side) ── */}
-      <div className="absolute left-8 md:left-16 bottom-1/3 z-10 hidden md:block">
+      <div className="absolute left-8 md:left-[8%] lg:left-[10%] bottom-[20%] z-10 hidden md:block max-w-[50%]">
         <AnimatePresence mode="wait">
           <motion.div
             key={`headline-${slide.id}`}
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <p
-              className="font-['Fredoka'] font-bold leading-tight text-white/90"
-              style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}
-            >
+            <h2 className="font-['Fredoka'] font-bold leading-[1.1] text-white tracking-wide drop-shadow-lg"
+                style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}>
               {slide.headline}
-            </p>
-            <p
-              className="font-['Fredoka'] font-bold leading-tight"
-              style={{
-                fontSize: "clamp(2rem, 4vw, 3.5rem)",
-                color: slide.accent,
-              }}
-            >
+            </h2>
+            <h2 className="font-['Fredoka'] font-bold leading-[1.1] drop-shadow-lg"
+                style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", color: slide.accent }}>
               {slide.subline}
-            </p>
+            </h2>
           </motion.div>
         </AnimatePresence>
+        
         {/* Slide dots */}
-        <div className="flex gap-2 mt-6">
+        <div className="flex gap-3 mt-8">
           {SLIDES.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrentSlide(i)}
               className="transition-all duration-500 rounded-full"
               style={{
-                width: i === currentSlide ? "28px" : "8px",
-                height: "8px",
-                background: i === currentSlide ? slide.accent : "rgba(255,255,255,0.35)",
+                width: i === currentSlide ? "32px" : "10px",
+                height: "10px",
+                background: i === currentSlide ? slide.accent : "rgba(255,255,255,0.4)",
+                boxShadow: i === currentSlide ? `0 0 10px ${slide.accent}80` : "none",
               }}
+              aria-label={`Go to slide ${i + 1}`}
             />
           ))}
         </div>
@@ -237,68 +257,84 @@ export default function BusinessLoginPage() {
 
       {/* ── Floating Login Panel ── */}
       <motion.div
-        initial={{ opacity: 0, x: 60 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ type: "spring", stiffness: 280, damping: 28, delay: 0.2 }}
-        className="relative z-20 w-full md:w-[420px] min-h-screen md:min-h-0 md:rounded-[28px] flex flex-col justify-center bg-[#FFFCEB] md:shadow-2xl overflow-hidden md:mr-0"
-        style={{ boxShadow: "0 32px 80px rgba(0,0,0,0.35), 0 0 0 3px #F7B71D" }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="relative z-20 w-full max-w-[440px] min-h-screen md:min-h-0 bg-white/95 backdrop-blur-xl md:rounded-[32px] flex flex-col justify-center shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:border border-white/40 overflow-hidden"
       >
-        {/* Gold top bar */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-[#F7B71D]" />
+        {/* Subtle top inner glow */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F7B71D]/80 to-transparent opacity-80" />
 
-        <div className="px-10 py-12">
-          {/* Logo / Business Name */}
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 bg-[#385E31] rounded-full px-4 py-1.5 mb-5">
-              <span className="w-2 h-2 rounded-full bg-[#F7B71D] animate-pulse" />
-              <span className="font-['Fredoka'] text-[13px] text-[#F7B71D] font-semibold tracking-widest uppercase">
+        <div className="px-8 py-12 md:px-10">
+          {/* Header */}
+          <motion.div variants={itemVariants} className="mb-8">
+            <div className="inline-flex items-center gap-2.5 bg-[#385E31]/10 border border-[#385E31]/10 rounded-full px-4 py-1.5 mb-6">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F7B71D] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#F7B71D]"></span>
+              </span>
+              <span className="font-['Fredoka'] text-[12px] text-[#385E31] font-bold tracking-widest uppercase">
                 {businessName?.replace(/-/g, " ") ?? "Store"}
               </span>
             </div>
-            <h1 className="font-['Fredoka'] font-bold text-[40px] leading-tight text-[#385E31]">
-              Welcome Back!
+            <h1 className="font-['Fredoka'] font-bold text-4xl leading-tight text-gray-900 mb-2">
+              Welcome Back
             </h1>
-            <p className="font-['Fredoka'] text-[14px] text-[#8C9B85] mt-1">
+            <p className="font-['Fredoka'] text-[15px] text-gray-500 font-medium">
               Sign in to access your workspace.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Error */}
+          {/* Error Message */}
           <AnimatePresence>
             {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="font-['Fredoka'] text-[13px] text-red-600 bg-red-50 border border-red-200 px-4 py-2.5 rounded-2xl mb-5 text-center"
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: "auto", marginBottom: 20 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="overflow-hidden"
               >
-                {error}
-              </motion.p>
+                <div className="font-['Fredoka'] text-[14px] font-medium text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-2xl flex items-start gap-2">
+                  <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {/* Email */}
-            <div className="flex flex-col gap-1">
-              <label className="font-['Fredoka'] text-[13px] text-[#6B7C65] pl-3 font-semibold">
-                Email
+            <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
+              <label className="font-['Fredoka'] text-[14px] text-gray-700 pl-1 font-semibold">
+                Email Address
               </label>
               <input
                 type="email"
-                placeholder="your@email.com"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all shadow-sm border border-[#F7B71D]/30"
+                className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white focus:border-[#385E31] focus:ring-4 focus:ring-[#385E31]/10 transition-all duration-200"
               />
-            </div>
+            </motion.div>
 
             {/* Password */}
-            <div className="flex flex-col gap-1">
-              <label className="font-['Fredoka'] text-[13px] text-[#6B7C65] pl-3 font-semibold">
-                Password
-              </label>
+            <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
+              <div className="flex justify-between items-end pr-1">
+                <label className="font-['Fredoka'] text-[14px] text-gray-700 pl-1 font-semibold">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => router.push("/auth/forgot-password")}
+                  className="font-['Fredoka'] text-[13px] text-[#385E31] hover:text-[#2A4725] font-medium transition-colors"
+                >
+                  Forgot?
+                </button>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -306,12 +342,12 @@ export default function BusinessLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-5 py-3.5 pr-12 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all shadow-sm border border-[#F7B71D]/30"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white focus:border-[#385E31] focus:ring-4 focus:ring-[#385E31]/10 transition-all duration-200"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8B6B2B] hover:text-[#385E31] transition-colors focus:outline-none"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
                 >
                   {showPassword ? (
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -325,54 +361,46 @@ export default function BusinessLoginPage() {
                   )}
                 </button>
               </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => router.push("/auth/forgot-password")}
-                  className="font-['Fredoka'] text-[12px] text-[#A3A3A3] hover:text-[#385E31] transition-colors pr-1 mt-0.5"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            </div>
+            </motion.div>
 
-            {/* Submit */}
-            <motion.button
-              type="submit"
-              disabled={loading}
-              whileHover={{ scale: loading ? 1 : 1.02 }}
-              whileTap={{ scale: loading ? 1 : 0.97 }}
-              className="mt-4 w-full bg-[#385E31] text-[#F7B71D] font-['Fredoka'] font-bold tracking-wide text-[19px] py-3.5 rounded-2xl hover:bg-[#2A4725] shadow-md disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  SIGNING IN...
-                </span>
-              ) : (
-                "SIGN IN"
-              )}
-            </motion.button>
+            {/* Submit Button */}
+            <motion.div variants={itemVariants} className="pt-2">
+              <motion.button
+                type="submit"
+                disabled={loading}
+                whileHover={{ scale: loading ? 1 : 1.015 }}
+                whileTap={{ scale: loading ? 1 : 0.98 }}
+                className="relative w-full bg-[#385E31] text-[#FFFCEB] font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl hover:bg-[#2A4725] shadow-[0_8px_20px_rgba(56,94,49,0.3)] disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-300 overflow-hidden"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Signing in...
+                  </span>
+                ) : (
+                  "Sign In"
+                )}
+                {/* Subtle highlight effect on button */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+              </motion.button>
+            </motion.div>
           </form>
 
-          {/* Register link for customers */}
-          <p className="font-['Fredoka'] text-[13px] text-[#8C9B85] text-center mt-6">
+          {/* Register link */}
+          <motion.p variants={itemVariants} className="font-['Fredoka'] text-[14px] text-gray-500 text-center mt-8">
             New customer?{" "}
             <button
               type="button"
               onClick={() => router.push(`/${businessName}/customer/registration`)}
-              className="text-[#385E31] font-semibold hover:underline"
+              className="text-[#385E31] font-bold hover:text-[#F7B71D] transition-colors"
             >
               Register here
             </button>
-          </p>
+          </motion.p>
         </div>
-
-        {/* Bottom accent */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[#385E31] via-[#F7B71D] to-[#385E31]" />
       </motion.div>
     </div>
   );

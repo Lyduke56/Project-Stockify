@@ -74,23 +74,6 @@ export default function EditOrderModal({ order, onClose, onSave }: EditOrderModa
 
           <div>
             <label className="block text-xs font-semibold text-[#385E31] uppercase tracking-wider mb-1.5">
-              Payment Status
-            </label>
-            <select
-              value={form.paymentStatus}
-              onChange={(e) =>
-                handleChange("paymentStatus", e.target.value as Order["paymentStatus"])
-              }
-              className="w-full px-4 py-2.5 rounded-xl border border-[#F7B71D]/40 bg-white text-[#385E31] font-medium focus:outline-none focus:ring-2 focus:ring-[#F7B71D]"
-            >
-              <option>Pending</option>
-              <option>Paid</option>
-              <option>Failed</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-[#385E31] uppercase tracking-wider mb-1.5">
               Fulfillment Status
             </label>
             <select

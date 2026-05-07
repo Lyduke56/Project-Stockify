@@ -7,7 +7,7 @@ export default function OrdersSection() {
   return (
     // REMOVED: h-screen, bg-[#FFFCEB], overflow-hidden, overflow-y-auto
     // The parent Dashboard layout now handles the scrolling and background
-    <div className="w-full flex flex-col font-['Inter']">
+    <div className="w-full flex flex-col font-['Inter'] pb-30">
 
       {/* Header */}
       <div className="w-full flex flex-col items-center mt-2 mb-10">
