@@ -98,7 +98,7 @@ export default function EmployeeDashboard() {
     <div className="flex min-h-screen bg-[#FFFCEB]">
       <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} />
 
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pt-5 pb-12">
+      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee
          setActiveSection={setActiveSection}
          openProfile={handleOpenProfile} 
@@ -106,7 +106,7 @@ export default function EmployeeDashboard() {
          openSettings={handleOpenSettings}
         />
 
-        <main className="py-10 px-20">
+        <main className="px-5 pt-10">
           {SECTIONS[activeSection]}
         </main>
       </div>
