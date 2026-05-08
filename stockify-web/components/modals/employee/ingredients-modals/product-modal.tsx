@@ -1,0 +1,524 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import ModalBackdrop from "./modals-backdrop";
+import {
+  X, Info, Coffee, ChevronRight, Trash2, Plus,
+  Coins, PackageCheck, UploadCloud, Loader2,
+} from "lucide-react";
+import { fetchCategories, type Category } from "@/lib/employee/inventory";
+import {
+  fetchIngredientOptions,
+  uploadProductImage,
+  type Product,
+  type RecipeInput,
+  type IngredientOption,
+} from "@/lib/employee/products";
+
+// ── Props ─────────────────────────────────────────────────────
+
+export interface ProductModalProps {
+  mode:      "add" | "edit";
+  tenantId:  string;
+  productId?: string; // needed for image upload path on edit
+  initial?:  Product;
+  onSave: (
+    input: {
+      category_id:  string | null;
+      name:         string;
+      sku:          string;
+      description:  string | null;
+      image_url:    string | null;
+      unit_cost:    number;
+      price:        number;
+      max_yield:    number;
+      visible:      boolean;
+    },
+    recipe: RecipeInput[],
+    imageFile: File | null
+  ) => Promise<void>;
+  onClose: () => void;
+}
+
+// ── Styles ────────────────────────────────────────────────────
+
+const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
+const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
+const selectStyle = `${inputStyle} appearance-none pr-10 bg-[image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'%233A6131'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpolyline%20points%3D'6%209%2012%2015%2018%209'%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")] bg-no-repeat bg-[right_14px_center]`;
+
+const STEPS = [
+  { id: 1, label: "Basic Information",    icon: Info    },
+  { id: 2, label: "Recipe & Ingredients", icon: Coffee  },
+  { id: 3, label: "Pricing & Metrics",    icon: Coins   },
+];
+
+// ── Component ─────────────────────────────────────────────────
+
+export default function ProductModal({
+  mode, tenantId, productId, initial, onSave, onClose,
+}: ProductModalProps) {
+  const [step,     setStep]     = useState(1);
+  const [saving,   setSaving]   = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+
+  // Remote data
+  const [categories,   setCategories]   = useState<Category[]>([]);
+  const [ingredients,  setIngredients]  = useState<IngredientOption[]>([]);
+  const [loadingCats,  setLoadingCats]  = useState(true);
+  const [loadingIngs,  setLoadingIngs]  = useState(true);
+
+  // Image
+  const [imageFile,    setImageFile]    = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(initial?.image_url ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Form
+  const [form, setForm] = useState({
+    name:        initial?.name        ?? "",
+    sku:         initial?.sku         ?? "",
+    description: initial?.description ?? "",
+    category_id: initial?.category_id ?? "",
+    unit_cost:   String(initial?.unit_cost ?? ""),
+    price:       String(initial?.price     ?? ""),
+    max_yield:   String(initial?.max_yield ?? ""),
+    visible:     initial?.visible     ?? true,
+  });
+
+  // Recipe rows
+  const [recipe, setRecipe] = useState<{ item_id: string; item_type: "fnb" | "nfb"; amount: string; unit: string }[]>(
+    initial?.recipe?.map((r) => ({
+      item_id:   r.item_id,
+      item_type: r.item_type,
+      amount:    String(r.amount),
+      unit:      r.unit,
+    })) ?? []
+  );
+
+  const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
+
+  // Fetch categories & ingredients in parallel
+  useEffect(() => {
+    fetchCategories(tenantId)
+      .then((data) => {
+        setCategories(data);
+        if (mode === "add" && data.length > 0 && !form.category_id) {
+          setForm((f) => ({ ...f, category_id: data[0].category_id }));
+        }
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoadingCats(false));
+
+    fetchIngredientOptions(tenantId)
+      .then(setIngredients)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoadingIngs(false));
+  }, []);
+
+  // ── Image helpers ─────────────────────────────────────────────
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  // ── Recipe helpers ────────────────────────────────────────────
+
+  const addRecipeRow = () => {
+    setRecipe((prev) => [...prev, { item_id: "", item_type: "fnb", amount: "", unit: "" }]);
+  };
+
+  const updateRecipeRow = (idx: number, item_id: string) => {
+    const ing = ingredients.find((i) => i.item_id === item_id);
+    setRecipe((prev) =>
+      prev.map((row, i) =>
+        i === idx
+          ? { ...row, item_id, item_type: ing?.item_type ?? "fnb", unit: ing?.unit ?? "" }
+          : row
+      )
+    );
+  };
+
+  const updateRecipeAmount = (idx: number, amount: string) => {
+    setRecipe((prev) => prev.map((row, i) => (i === idx ? { ...row, amount } : row)));
+  };
+
+  const removeRecipeRow = (idx: number) => {
+    setRecipe((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // ── Save ──────────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.sku.trim()) {
+      setError("Product name and SKU are required.");
+      return;
+    }
+
+    const validRecipe: RecipeInput[] = recipe
+      .filter((r) => r.item_id && Number(r.amount) > 0)
+      .map((r) => ({
+        item_id:   r.item_id,
+        item_type: r.item_type,
+        amount:    Number(r.amount),
+        unit:      r.unit,
+      }));
+
+    try {
+      setSaving(true);
+      setError(null);
+      await onSave(
+        {
+          category_id:  form.category_id || null,
+          name:         form.name.trim(),
+          sku:          form.sku.trim().toUpperCase(),
+          description:  form.description.trim() || null,
+          image_url:    imagePreview && !imageFile ? imagePreview : null, // keep existing URL if no new file
+          unit_cost:    Number(form.unit_cost) || 0,
+          price:        Number(form.price)     || 0,
+          max_yield:    Number(form.max_yield) || 0,
+          visible:      form.visible,
+        },
+        validRecipe,
+        imageFile
+      );
+    } catch (e: any) {
+      setError(e.message);
+      setSaving(false);
+    }
+  };
+
+  // ── Render ────────────────────────────────────────────────────
+
+  return (
+    <ModalBackdrop onClose={onClose}>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-inter"
+      >
+        {/* LEFT SIDEBAR */}
+        <div className="w-full md:w-[320px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl" />
+          <div className="relative z-10">
+            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[#FFFCEB] font-raleway text-3xl font-black leading-tight mb-2">
+              {mode === "add" ? "Create Product" : "Edit Details"}
+            </h2>
+            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-12">
+              Fill in the necessary information to update your digital storefront and automate inventory.
+            </p>
+            <nav className="flex flex-col gap-8">
+              {STEPS.map((s) => (
+                <div key={s.id} className={`flex items-center gap-4 transition-all duration-300 ${step === s.id ? "translate-x-2" : "opacity-40"}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20" : "bg-white/10 text-white"}`}>
+                    <s.icon size={18} strokeWidth={2.5} />
+                  </div>
+                  <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[#FFFCEB]" : "text-white"}`}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </nav>
+          </div>
+          <div className="mt-auto relative z-10">
+            <div className="flex gap-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT CONTENT */}
+        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm">
+          <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-[#FFFCEB] border border-[#3A6131]/10 flex items-center justify-center text-[#3A6131] hover:bg-[#3A6131] hover:text-[#FFFCEB] transition-all z-20">
+            <X size={20} strokeWidth={2.5} />
+          </button>
+
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#3A6131]/25">
+
+            {error && (
+              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold">
+                {error}
+              </div>
+            )}
+
+            <AnimatePresence mode="wait">
+
+              {/* ── STEP 1: BASIC INFORMATION ── */}
+              {step === 1 && (
+                <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <div className="mb-8">
+                    <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 01</span>
+                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Product Information</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className={labelStyle}>Product Name</label>
+                      <input className={inputStyle} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Signature Espresso" />
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className={labelStyle}>Description (Visible to Customers)</label>
+                      <textarea
+                        className={`${inputStyle} h-24 resize-none`}
+                        value={form.description}
+                        onChange={(e) => set("description", e.target.value)}
+                        placeholder="Briefly describe the taste, ingredients, or story of this product..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelStyle}>SKU Code</label>
+                      <input className={inputStyle} value={form.sku} onChange={(e) => set("sku", e.target.value)} placeholder="ESP-001" />
+                    </div>
+
+                    <div>
+                      <label className={labelStyle}>Category</label>
+                      {loadingCats ? (
+                        <div className="flex items-center gap-2 text-[#3A6131]/50 text-sm py-3"><Loader2 size={16} className="animate-spin" /> Loading…</div>
+                      ) : (
+                        <select className={selectStyle} value={form.category_id} onChange={(e) => set("category_id", e.target.value)}>
+                          <option value="">— No Category —</option>
+                          {categories.map((c) => (
+                            <option key={c.category_id} value={c.category_id}>{c.name}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Product Image Upload */}
+                    <div className="col-span-2">
+                      <label className={labelStyle}>Product Photo</label>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+                      />
+
+                      {imagePreview ? (
+                        <div className="flex items-center gap-4 bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl p-3">
+                          <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-[#3A6131]/10 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-[#3A6131] truncate">
+                              {imageFile ? imageFile.name : "Existing photo"}
+                            </p>
+                            <p className="text-[10px] text-[#3A6131]/40 mt-0.5">Square images display best.</p>
+                          </div>
+                          <button onClick={removeImage} className="p-2 text-red-400 hover:text-red-600 transition-colors flex-shrink-0" title="Remove image">
+                            <Trash2 size={16} />
+                          </button>
+                          <button onClick={() => fileInputRef.current?.click()} className="text-[10px] font-black uppercase tracking-wide text-[#3A6131]/50 hover:text-[#3A6131] transition-colors flex-shrink-0 pr-1">
+                            Change
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                          onDragLeave={() => setDragOver(false)}
+                          onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleImageFile(f); }}
+                          className={`cursor-pointer flex items-center gap-4 border-[1.5px] border-dashed rounded-2xl px-5 py-4 transition-all ${
+                            dragOver ? "border-[#F7B71D] bg-[#F7B71D]/5" : "border-[#3A6131]/15 bg-white hover:border-[#F7B71D]/60 hover:bg-[#FFFCEB]/60"
+                          }`}
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]/40 flex-shrink-0">
+                            <UploadCloud size={20} strokeWidth={1.8} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-[#3A6131]">Click to upload or drag & drop</p>
+                            <p className="text-[10px] text-[#3A6131]/40 mt-0.5 leading-relaxed">
+                              PNG, JPG, WEBP · <span className="font-semibold text-[#3A6131]/55">Best as 1:1 square</span>
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ── STEP 2: RECIPE BUILDER ── */}
+              {step === 2 && (
+                <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 02</span>
+                      <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Ingredients Setup</h3>
+                    </div>
+                    <button
+                      onClick={addRecipeRow}
+                      className="w-11 h-11 rounded-2xl bg-[#3A6131] text-[#FFFCEB] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"
+                      title="Add Ingredient"
+                    >
+                      <Plus size={22} strokeWidth={2.8} />
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] text-[#3A6131]/50 leading-relaxed -mt-2 pr-16">
+                    Map each ingredient and its quantity per serving. Powers automatic inventory deduction when a sale is recorded.
+                  </p>
+
+                  {loadingIngs ? (
+                    <div className="flex items-center justify-center py-12 text-[#3A6131]/40 gap-2">
+                      <Loader2 size={20} className="animate-spin" /> Loading ingredients…
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recipe.length === 0 ? (
+                        <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30">
+                          <Coffee size={40} strokeWidth={1} className="mb-2" />
+                          <p className="text-sm font-medium">No ingredients mapped yet</p>
+                          {ingredients.length === 0 && (
+                            <p className="text-xs mt-1 text-[#3A6131]/20">Add ingredients to your inventory first</p>
+                          )}
+                        </div>
+                      ) : (
+                        recipe.map((row, idx) => (
+                          <div key={idx} className="flex gap-3 items-center bg-white rounded-2xl p-3 border border-[#3A6131]/5 shadow-sm">
+                            {/* Ingredient selector */}
+                            <select
+                              className="flex-1 appearance-none bg-[#FFFCEB]/50 border border-[#3A6131]/20 rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D]"
+                              value={row.item_id}
+                              onChange={(e) => updateRecipeRow(idx, e.target.value)}
+                            >
+                              <option value="">Select Ingredient</option>
+                              {/* Group by type */}
+                              {ingredients.filter((i) => i.item_type === "fnb").length > 0 && (
+                                <optgroup label="F&B Ingredients">
+                                  {ingredients
+                                    .filter((i) => i.item_type === "fnb")
+                                    .map((ing) => (
+                                      <option key={ing.item_id} value={ing.item_id}>{ing.name}</option>
+                                    ))}
+                                </optgroup>
+                              )}
+                              {ingredients.filter((i) => i.item_type === "nfb").length > 0 && (
+                                <optgroup label="NF&B Items">
+                                  {ingredients
+                                    .filter((i) => i.item_type === "nfb")
+                                    .map((ing) => (
+                                      <option key={ing.item_id} value={ing.item_id}>{ing.name}</option>
+                                    ))}
+                                </optgroup>
+                              )}
+                            </select>
+
+                            {/* Amount */}
+                            <input
+                              className="w-20 bg-[#FFFCEB]/50 border border-[#3A6131]/20 rounded-xl px-3 py-2 text-[13px] font-black text-[#3A6131] text-center focus:outline-none focus:border-[#F7B71D]"
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              value={row.amount}
+                              onChange={(e) => updateRecipeAmount(idx, e.target.value)}
+                            />
+
+                            {/* Unit badge */}
+                            <span className="text-[12px] font-black text-[#F7B71D] w-8 uppercase text-center">
+                              {row.unit || "—"}
+                            </span>
+
+                            {/* Remove */}
+                            <button onClick={() => removeRecipeRow(idx)} className="p-2 text-red-400 hover:text-red-600 transition-colors">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* ── STEP 3: PRICING & METRICS ── */}
+              {step === 3 && (
+                <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                  <div className="mb-8">
+                    <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 03</span>
+                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Pricing & Metrics</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-[#3A6131]/5 p-6 rounded-[24px] border border-[#3A6131]/10">
+                      <label className={labelStyle}>Unit Cost (Internal)</label>
+                      <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                        <span className="mr-2 opacity-30">₱</span>
+                        <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full font-black" value={form.unit_cost} onChange={(e) => set("unit_cost", e.target.value)} placeholder="0.00" />
+                      </div>
+                    </div>
+
+                    <div className="bg-[#F7B71D] p-6 rounded-[24px] shadow-lg shadow-[#F7B71D]/20">
+                      <label className={`${labelStyle} text-[#385E31]/60`}>Selling Price (Customer)</label>
+                      <div className="flex items-center text-2xl font-black text-[#385E31]">
+                        <span className="mr-2 opacity-50">₱</span>
+                        <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full font-black placeholder:text-[#385E31]/30" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="0.00" />
+                      </div>
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className={labelStyle}>Max Yield (Servings)</label>
+                      <input type="number" className={inputStyle} value={form.max_yield} onChange={(e) => set("max_yield", e.target.value)} placeholder="e.g. 40" min="0" />
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <label className={labelStyle}>Availability Settings</label>
+                    <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#3A6131]/10">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-[#3A6131]/10 flex items-center justify-center text-[#3A6131]">
+                          <PackageCheck size={20} />
+                        </div>
+                        <span className="text-sm font-bold text-[#3A6131]">Show on Storefront</span>
+                      </div>
+                      <button
+                        onClick={() => set("visible", !form.visible)}
+                        className={`w-12 h-6 rounded-full transition-all relative ${form.visible ? "bg-[#3A6131]" : "bg-gray-200"}`}
+                      >
+                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.visible ? "right-1" : "left-1"}`} />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+            </AnimatePresence>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-between items-center z-20">
+            <button
+              onClick={() => step > 1 ? setStep(step - 1) : onClose()}
+              className="text-[#3A6131]/50 text-sm font-bold hover:text-[#3A6131] transition-colors"
+            >
+              {step === 1 ? "Cancel" : "Back"}
+            </button>
+            <button
+              onClick={() => step < 3 ? setStep(step + 1) : handleSave()}
+              disabled={saving}
+              className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving
+                ? <><Loader2 size={16} className="animate-spin" /> Saving…</>
+                : <>{step === 3 ? "Complete & Save" : "Continue"} <ChevronRight size={16} /></>
+              }
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </ModalBackdrop>
+  );
+}
