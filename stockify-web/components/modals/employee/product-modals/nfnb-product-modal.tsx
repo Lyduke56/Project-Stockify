@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ModalBackdrop from "@/components/modals/employee/ingredients-modals/modals-backdrop";
 import {
   X, Info, ChevronRight,
-  Trash2, Plus, Loader2, PackageCheck, Layers, Coins,
+  Trash2, Plus, Loader2, PackageCheck, Layers, Coins, UploadCloud, Package,
 } from "lucide-react";
 import { fetchCategories, type Category } from "@/lib/employee/inventory";
 import {
   type NfbProduct,
   type VariantTypeInput,
   type VariantOptionInput,
+  uploadNfbProductImage,
 } from "@/lib/employee/nfb-products";
 
 export interface NfbProductModalProps {
@@ -24,6 +25,7 @@ export interface NfbProductModalProps {
       name:            string;
       sku:             string;
       description:     string | null;
+      image_url?:      string | null;
       quantity:        number;
       unit_of_measure: string;
       unit_cost:       number;
@@ -51,11 +53,12 @@ const UNIT_OPTIONS = ["pcs", "box", "set", "unit", "pack", "roll", "pair", "shee
 interface VariantOptionInputExtended {
   label:           string;
   price:           string;
+  unit_cost:       string;
   stock:           string;
   unit_of_measure: string;
 }
 
-const EMPTY_OPTION = (): VariantOptionInputExtended => ({ label: "", price: "", stock: "", unit_of_measure: "pcs" });
+const EMPTY_OPTION = (): VariantOptionInputExtended => ({ label: "", price: "", unit_cost: "", stock: "", unit_of_measure: "pcs" });
 
 
 
@@ -66,11 +69,15 @@ interface VariantTypeInputExtended {
 }
 
 export default function NfbProductModal({ mode, tenantId, initial, onSave, onClose }: NfbProductModalProps) {
-  const [step,        setStep]        = useState(1);
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
-  const [categories,  setCategories]  = useState<Category[]>([]);
-  const [loadingCats, setLoadingCats] = useState(true);
+  const [step,           setStep]           = useState(1);
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
+  const [categories,     setCategories]     = useState<Category[]>([]);
+  const [loadingCats,    setLoadingCats]    = useState(true);
+  const [imageFile,      setImageFile]      = useState<File | null>(null);
+  const [imagePreview,   setImagePreview]   = useState<string | null>(initial?.image_url?.split('?')[0] ?? null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // "with_variants" | "single" — controls Step 1 quantity/UOM display + Step 2 visibility hint
   const [productType, setProductType] = useState<"single" | "with_variants">(
@@ -125,6 +132,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
       options: vt.options?.map((o) => ({
         label:           o.label,
         price:           String(o.price),
+        unit_cost:       String(o.unit_cost ?? ""),
         stock:           String(o.stock),
         unit_of_measure: (o as any).unit_of_measure ?? "pcs",
       })) ?? [],
@@ -184,6 +192,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
               .map((o) => ({
                 label:      o.label,
                 price:      o.price,
+                unit_cost:  o.unit_cost,
                 stock:      o.stock,
                 sku_suffix: "",          // kept for API compatibility
               })),
@@ -207,18 +216,36 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
       return prices.length > 0 ? Math.min(...prices) : 0;
     })();
 
+    const finalUnitCost = (() => {
+      if (validVariants.length === 0) return Number(form.unit_cost) || 0;
+      const costs = validVariants.flatMap((vt) => vt.options).map((o) => Number(o.unit_cost) || 0);
+      return costs.length > 0 ? Math.min(...costs) : 0;
+    })();
+
     try {
       setSaving(true);
       setError(null);
+
+      // Upload image if a new file was chosen
+      let imageUrl: string | null = initial?.image_url ?? null;
+      if (imageFile) {
+        setImageUploading(true);
+        // We need a productId to name the file – for new products, use a temp UUID
+        const productId = (initial as any)?.product_id ?? crypto.randomUUID();
+        imageUrl = await uploadNfbProductImage(tenantId, productId, imageFile);
+        setImageUploading(false);
+      }
+
       await onSave(
         {
           category_id:     form.category_id || null,
           name:            form.name.trim(),
           sku:             form.sku.trim().toUpperCase(),
           description:     form.description.trim() || null,
+          image_url:       imageUrl,
           quantity:        Number(form.quantity) || 0,
           unit_of_measure: form.unit_of_measure,
-          unit_cost:       Number(form.unit_cost) || 0,
+          unit_cost:       finalUnitCost,
           price:           finalPrice,
           visible:         form.visible,
         },
@@ -226,6 +253,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
       );
     } catch (e: any) {
       setError(e.message);
+      setImageUploading(false);
       setSaving(false);
     }
   };
@@ -347,14 +375,61 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     </div>
 
                     <div className="col-span-2">
-                      <label className={labelStyle}>Description</label>
-                      <textarea
-                        className={`${inputStyle} h-20 resize-none`}
-                        value={form.description}
-                        onChange={(e) => set("description", e.target.value)}
-                        placeholder="Brief product description…"
-                      />
+                    <label className={labelStyle}>Description</label>
+                    <textarea
+                      className={`${inputStyle} h-20 resize-none`}
+                      value={form.description}
+                      onChange={(e) => set("description", e.target.value)}
+                      placeholder="Brief product description…"
+                    />
+                  </div>
+
+                  {/* Image Upload */}
+                  <div className="col-span-2">
+                    <label className={labelStyle}>Product Image <span className="text-[#3A6131]/40 font-normal">(optional)</span></label>
+                    <div
+                      onClick={() => imageInputRef.current?.click()}
+                      className={`relative flex flex-col items-center justify-center gap-2 w-full h-36 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+                        imagePreview
+                          ? 'border-[#3A6131]/30 bg-transparent'
+                          : 'border-[#3A6131]/20 bg-[#3A6131]/3 hover:border-[#3A6131]/50 hover:bg-[#3A6131]/5'
+                      }`}
+                    >
+                      {imagePreview ? (
+                        <>
+                          <img src={imagePreview} alt="preview" className="w-full h-full object-cover rounded-2xl" />
+                          <div className="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <p className="text-white text-[12px] font-bold flex items-center gap-1"><UploadCloud size={14} /> Change Image</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
+                            className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          >
+                            <X size={12} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Package size={28} className="text-[#3A6131]/30" />
+                          <p className="text-[#3A6131]/50 text-[12px] font-medium">Click to upload product image</p>
+                          <p className="text-[#3A6131]/30 text-[10px]">PNG, JPG, WEBP up to 5MB</p>
+                        </>
+                      )}
                     </div>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setImageFile(file);
+                        setImagePreview(URL.createObjectURL(file));
+                      }}
+                    />
+                  </div>
 
                     <div>
                       <label className={labelStyle}>SKU Code</label>
@@ -608,10 +683,40 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     </p>
                   </div>
 
-                  {/* ── PATH A: No variants — 2 cards only ── */}
+                  {/* Summary Ranges (Shown for both) */}
+                  <div className="flex gap-4">
+                    <div className="flex-1 bg-[#3A6131]/5 p-4 rounded-2xl border border-[#3A6131]/10">
+                      <div className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-1">Unit Cost (Internal)</div>
+                      <div className="text-lg font-black text-[#3A6131]">
+                        {(() => {
+                           if (!hasVariants) return `₱${Number(form.unit_cost || 0).toFixed(2)}`;
+                           const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
+                           if (validOpts.length === 0) return "₱0.00";
+                           const costs = validOpts.map(o => Number(o.unit_cost || 0));
+                           const min = Math.min(...costs); const max = Math.max(...costs);
+                           return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
+                        })()}
+                      </div>
+                    </div>
+                    <div className="flex-1 bg-[#F7B71D] p-4 rounded-2xl shadow-lg shadow-[#F7B71D]/20">
+                      <div className="text-[10px] font-black uppercase text-[#385E31]/60 tracking-wider mb-1">Base Selling Price</div>
+                      <div className="text-lg font-black text-[#385E31]">
+                        {(() => {
+                           if (!hasVariants) return `₱${Number(form.price || 0).toFixed(2)}`;
+                           const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
+                           if (validOpts.length === 0) return "₱0.00";
+                           const prices = validOpts.map(o => Number(o.price || 0));
+                           const min = Math.min(...prices); const max = Math.max(...prices);
+                           return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── PATH A: No variants — inputs for single item ── */}
                   {!hasVariants && (
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-[#3A6131]/5 p-5 rounded-[20px] border border-[#3A6131]/10">
+                      <div className="bg-white p-5 rounded-[20px] border border-[#3A6131]/10">
                         <label className={labelStyle}>Unit Cost (Internal)</label>
                         <div className="flex items-center text-xl font-black text-[#3A6131]">
                           <span className="mr-2 opacity-30">₱</span>
@@ -625,10 +730,10 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                         </div>
                       </div>
 
-                      <div className="bg-[#F7B71D] p-5 rounded-[20px] shadow-lg shadow-[#F7B71D]/20">
-                        <label className={`${labelStyle} text-[#385E31]/60`}>Selling Price</label>
+                      <div className="bg-white p-5 rounded-[20px] border border-[#3A6131]/10">
+                        <label className={`${labelStyle}`}>Selling Price</label>
                         <div className="flex items-center text-xl font-black text-[#385E31]">
-                          <span className="mr-2 opacity-50">₱</span>
+                          <span className="mr-2 opacity-30">₱</span>
                           <input
                             type="number"
                             className="bg-transparent border-none p-0 focus:ring-0 w-full font-black placeholder:text-[#385E31]/30"
@@ -641,7 +746,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     </div>
                   )}
 
-                  {/* ── PATH B: Has variants — unit price + base price per option ── */}
+                  {/* ── PATH B: Has variants — unit cost + base price per option ── */}
                   {hasVariants && (
                     <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full">
                       {variants.map((vt, ti) => {
@@ -658,7 +763,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                             <div className="flex gap-2 px-4 pt-2 pb-1">
                               <span className="flex-1 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40">Option</span>
                               <span className="w-16 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Stock</span>
-                              <span className="w-28 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Unit Price (₱)</span>
+                              <span className="w-28 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Unit Cost (₱)</span>
                               <span className="w-28 text-[10px] font-black uppercase tracking-wider text-[#F7B71D] text-center">Base Price (₱)</span>
                             </div>
 
@@ -676,15 +781,15 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                                     <div className="w-16 bg-[#3A6131]/5 rounded-xl px-3 py-2 text-[12px] font-black text-[#3A6131] text-center">
                                       {opt.stock || "0"}
                                     </div>
-                                    {/* Unit Price — editable (cost) */}
+                                    {/* Unit Cost — editable (cost) */}
                                     <div className="w-28 flex items-center bg-[#3A6131]/5 border border-[#3A6131]/15 rounded-xl px-3 py-2">
                                       <span className="text-[11px] font-black text-[#3A6131]/40 mr-1">₱</span>
                                       <input
                                         type="number"
                                         className="w-full bg-transparent text-[12px] font-black text-[#3A6131] text-center focus:outline-none"
                                         placeholder="0.00"
-                                        value={opt.price}
-                                        onChange={(e) => updateVariantOption(ti, oi, "price", e.target.value)}
+                                        value={opt.unit_cost}
+                                        onChange={(e) => updateVariantOption(ti, oi, "unit_cost", e.target.value)}
                                       />
                                     </div>
                                     {/* Base Selling Price — editable */}
@@ -694,10 +799,8 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                                         type="number"
                                         className="w-full bg-transparent text-[12px] font-black text-[#3A6131] text-center focus:outline-none"
                                         placeholder="0.00"
-                                        // Base price stored separately — uses a composite key approach via data attribute
-                                        // You may want to add a `base_price` field to VariantOptionInput
-                                        // For now, wiring to a separate state or extending the type is recommended
-                                        // Placeholder: value from a parallel state or extended option type
+                                        value={opt.price}
+                                        onChange={(e) => updateVariantOption(ti, oi, "price", e.target.value)}
                                       />
                                     </div>
                                   </div>
