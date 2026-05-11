@@ -60,7 +60,7 @@ export default function SidebarAdmin({
       if (!user) return;
 
       const name = await getBusinessNameByUserId(user.id);
-      setShopName(name);
+      setShopName(name?.business_name ?? null);
     };
 
     fetchBusinessName();

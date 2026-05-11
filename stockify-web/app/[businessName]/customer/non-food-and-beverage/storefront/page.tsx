@@ -19,8 +19,10 @@ import {
 
 // --- Component Imports ---
 import { NfnbProductCard } from "@/components/cards/storefront/nfnb-product-card";
-import { ProductModal }from "@/components/modals/storefront/nfnb/nfnb-product-modal";
+import { ProductModal } from "@/components/modals/storefront/nfnb/nfnb-product-modal";
+import { CheckoutModal } from "@/components/modals/customer/checkout-modal";
 import type { NfnbProduct } from "@/components/cards/storefront/nfnb-product-card";
+import { useCart } from "@/lib/customer/cart-context";
 
 // --- DB Hooks ---
 import { createClient } from "@/lib/supabase/client";
@@ -87,6 +89,9 @@ export default function NfnbStorefront() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<NfnbProduct | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  const { cartCount } = useCart();
 
   // ─── Fetch Data ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -260,15 +265,17 @@ export default function NfnbStorefront() {
               <Heart size={22} />
             </motion.button>
             <motion.button
-              onClick={() => router.push("shopping-cart")}
+              onClick={() => setIsCheckoutOpen(true)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[#F7B71D] hover:bg-[#F7B71D]/10 relative"
             >
               <ShoppingCart size={22} />
-              <span className="absolute top-1 right-1 w-4 h-4 bg-[#F7B71D] text-[#385E31] text-[10px] font-bold flex items-center justify-center rounded-full">
-                0
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-[#F7B71D] text-[#385E31] text-[10px] font-bold flex items-center justify-center rounded-full">
+                  {cartCount}
+                </span>
+              )}
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
@@ -435,6 +442,13 @@ export default function NfnbStorefront() {
         product={selectedProduct}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        tenantId={tenant?.tenant_id ?? ""}
+        onSuccess={() => {}}
       />
     </div>
   );

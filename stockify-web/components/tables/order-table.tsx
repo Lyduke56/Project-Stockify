@@ -1,123 +1,372 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import ViewOrderModal, { type Order as BaseOrder } from "./orders-modals/view-modal";
-import EditOrderModal from "./orders-modals/edit-modal";
-import CancelConfirmModal from "./orders-modals/cancel-order-modal";
+import React, { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search, X, Loader2, AlertCircle, CheckCircle2,
+  Package, Clock, Truck, Ban, RefreshCw,
+} from "lucide-react";
+import {
+  fetchOrders,
+  fetchOrderItems,
+  updateFulfillmentStatus,
+  processAndCompleteOrder,
+  cancelOrder,
+  type Order,
+  type OrderItem,
+  type FulfillmentStatus,
+} from "@/lib/employee/order-actions";
+import { createClient } from "@/lib/supabase/client";
 
-// ─── Strictly Typed Data based on SRS ──────────────────────
-export interface Order extends Omit<BaseOrder, "paymentStatus" | "fulfillment" | "paymentMethod"> {
-  id: string;
-  dateTime: string;
-  customer: string;
-  totalAmount: number;
-  paymentMethod: "QR Code" | "COD";
-  fulfillment: "Pending" | "Processing" | "Dispatched" | "Received" | "Cancelled";
-}
-
-const SAMPLE_ORDERS: Order[] = [
-  { id: "#1001", dateTime: "03/19/2026 13:05", customer: "Denji Hayakawa", totalAmount: 450.0, paymentMethod: "QR Code", fulfillment: "Pending" },
-  { id: "#1002", dateTime: "03/19/2026 14:10", customer: "Makima Reinholt", totalAmount: 820.5, paymentMethod: "COD", fulfillment: "Pending" },
-  { id: "#1003", dateTime: "03/20/2026 09:00", customer: "Power Kobeni", totalAmount: 310.0, paymentMethod: "QR Code", fulfillment: "Processing" },
-  { id: "#1004", dateTime: "03/20/2026 11:30", customer: "Aki Hayakawa", totalAmount: 150.0, paymentMethod: "COD", fulfillment: "Processing" },
-  { id: "#1005", dateTime: "03/21/2026 08:45", customer: "Himeno Sato", totalAmount: 540.0, paymentMethod: "QR Code",fulfillment: "Cancelled" },
-  { id: "#1006", dateTime: "03/21/2026 10:00", customer: "Kishibe Tanaka", totalAmount: 1200.0, paymentMethod: "COD", fulfillment: "Received" },
-  { id: "#1007", dateTime: "03/22/2026 15:20", customer: "Quanxi Lin", totalAmount: 230.0, paymentMethod: "QR Code", fulfillment: "Dispatched" },
-  { id: "#1008", dateTime: "03/22/2026 16:00", customer: "Beam Nakamura", totalAmount: 670.0, paymentMethod: "COD", fulfillment: "Dispatched" },
-];
-
-const TABS: Order["fulfillment"][] = ["Pending", "Processing", "Dispatched", "Received", "Cancelled"];
+const TABS: FulfillmentStatus[] = ["Pending", "Processing", "Dispatched", "Received", "Cancelled"];
 const COLUMNS = ["ORDER ID", "DATE / TIME", "CUSTOMER", "TOTAL AMOUNT", "PAYMENT METHOD", "ACTIONS"];
 
-// ─── SVG helpers ───────────────────────────────────────────
-const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-);
-
-const ChevronDown = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-);
-
-// ─── Styling Helpers ───────────────────────────────────────
-const getTabConfig = (tab: Order["fulfillment"]) => {
-  switch (tab) {
-    case "Pending":    return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
-    case "Processing": return { bg: "bg-[#46B332]", text: "text-[#FFFCEB]" };
-    case "Dispatched": return { bg: "bg-[#FFD980]", text: "text-[#385E31]" };
-    case "Received":   return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Cancelled":  return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
-    default:           return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-  }
+const TAB_META: Record<FulfillmentStatus, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
+  Pending: { bg: "bg-[#F7B71D]", text: "text-[#385E31]", badge: "bg-[#F7B71D]/20 text-[#8a6700]", icon: <Clock size={12} /> },
+  Processing: { bg: "bg-blue-500", text: "text-white", badge: "bg-blue-100 text-blue-700", icon: <Package size={12} /> },
+  Dispatched: { bg: "bg-purple-500", text: "text-white", badge: "bg-purple-100 text-purple-700", icon: <Truck size={12} /> },
+  Received: { bg: "bg-[#385E31]", text: "text-[#F7B71D]", badge: "bg-[#385E31]/10 text-[#385E31]", icon: <CheckCircle2 size={12} /> },
+  Cancelled: { bg: "bg-red-500", text: "text-white", badge: "bg-red-50 text-red-600", icon: <Ban size={12} /> },
 };
 
+// ─── Cancel Confirmation Dialog ────────────────────────────────────────────────
 
-// ─── Component ─────────────────────────────────────────────
-export default function OrdersTable() {
-  const [orders, setOrders] = useState<Order[]>(SAMPLE_ORDERS);
-  const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<Order["fulfillment"]>("Pending");
-  
-  // Modals
-  const [viewOrder, setViewOrder] = useState<Order | null>(null);
-  const [editOrder, setEditOrder] = useState<Order | null>(null);
-  const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
+function CancelDialog({
+  onConfirm,
+  onClose,
+  busy,
+}: {
+  onConfirm: (reason: string) => void;
+  onClose: () => void;
+  busy: boolean;
+}) {
+  const [reason, setReason] = useState("");
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      className="mt-3 bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col gap-3"
+    >
+      <p className="text-red-700 font-bold text-[13px]">Reason for cancellation</p>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Describe why this order is being cancelled…"
+        rows={3}
+        className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-[13px] text-[#3A6131] resize-none outline-none focus:border-red-400 transition-colors placeholder:text-gray-400"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => onConfirm(reason)}
+          disabled={busy}
+          className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-black text-[13px] hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
+          Confirm Cancel
+        </button>
+        <button
+          onClick={onClose}
+          disabled={busy}
+          className="px-4 py-2.5 rounded-xl border border-red-200 text-red-500 font-bold text-[13px] hover:bg-red-100 transition-colors"
+        >
+          Back
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
-  // Dropdown state
-  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+// ─── Order Detail Modal ────────────────────────────────────────────────────────
+
+function OrderDetailModal({
+  order,
+  onClose,
+  onStatusChange,
+}: {
+  order: Order;
+  onClose: () => void;
+  onStatusChange: () => void;
+}) {
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [tenantId, setTenantId] = useState("");
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdownId(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  /* ── derived list ── */
-  const displayed = useMemo(() => {
-    return orders.filter((o) => {
-      const matchSearch =
-        o.id.toLowerCase().includes(search.toLowerCase()) ||
-        o.customer.toLowerCase().includes(search.toLowerCase()) ||
-        o.paymentMethod.toLowerCase().includes(search.toLowerCase());
-
-      const matchTab = o.fulfillment === activeTab;
-      return matchSearch && matchTab;
+    fetchOrderItems(order.order_id).then((data) => { setItems(data); setLoading(false); });
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", data.user.id).single();
+      if (u) setTenantId(u.tenant_id ?? "");
     });
-  }, [orders, search, activeTab]);
+  }, [order.order_id]);
 
-  /* ── handlers ── */
-  const handleSave = (updated: Order) => {
-    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+  const act = async (fn: () => Promise<{ error: string | null }>, successMsg: string) => {
+    setBusy(true);
+    setFeedback(null);
+    const { error } = await fn();
+    setBusy(false);
+    if (error) {
+      setFeedback({ type: "error", msg: error });
+    } else {
+      setFeedback({ type: "success", msg: successMsg });
+      setTimeout(() => { onStatusChange(); onClose(); }, 1200);
+    }
   };
 
-  const changeFulfillment = (orderId: string, newStatus: Order["fulfillment"]) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, fulfillment: newStatus } : o));
-    setOpenDropdownId(null);
+  const handleCancel = (reason: string) => {
+    act(() => cancelOrder(order.order_id, reason), "Order cancelled.");
+    setShowCancel(false);
   };
+
+  const meta = TAB_META[order.fulfillment_status];
 
   return (
-    <div className="w-full flex flex-col items-center font-['Inter']">
-      
-      {/* ── Tab navigation ── */}
+    <AnimatePresence>
+      <motion.div
+        key="backdrop"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
+        onClick={onClose}
+      />
+      <motion.div
+        key="modal"
+        initial={{ opacity: 0, scale: 0.94, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 20 }}
+        transition={{ type: "spring", stiffness: 340, damping: 28 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+      >
+        <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[540px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#3A6131]/10">
+            <div>
+              <p className="text-[#3A6131]/50 text-[11px] font-bold uppercase tracking-wider mb-0.5">Order</p>
+              <h2 className="text-[#3A6131] font-black text-[16px] font-mono">{order.order_id.slice(0, 8).toUpperCase()}</h2>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${meta.badge}`}>
+                {meta.icon} {order.fulfillment_status}
+              </span>
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-[#3A6131]/8 hover:bg-[#3A6131]/15 flex items-center justify-center text-[#3A6131]/50">
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Info row */}
+          <div className="px-6 py-4 grid grid-cols-3 gap-4 border-b border-[#3A6131]/10">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Customer</p>
+              <p className="text-[#3A6131] font-bold text-[13px]">{order.customer_name}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Payment</p>
+              <p className="text-[#3A6131] font-bold text-[13px]">{order.payment_method}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Total</p>
+              <p className="text-[#F7B71D] font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 mb-3">Order Items</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-8 text-[#3A6131]/30 gap-2">
+                <Loader2 size={18} className="animate-spin" /> Loading…
+              </div>
+            ) : items.length === 0 ? (
+              <p className="text-center text-[#3A6131]/30 text-[13px] py-8">No item details available yet.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {items.map((item) => (
+                  <div key={item.order_item_id} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-[#3A6131]/8">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[#3A6131] font-bold text-[13px] truncate">
+                        {item.item_name || `Item #${item.item_id.slice(0, 6)}`}
+                      </p>
+                      {item.size_label && (
+                        <span className="text-[11px] text-[#3A6131]/60 bg-[#3A6131]/8 px-2 py-0.5 rounded-full font-medium mt-0.5 inline-block">
+                          {item.size_label}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[#3A6131] font-bold text-[13px]">×{item.quantity}</p>
+                      <p className="text-[#F7B71D] font-black text-[12px]">₱{(item.unit_price * item.quantity).toFixed(2)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Cancel reason display for Cancelled orders */}
+            {order.fulfillment_status === "Cancelled" && order.cancel_reason && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-wider text-red-400 mb-1">Cancellation Reason</p>
+                <p className="text-red-600 text-[13px] font-medium">{order.cancel_reason}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Feedback */}
+          {feedback && (
+            <div className={`mx-6 mb-3 rounded-xl px-4 py-3 flex items-center gap-2 text-[13px] font-medium ${feedback.type === "success" ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-600"}`}>
+              {feedback.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              {feedback.msg}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="px-6 pb-6 pt-3 border-t border-[#3A6131]/10 flex flex-col gap-2">
+            {order.fulfillment_status === "Pending" && (
+              <>
+                <button
+                  onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing"), "Order moved to Processing.")}
+                  disabled={busy}
+                  className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Package size={16} />} Start Processing
+                </button>
+                <button onClick={() => setShowCancel(!showCancel)} disabled={busy}
+                  className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                  <Ban size={14} /> Cancel Order
+                </button>
+                <AnimatePresence>
+                  {showCancel && <CancelDialog onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
+                </AnimatePresence>
+              </>
+            )}
+
+            {order.fulfillment_status === "Processing" && (
+              <>
+                <button
+                  onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Dispatched"), "Order dispatched!")}
+                  disabled={busy}
+                  className="w-full bg-purple-500 text-white py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />} Mark as Dispatched
+                </button>
+                <button onClick={() => setShowCancel(!showCancel)} disabled={busy}
+                  className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                  <Ban size={14} /> Cancel Order
+                </button>
+                <AnimatePresence>
+                  {showCancel && <CancelDialog onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
+                </AnimatePresence>
+              </>
+            )}
+
+            {order.fulfillment_status === "Dispatched" && (
+              <>
+                <button
+                  onClick={() => act(() => processAndCompleteOrder(order.order_id, tenantId), "Order received & stock deducted!")}
+                  disabled={busy}
+                  className="w-full bg-[#385E31] text-[#F7B71D] py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  {busy ? "Processing…" : "Mark as Received & Deduct Stock"}
+                </button>
+                <button onClick={() => setShowCancel(!showCancel)} disabled={busy}
+                  className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                  <Ban size={14} /> Cancel Order
+                </button>
+                <AnimatePresence>
+                  {showCancel && <CancelDialog onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
+                </AnimatePresence>
+              </>
+            )}
+
+            {(order.fulfillment_status === "Received" || order.fulfillment_status === "Cancelled") && (
+              <p className="text-center text-[#3A6131]/40 text-[13px] font-medium py-2">
+                This order is {order.fulfillment_status === "Received" ? "completed" : "cancelled"}.
+              </p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ─── Main Orders Table ─────────────────────────────────────────────────────────
+
+export default function OrdersTable() {
+  const [tenantId, setTenantId] = useState("");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<FulfillmentStatus>("Pending");
+  const [search, setSearch] = useState("");
+  const [viewOrder, setViewOrder] = useState<Order | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadOrders = useCallback(async (tid: string) => {
+    const data = await fetchOrders(tid);
+    setOrders(data);
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", user.id).single();
+      if (!u?.tenant_id) return;
+      setTenantId(u.tenant_id);
+      loadOrders(u.tenant_id);
+    };
+    init();
+  }, [loadOrders]);
+
+  const handleRefresh = () => {
+    if (!tenantId) return;
+    setRefreshing(true);
+    loadOrders(tenantId);
+  };
+
+  const filtered = orders.filter((o) => {
+    if (o.fulfillment_status !== activeTab) return false;
+    const q = search.toLowerCase();
+    return o.order_id.toLowerCase().includes(q) || o.customer_name.toLowerCase().includes(q);
+  });
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return (
+      d.toLocaleDateString("en-PH", { month: "short", day: "numeric" }) +
+      " " +
+      d.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" })
+    );
+  };
+
+  const tabCounts = TABS.reduce((acc, t) => {
+    acc[t] = orders.filter((o) => o.fulfillment_status === t).length;
+    return acc;
+  }, {} as Record<FulfillmentStatus, number>);
+
+  const activeIdx = TABS.indexOf(activeTab);
+
+  return (
+    <div className="w-full flex flex-col font-['Inter']">
+
+      {/* ── Sliding Tab Navigation ── */}
       <div className="w-full flex justify-center mb-8">
-        <div className="relative flex w-full max-w-[900px] h-[45px] items-center my-2">
+        <div className="relative flex w-full h-[45px] items-center my-2">
           <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
           <div
-            className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
+            className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${TAB_META[activeTab].bg}`}
             style={{
-              width: "calc(20% + 4px)",
-              left: `calc(${(TABS.indexOf(activeTab) * 20)}% - 2px)`,
+              width: `calc(${100 / TABS.length}% + 4px)`,
+              left: `calc(${(activeIdx * 100) / TABS.length}% - 2px)`,
             }}
           />
           {TABS.map((tab) => {
@@ -126,42 +375,57 @@ export default function OrdersTable() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 h-full z-20 text-center font-bold text-[18px] transition-colors duration-300 cursor-pointer ${
-                  isActive ? getTabConfig(tab).text : "text-[#385E31]"
-                }`}
+                className={`flex-1 h-full z-20 text-center font-bold text-[14px] transition-colors duration-300 cursor-pointer ${isActive ? TAB_META[tab].text : "text-[#385E31]"
+                  }`}
               >
-                {tab}
+                <span className="relative">
+                  {tab}
+                  {tabCounts[tab] > 0 && (
+                    <span className={`ml-1.5 text-[11px] font-black px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25" : "bg-[#385E31]/10"}`}>
+                      {tabCounts[tab]}
+                    </span>
+                  )}
+                </span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* ── Controls (Search & Count) ── */}
-      <div className="w-full flex justify-between items-center mb-4 gap-4">
-        <div className="relative flex-1 max-w-[60%]">
-          <input
-            type="text"
-            placeholder="Search by order ID or customer..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[#385E31] rounded-full px-5 py-2 bg-transparent text-[#385E31] placeholder-[#385E31] outline-none text-[13px]"
-          />
-          <div className="absolute right-4 top-2.5 text-[#385E31]">
-            <SearchIcon />
+      {/* ── Toolbar ── */}
+      <div className="w-full flex flex-col lg:flex-row justify-between items-center mb-4 gap-4">
+        <div className="flex w-full lg:w-auto flex-1 gap-4 items-center">
+          <div className="relative flex-1 max-w-[400px]">
+            <input
+              type="text"
+              placeholder="Search by order ID or customer…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/70 outline-none font-medium text-[13px]"
+            />
+            <div className="absolute right-4 top-3 text-[#385E31]">
+              <Search size={16} />
+            </div>
           </div>
         </div>
-        
-        <div className="text-[#385E31] font-bold text-sm bg-[#F7B71D]/20 px-4 py-2 rounded-full border border-[#385E31]/20">
-          {displayed.length} Orders
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all disabled:opacity-50"
+            title="Refresh"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          </button>
+          <div className="text-[#385E31] font-bold text-sm border border-[#385E31]/30 px-4 py-2 rounded-full">
+            {filtered.length} Orders
+          </div>
         </div>
       </div>
 
-      {/* ── Table (Using Flex Divs for exact styling) ── */}
-      <div 
-        ref={dropdownRef}
-        className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm"
-      >
+      {/* ── Table ── */}
+      <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-hidden shadow-sm">
+
         {/* Header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
@@ -171,122 +435,87 @@ export default function OrdersTable() {
           ))}
         </div>
 
-        {/* Rows */}
-        {displayed.length === 0 ? (
-          <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
-            No {activeTab.toLowerCase()} orders found.
+        {/* Body */}
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-[#3A6131]/40 gap-3">
+            <Loader2 size={22} className="animate-spin" /> Loading orders…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-[#385E31]/40 gap-3">
+            <Package size={40} strokeWidth={1} />
+            <p className="font-medium text-[14px]">
+              No {activeTab.toLowerCase()} orders{search ? ` matching "${search}"` : ""}.
+            </p>
           </div>
         ) : (
-          displayed.map((order, idx) => {
-            const isLast = idx === displayed.length - 1;
-            const isOpen = openDropdownId === order.id;
-
-            return (
-              <div
-                key={order.id}
-                className={`w-full flex px-4 py-[14px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
-              >
-                
-                {/* Order ID */}
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  <span
-                    onClick={() => setViewOrder(order)}
-                    className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
-                  >
-                    {order.id}
-                  </span>
-                </div>
-
-                {/* Date / Time */}
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-medium">
-                  {order.dateTime}
-                </div>
-
-                {/* Customer */}
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  {order.customer}
-                </div>
-
-                {/* Total Amount */}
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  ₱{order.totalAmount.toFixed(2)}
-                </div>
-
-                {/* Payment (Pill & Method) */}
-                <div className="flex-1 flex flex-col justify-center items-center gap-1.5">
-                  <span className="text-[12px] font-bold text-[#3A6131]/70 bg-gray-100 px-2 py-[2px] rounded-md">
-                    {order.paymentMethod}
-                  </span>
-                </div>
-
-                {/* Actions Dropdown */}
-                <div className="flex-1 flex justify-center items-center relative">
-                  <button
-                    onClick={() => setOpenDropdownId(prev => prev === order.id ? null : order.id)}
-                    className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                      isOpen
-                        ? "bg-[#385E31] text-[#FFFCEB]"
-                        : "text-[#385E31] hover:bg-[#385E31]/10"
+          <AnimatePresence>
+            {filtered.map((order, idx) => {
+              const isLast = idx === filtered.length - 1;
+              const m = TAB_META[order.fulfillment_status];
+              return (
+                <motion.div
+                  key={order.order_id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className={`w-full flex px-4 py-[14px] items-center hover:bg-[#3A6131]/3 transition-colors ${!isLast ? "border-b border-[#385E31]/10" : ""
                     }`}
-                  >
-                    Action <ChevronDown />
-                  </button>
+                >
+                  {/* ORDER ID */}
+                  <div className="flex-1 text-center">
+                    <button
+                      onClick={() => setViewOrder(order)}
+                      className="text-[#3A6131] text-[13px] font-black font-mono hover:text-[#F7B71D] hover:underline transition-colors"
+                    >
+                      {order.order_id.slice(0, 8).toUpperCase()}
+                    </button>
+                  </div>
 
-                  {isOpen && (
-                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[160px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                      
-                      {/* Always available */}
-                      <button
-                        onClick={() => { setViewOrder(order); setOpenDropdownId(null); }}
-                        className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                      >
-                        View Details
-                      </button>
+                  {/* DATE / TIME */}
+                  <div className="flex-1 text-center text-[#3A6131]/70 text-[13px] font-medium">
+                    {formatDate(order.created_at)}
+                  </div>
 
-                      {/* Dynamic Actions based on Tab */}
-                      {activeTab === "Pending" && (
-                        <>
-                          <button
-                            onClick={() => changeFulfillment(order.id, "Processing")}
-                            className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                          >
-                            Start Preparing
-                          </button>
-                          <button
-                            onClick={() => { setCancelOrder(order); setOpenDropdownId(null); }}
-                            className="px-3 py-1.5 hover:bg-red-500 hover:text-white text-left transition-colors text-red-600"
-                          >
-                            Cancel Order
-                          </button>
-                        </>
-                      )}
+                  {/* CUSTOMER */}
+                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold truncate px-1">
+                    {order.customer_name}
+                  </div>
 
-                      {activeTab === "Processing" && (
-                        <button
-                          onClick={() => changeFulfillment(order.id, "Dispatched")}
-                          className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                        >
-                          Dispatch Order
-                        </button>
-                      )}
-                      
-                    </div>
-                  )}
-                </div>
+                  {/* TOTAL AMOUNT */}
+                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-black">
+                    ₱{order.total_amount.toFixed(2)}
+                  </div>
 
-              </div>
-            );
-          })
+                  {/* PAYMENT METHOD */}
+                  <div className="flex-1 flex justify-center">
+                    <span className="text-[12px] font-bold bg-[#3A6131]/8 text-[#3A6131] px-2.5 py-1 rounded-full">
+                      {order.payment_method}
+                    </span>
+                  </div>
+
+                  {/* ACTIONS */}
+                  <div className="flex-1 flex justify-center">
+                    <button
+                      onClick={() => setViewOrder(order)}
+                      className={`px-4 py-1.5 rounded-full text-[11px] font-bold transition-all hover:opacity-90 ${m.bg} ${m.text}`}
+                    >
+                      Manage
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         )}
       </div>
 
-      {/* ── Modals ── */}
-      {viewOrder && <ViewOrderModal order={viewOrder} onClose={() => setViewOrder(null)} />}
-      {cancelOrder && (
-        <CancelConfirmModal
-          order={cancelOrder} 
-          onClose={() => setCancelOrder(null)} 
-          onConfirm={changeFulfillment as any} 
+      {/* ── Order Detail Modal ── */}
+      {viewOrder && (
+        <OrderDetailModal
+          order={viewOrder}
+          onClose={() => setViewOrder(null)}
+          onStatusChange={() => tenantId && loadOrders(tenantId)}
         />
       )}
     </div>

@@ -154,7 +154,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteNfbProduct(deleteTarget.product_id);
+    await deleteNfbProduct(deleteTarget.product_id, tenantId);
     setDeleteTarget(null);
     loadProducts();
   };
@@ -243,6 +243,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
             let displayQuantity = row.quantity.toString();
             let displayPrice = `₱${Number(row.price).toFixed(2)}`;
+            let displayUnitCost = `₱${Number(row.unit_cost).toFixed(2)}`;
 
             if (hasVariants) {
               const allOptions = row.variants!.flatMap((v) => v.options || []);
@@ -257,6 +258,15 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
                   displayPrice = `₱${minPrice.toFixed(2)}`;
                 } else {
                   displayPrice = `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
+                }
+
+                const unitCosts = allOptions.map((opt) => Number((opt as any).unit_cost) || 0);
+                const minUnitCost = Math.min(...unitCosts);
+                const maxUnitCost = Math.max(...unitCosts);
+                if (minUnitCost === maxUnitCost) {
+                  displayUnitCost = `₱${minUnitCost.toFixed(2)}`;
+                } else {
+                  displayUnitCost = `₱${minUnitCost.toFixed(2)} - ₱${maxUnitCost.toFixed(2)}`;
                 }
               }
             }
@@ -294,7 +304,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
                 {/* Unit Cost */}
                 <div className={`flex text-[#3A6131] text-[12px] font-bold items-center ${COLUMNS[4].className}`}>
-                  ₱{Number(row.unit_cost).toFixed(2)}
+                  {displayUnitCost}
                 </div>
 
                 {/* Price */}

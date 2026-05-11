@@ -377,7 +377,6 @@ export default function TenantReview() {
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           openNotifs={() => setIsNotifsOpen(true)}
-          openProfile={() => setIsProfileOpen(true)}
         />
 
         {/* Page header */}

@@ -81,9 +81,9 @@ const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A
 const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
 const selectStyle = `${inputStyle} appearance-none pr-10 bg-[image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'%233A6131'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpolyline%20points%3D'6%209%2012%2015%2018%209'%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")] bg-no-repeat bg-[right_14px_center]`;
 
-const STEPS = [
+const ALL_STEPS = [
   { id: 1, label: "Basic Information",    icon: Info    },
-  { id: 2, label: "Sizes & Variants",     icon: Ruler   },
+  { id: 2, label: "Sizes & Variants",     icon: Ruler, sizesOnly: true },
   { id: 3, label: "Recipe & Ingredients", icon: Coffee  },
   { id: 4, label: "Pricing & Metrics",    icon: Coins   },
 ];
@@ -100,6 +100,35 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
   const [imageFile,    setImageFile]    = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(initial?.image_url ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [productType, setProductType] = useState<"single" | "with_sizes">(
+    initial?.sizes && initial.sizes.length > 0 ? "with_sizes" : "single"
+  );
+
+  const visibleSteps = ALL_STEPS.filter((s) => !(s.sizesOnly && productType === "single"));
+  const totalSteps   = visibleSteps.length;
+  const currentStepIdx = visibleSteps.findIndex((s) => s.id === step);
+
+  const goNext = () => {
+    if (currentStepIdx < totalSteps - 1) {
+      setStep(visibleSteps[currentStepIdx + 1].id);
+    } else {
+      handleSave();
+    }
+  };
+
+  const goBack = () => {
+    if (currentStepIdx > 0) {
+      setStep(visibleSteps[currentStepIdx - 1].id);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleProductTypeChange = (type: "single" | "with_sizes") => {
+    setProductType(type);
+    if (type === "single" && step === 2) setStep(1);
+  };
 
   const [form, setForm] = useState({
     name:        initial?.name        ?? "",
@@ -208,8 +237,8 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.sku.trim()) { setError("Product name and SKU are required."); return; }
-    const validRecipe: RecipeInput[] = recipe.filter((r) => r.item_id && Number(r.amount) > 0).map((r) => ({ item_id: r.item_id, item_type: r.item_type, amount: Number(r.amount), unit: r.unit, size_label: r.size_label }));
-    const validSizes: SizeInput[] = sizes.filter((s) => s.label.trim()).map(s => ({
+    const validRecipe: RecipeInput[] = recipe.filter((r) => r.item_id && Number(r.amount) > 0).map((r) => ({ item_id: r.item_id, item_type: r.item_type, amount: Number(r.amount), unit: r.unit, size_label: productType === "single" ? null : r.size_label }));
+    const validSizes: SizeInput[] = productType === "single" ? [] : sizes.filter((s) => s.label.trim()).map(s => ({
       ...s,
       unit_cost: getRecipeCostForSize(s.label)
     }));
@@ -248,16 +277,27 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
             <h2 className="text-[#FFFCEB] font-raleway text-3xl font-black leading-tight mb-2">{mode === "add" ? "Create Product" : "Edit Details"}</h2>
             <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-10">Fill in product details, map ingredients, set pricing, and configure size variants.</p>
             <nav className="flex flex-col gap-6">
-              {STEPS.map((s) => (
-                <div key={s.id} className={`flex items-center gap-4 transition-all duration-300 ${step === s.id ? "translate-x-2" : "opacity-40"}`}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20" : "bg-white/10 text-white"}`}><s.icon size={18} strokeWidth={2.5} /></div>
-                  <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[#FFFCEB]" : "text-white"}`}>{s.label}</span>
-                </div>
-              ))}
+              <AnimatePresence initial={false}>
+                {visibleSteps.map((s) => (
+                  <motion.div
+                    key={s.id}
+                    initial={{ opacity: 0, x: -16, height: 0 }}
+                    animate={{ opacity: 1, x: 0, height: "auto" }}
+                    exit={{ opacity: 0, x: -16, height: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className={`flex items-center gap-4 transition-all duration-300 ${step === s.id ? "translate-x-2" : "opacity-40"}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20" : "bg-white/10 text-white"}`}><s.icon size={18} strokeWidth={2.5} /></div>
+                      <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[#FFFCEB]" : "text-white"}`}>{s.label}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </nav>
           </div>
           <div className="mt-auto relative z-10 flex gap-2">
-            {[1,2,3,4].map((i) => <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"}`} />)}
+            {visibleSteps.map((s) => <div key={s.id} className={`h-1.5 rounded-full transition-all duration-500 ${step === s.id ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"}`} />)}
           </div>
         </div>
 
@@ -278,6 +318,34 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                     <div><label className={labelStyle}>Category</label>
                       {loadingCats ? <div className="flex items-center gap-2 text-[#3A6131]/50 text-sm py-3"><Loader2 size={16} className="animate-spin" /> Loading…</div>
                       : <select className={selectStyle} value={form.category_id} onChange={(e) => set("category_id", e.target.value)}><option value="">— No Category —</option>{categories.map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</select>}
+                    </div>
+
+                    <div className="col-span-2">
+                      <label className={labelStyle}>Product Type</label>
+                      <div className="flex gap-2 p-1 bg-[#3A6131]/5 rounded-2xl border border-[#3A6131]/10">
+                        <button
+                          type="button"
+                          onClick={() => handleProductTypeChange("single")}
+                          className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${
+                            productType === "single"
+                              ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
+                              : "text-[#3A6131]/50 hover:text-[#3A6131]"
+                          }`}
+                        >
+                          Single Item
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleProductTypeChange("with_sizes")}
+                          className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${
+                            productType === "with_sizes"
+                              ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
+                              : "text-[#3A6131]/50 hover:text-[#3A6131]"
+                          }`}
+                        >
+                          With Sizes
+                        </button>
+                      </div>
                     </div>
                     <div className="col-span-2">
                       <label className={labelStyle}>Product Photo</label>
@@ -331,7 +399,7 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                   </div>
                   <p className="text-[11px] text-[#3A6131]/50 leading-relaxed pr-16 shrink-0">Map each ingredient and its quantity per serving.</p>
                   
-                  {sizes.length > 0 && (
+                  {productType === "with_sizes" && sizes.length > 0 && (
                      <div className="flex gap-2 mb-2 border-b border-[#3A6131]/10 pb-2 overflow-x-auto shrink-0">
                        {sizes.map(s => (
                          <button 
@@ -347,11 +415,11 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
 
                   {loadingIngs ? <div className="flex items-center justify-center py-12 text-[#3A6131]/40 gap-2 shrink-0"><Loader2 size={20} className="animate-spin" /> Loading…</div> : (
                     <div className="space-y-3 mt-2 flex-1 overflow-y-auto pr-2 pb-10">
-                      {recipe.filter(r => (sizes.length > 0 ? r.size_label === activeSizeTab : r.size_label === null)).length === 0 ? (
-                        <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30"><Coffee size={40} strokeWidth={1} className="mb-2" /><p className="text-sm font-medium">No ingredients mapped for this size</p></div>
+                      {recipe.filter(r => (productType === "with_sizes" && sizes.length > 0 ? r.size_label === activeSizeTab : r.size_label === null)).length === 0 ? (
+                        <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30"><Coffee size={40} strokeWidth={1} className="mb-2" /><p className="text-sm font-medium">No ingredients mapped{productType === "with_sizes" && sizes.length > 0 ? " for this size" : ""}</p></div>
                       ) : recipe.map((row, idx) => {
-                        if (sizes.length > 0 && row.size_label !== activeSizeTab) return null;
-                        if (sizes.length === 0 && row.size_label !== null) return null;
+                        if (productType === "with_sizes" && sizes.length > 0 && row.size_label !== activeSizeTab) return null;
+                        if ((productType === "single" || sizes.length === 0) && row.size_label !== null) return null;
                         return (
                         <div key={idx} className="flex gap-3 items-center bg-white rounded-2xl p-3 border border-[#3A6131]/5 shadow-sm">
                           <select className="flex-1 appearance-none bg-[#FFFCEB]/50 border border-[#3A6131]/20 rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D]" value={row.item_id} onChange={(e) => updateRecipeRow(idx, e.target.value)}>
@@ -383,7 +451,7 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                       <div className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-1">Unit Cost (Internal)</div>
                       <div className="text-lg font-black text-[#3A6131]">
                         {(() => {
-                           if (sizes.length === 0) return `₱${getRecipeCostForSize(null).toFixed(2)}`;
+                           if (productType === "single" || sizes.length === 0) return `₱${getRecipeCostForSize(null).toFixed(2)}`;
                            const costs = sizes.map(s => getRecipeCostForSize(s.label));
                            if (costs.length === 0) return "₱0.00";
                            const min = Math.min(...costs); const max = Math.max(...costs);
@@ -395,7 +463,7 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                       <div className="text-[10px] font-black uppercase text-[#385E31]/60 tracking-wider mb-1">Base Selling Price</div>
                       <div className="text-lg font-black text-[#385E31]">
                         {(() => {
-                           if (sizes.length === 0) return `₱${Number(form.price || 0).toFixed(2)}`;
+                           if (productType === "single" || sizes.length === 0) return `₱${Number(form.price || 0).toFixed(2)}`;
                            const prices = sizes.map(s => Number(s.price || 0));
                            if (prices.length === 0) return "₱0.00";
                            const min = Math.min(...prices); const max = Math.max(...prices);
@@ -406,7 +474,7 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                   </div>
 
                   <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 pb-10">
-                    {sizes.length === 0 ? (
+                    {productType === "single" || sizes.length === 0 ? (
                       <div className="bg-white p-5 rounded-[24px] border border-[#3A6131]/10">
                         <div className="grid grid-cols-2 gap-6">
                            <div>
@@ -480,9 +548,9 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
             </AnimatePresence>
           </div>
           <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-between items-center z-20">
-            <button onClick={() => step > 1 ? setStep(step - 1) : onClose()} className="text-[#3A6131]/50 text-sm font-bold hover:text-[#3A6131] transition-colors">{step === 1 ? "Cancel" : "Back"}</button>
-            <button onClick={() => step < 4 ? setStep(step + 1) : handleSave()} disabled={saving} className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
-              {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <>{step === 4 ? "Complete & Save" : "Continue"} <ChevronRight size={16} /></>}
+            <button onClick={goBack} className="text-[#3A6131]/50 text-sm font-bold hover:text-[#3A6131] transition-colors">{currentStepIdx === 0 ? "Cancel" : "Back"}</button>
+            <button onClick={goNext} disabled={saving} className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
+              {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <>{currentStepIdx === totalSteps - 1 ? "Complete & Save" : "Continue"} <ChevronRight size={16} /></>}
             </button>
           </div>
         </div>

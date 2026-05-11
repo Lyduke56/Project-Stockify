@@ -12,6 +12,7 @@ export type NfbVariantOption = {
   variant_type_id: string;
   label:           string;
   price:           number;
+  unit_cost:       number;
   stock:           number;
   sku_suffix:      string | null;
   sort_order:      number;
@@ -32,6 +33,7 @@ export type NfbProduct = {
   name:            string;
   sku:             string;
   description:     string | null;
+  image_url:       string | null;
   quantity:        number;
   unit_of_measure: string;
   unit_cost:       number;
@@ -49,6 +51,7 @@ export type NfbProductInput = {
   name:            string;
   sku:             string;
   description:     string | null;
+  image_url?:      string | null;
   quantity:        number;
   unit_of_measure: string;
   unit_cost:       number;
@@ -59,6 +62,7 @@ export type NfbProductInput = {
 export type VariantOptionInput = {
   label:      string;
   price:      string;
+  unit_cost?: string;
   stock:      string;
   sku_suffix: string;
 };
@@ -98,7 +102,7 @@ export async function fetchNfbProducts(tenantId: string): Promise<NfbProduct[]> 
       product_categories ( name ),
       nfb_variant_types (
         variant_type_id, name, sort_order,
-        nfb_variant_options ( option_id, label, price, stock, sku_suffix, sort_order )
+        nfb_variant_options ( option_id, label, price, unit_cost, stock, sku_suffix, sort_order )
       )
     `)
     .eq("tenant_id", tenantId)
@@ -111,6 +115,7 @@ export async function fetchNfbProducts(tenantId: string): Promise<NfbProduct[]> 
     ...row,
     unit_cost:     Number(row.unit_cost),
     price:         Number(row.price),
+    image_url:     row.image_url ?? null,
     category_name: row.product_categories?.name ?? "Uncategorized",
     variants: (row.nfb_variant_types ?? [])
       .sort((a: NfbVariantType, b: NfbVariantType) => a.sort_order - b.sort_order)
@@ -166,6 +171,7 @@ export async function addNfbProduct(
             tenant_id:       tenantId,
             label:           o.label.trim(),
             price:           Number(o.price) || 0,
+            unit_cost:       Number(o.unit_cost) || 0,
             stock:           Number(o.stock) || 0,
             sku_suffix:      o.sku_suffix.trim() || null,
             sort_order:      j,
@@ -223,6 +229,7 @@ export async function updateNfbProduct(
             tenant_id:       tenantId,
             label:           o.label.trim(),
             price:           Number(o.price) || 0,
+            unit_cost:       Number(o.unit_cost) || 0,
             stock:           Number(o.stock) || 0,
             sku_suffix:      o.sku_suffix.trim() || null,
             sort_order:      j,
@@ -233,11 +240,47 @@ export async function updateNfbProduct(
   }
 }
 
-export async function deleteNfbProduct(productId: string): Promise<void> {
+// Hard delete — permanently removes product, its variant types/options (via cascade), and its image
+export async function deleteNfbProduct(productId: string, tenantId?: string): Promise<void> {
   const supabase = createClient();
+
+  // Delete image from storage if one exists
+  if (tenantId) {
+    const exts = ["jpg", "jpeg", "png", "webp", "gif"];
+    await Promise.allSettled(
+      exts.map((ext) =>
+        supabase.storage.from("product-images").remove([`${tenantId}/nfb-${productId}.${ext}`])
+      )
+    );
+  }
+
+  // Hard delete — variant_types and variant_options are removed via CASCADE
   const { error } = await supabase
     .from("nfb_products")
-    .update({ is_active: false })
+    .delete()
     .eq("product_id", productId);
+
   if (error) throw error;
 }
+
+
+// ─── Image Upload ─────────────────────────────────────────────────────────────
+
+export async function uploadNfbProductImage(
+  tenantId:  string,
+  productId: string,
+  file:      File
+): Promise<string> {
+  const supabase = createClient();
+  const ext      = file.name.split(".").pop() ?? "jpg";
+  const filePath = `${tenantId}/nfb-${productId}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("product-images")
+    .upload(filePath, file, { upsert: true, contentType: file.type });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
+  return `${data.publicUrl}?t=${Date.now()}`;
+}
