@@ -81,7 +81,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
   const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
 
   useEffect(() => {
-    fetchCategories(tenantId, "product")
+    fetchCategories(tenantId, "nfb_product")
       .then((data) => {
         setCategories(data);
         if (mode === "add" && data.length > 0 && !form.category_id)
@@ -116,9 +116,40 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
       return;
     }
 
-    const validVariants: VariantTypeInput[] = variants.filter(
-      (vt) => vt.name.trim() && vt.options.some((o) => o.label.trim())
-    );
+    const validVariants: VariantTypeInput[] = variants
+      .map((vt) => ({
+        ...vt,
+        options: vt.options.filter((o) => o.label.trim()),
+      }))
+      .filter((vt) => vt.name.trim() && vt.options.length > 0);
+
+    if (validVariants.length > 0) {
+      const validOptions = validVariants.flatMap((vt) => vt.options);
+
+      // 1. Validate Total Quantity
+      const totalVariantStock = validOptions.reduce((sum, opt) => sum + (Number(opt.stock) || 0), 0);
+      const baseQuantity = Number(form.quantity) || 0;
+      
+      if (totalVariantStock > baseQuantity) {
+        setError(`Total variant stock (${totalVariantStock}) cannot exceed base quantity (${baseQuantity}).`);
+        return;
+      }
+
+      // 2. Validate Price Range (+/- 50% of base price)
+      const basePrice = Number(form.price) || 0;
+      const minPrice = basePrice * 0.5;
+      const maxPrice = basePrice * 1.5;
+      
+      const outOfRangeOption = validOptions.find((opt) => {
+        const optPrice = Number(opt.price) || 0;
+        return optPrice < minPrice || optPrice > maxPrice;
+      });
+
+      if (outOfRangeOption) {
+        setError(`Variant "${outOfRangeOption.label}" price (₱${Number(outOfRangeOption.price || 0).toFixed(2)}) is outside the reasonable range (₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}).`);
+        return;
+      }
+    }
 
     try {
       setSaving(true);

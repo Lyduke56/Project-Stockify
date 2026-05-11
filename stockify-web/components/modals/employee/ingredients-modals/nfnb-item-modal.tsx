@@ -61,7 +61,7 @@ export default function NfbItemModal({ mode, tenantId, initial, onSave, onClose 
 
   useEffect(() => {
     // ✅ Pass "ingredient" type so only ingredient categories are shown
-    fetchCategories(tenantId, "ingredient")
+    fetchCategories(tenantId, "nfb_ingredient")
       .then((data) => {
         setCategories(data);
         if (mode === "add" && data.length > 0 && !form.category_id) {

@@ -30,8 +30,8 @@ export default function ProductsSection() {
       .finally(() => setLoading(false));
   }, []);
 
-  // ✅ Must match the exact BusinessType literal from inventory.ts
-  const isFnb = ctx?.businessType === "Food and Beverages";
+  const businessTypeClean = ctx?.businessType?.toLowerCase().trim() || "";
+  const isFnb = businessTypeClean === "food & beverage" || businessTypeClean === "food and beverage";
 
   return (
     <div className="w-full flex flex-col font-['Inter']">

@@ -71,7 +71,7 @@ export default function FnbItemModal({ mode, tenantId, initial, onSave, onClose 
     name:           initial?.name           ?? "",
     sku:            initial?.sku            ?? "",
     category_id:    initial?.category_id    ?? "",
-    stock:          String(initial?.stock   ?? ""),
+    stock:          initial ? String(Number(initial.stock) / Number(initial.conversion || 1)) : "",
     base_unit:      initial?.base_unit      ?? "g",
     alert_limit:    String(initial?.alert_limit ?? ""),
     purchase_unit:  initial?.purchase_unit  ?? "Bag",
@@ -83,7 +83,7 @@ export default function FnbItemModal({ mode, tenantId, initial, onSave, onClose 
   const set = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
 
   useEffect(() => {
-    fetchCategories(tenantId, "ingredient")
+    fetchCategories(tenantId, "fnb_ingredient")
       .then((data) => {
         setCategories(data);
         if (mode === "add" && data.length > 0 && !form.category_id) {
@@ -112,7 +112,7 @@ export default function FnbItemModal({ mode, tenantId, initial, onSave, onClose 
         category_id:    form.category_id || null,
         name:           form.name.trim(),
         sku:            form.sku.trim().toUpperCase(),
-        stock:          Number(form.stock)        || 0,
+        stock:          (Number(form.stock) || 0) * (Number(form.conversion) || 1),
         base_unit:      form.base_unit,
         alert_limit:    Number(form.alert_limit)  || 0,
         purchase_unit:  form.purchase_unit,
@@ -296,9 +296,12 @@ export default function FnbItemModal({ mode, tenantId, initial, onSave, onClose 
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className={labelStyle}>
-                        Current Stock <span className="lowercase normal-case font-medium">({form.base_unit})</span>
+                        Current Stock <span className="lowercase normal-case font-medium">({form.purchase_unit})</span>
                       </label>
                       <input type="number" className={inputStyle} value={form.stock} onChange={(e) => set("stock", e.target.value)} placeholder="0" min="0" />
+                      <p className="text-[10px] text-[#3A6131]/60 mt-2 pl-1 font-bold">
+                        = {(Number(form.stock) || 0) * (Number(form.conversion) || 1)} {form.base_unit} (Total Base Units)
+                      </p>
                     </div>
                     <div>
                       <label className={labelStyle}>

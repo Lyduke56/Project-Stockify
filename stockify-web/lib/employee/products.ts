@@ -13,6 +13,8 @@ export type ProductSize = {
   price:      number;
   is_default: boolean;
   sort_order: number;
+  max_yield:  number;
+  unit_cost:  number;
 };
 
 export type Product = {
@@ -42,6 +44,7 @@ export type RecipeItem = {
   item_id:    string;
   amount:     number;
   unit:       string;
+  size_label?: string | null;
 };
 
 export type IngredientOption = {
@@ -51,6 +54,8 @@ export type IngredientOption = {
   base_unit:       string;
   unit_of_measure: string;
   unit:            string;
+  cost_per_base_unit?: number;
+  stock?:          number;
 };
 
 export type ProductInput = {
@@ -70,12 +75,15 @@ export type RecipeInput = {
   item_id:   string;
   amount:    number;
   unit:      string;
+  size_label?: string | null;
 };
 
 export type SizeInput = {
   label:      string;
   price:      string;
   is_default: boolean;
+  max_yield:  string;
+  unit_cost?: number;
 };
 
 export { getCurrentUserContext };
@@ -108,8 +116,8 @@ export async function fetchProducts(tenantId: string): Promise<Product[]> {
     .select(`
       *,
       product_categories ( name ),
-      product_recipes ( recipe_id, item_type, item_id, amount, unit ),
-      product_sizes   ( size_id, label, price, is_default, sort_order )
+      product_recipes ( recipe_id, item_type, item_id, amount, unit, size_label ),
+      product_sizes   ( size_id, label, price, is_default, sort_order, max_yield, unit_cost )
     `)
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
@@ -125,7 +133,7 @@ export async function fetchProducts(tenantId: string): Promise<Product[]> {
     recipe:        row.product_recipes ?? [],
     sizes:         (row.product_sizes ?? []).sort(
       (a: ProductSize, b: ProductSize) => a.sort_order - b.sort_order
-    ),
+    ).map((s: any) => ({ ...s, max_yield: Number(s.max_yield) || 0, unit_cost: Number(s.unit_cost) || 0 })),
   }));
 }
 
@@ -148,8 +156,11 @@ export async function addProduct(
   if (recipe.length > 0) {
     const { error: recipeError } = await supabase
       .from("product_recipes")
-      .insert(recipe.map((r) => ({ ...r, product_id: product.product_id, tenant_id: tenantId })));
-    if (recipeError) throw recipeError;
+      .insert(recipe.map((r) => ({ ...r, product_id: product.product_id, tenant_id: tenantId, size_label: r.size_label || null })));
+    if (recipeError) {
+      await supabase.from("products").delete().eq("product_id", product.product_id);
+      throw recipeError;
+    }
   }
 
   const validSizes = sizes.filter((s) => s.label.trim());
@@ -164,9 +175,14 @@ export async function addProduct(
           price:      Number(s.price) || 0,
           is_default: s.is_default,
           sort_order: i,
+          max_yield:  Number(s.max_yield) || 0,
+          unit_cost:  s.unit_cost || 0,
         }))
       );
-    if (sizeError) throw sizeError;
+    if (sizeError) {
+      await supabase.from("products").delete().eq("product_id", product.product_id);
+      throw sizeError;
+    }
   }
 
   return product;
@@ -192,7 +208,7 @@ export async function updateProduct(
   if (recipe.length > 0) {
     const { error: recipeError } = await supabase
       .from("product_recipes")
-      .insert(recipe.map((r) => ({ ...r, product_id: productId, tenant_id: tenantId })));
+      .insert(recipe.map((r) => ({ ...r, product_id: productId, tenant_id: tenantId, size_label: r.size_label || null })));
     if (recipeError) throw recipeError;
   }
 
@@ -209,6 +225,8 @@ export async function updateProduct(
           price:      Number(s.price) || 0,
           is_default: s.is_default,
           sort_order: i,
+          max_yield:  Number(s.max_yield) || 0,
+          unit_cost:  s.unit_cost || 0,
         }))
       );
     if (sizeError) throw sizeError;
@@ -219,10 +237,12 @@ export async function deleteProduct(productId: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("products")
-    .update({ is_active: false })
+    .delete()
     .eq("product_id", productId);
   if (error) throw error;
 }
+
+// ── Ingredient Options (F&B only) ─────────────────────────────
 
 // ── Ingredient Options (F&B only) ─────────────────────────────
 
@@ -233,21 +253,29 @@ export async function fetchIngredientOptions(
 
   const { data, error } = await supabase
     .from("fnb_inventory_items")
-    .select("item_id, name, base_unit")
+    .select("item_id, name, base_unit, unit_cost, conversion, stock")
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
     .order("name");
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
-    item_id:         row.item_id,
-    item_type:       "fnb" as const,
-    name:            row.name,
-    base_unit:       row.base_unit,
-    unit_of_measure: row.base_unit,
-    unit:            row.base_unit,
-  }));
+  return (data ?? []).map((row: any) => {
+    const costPerBase = row.conversion && row.conversion > 0 
+      ? Number(row.unit_cost || 0) / Number(row.conversion) 
+      : Number(row.unit_cost || 0);
+
+    return {
+      item_id:         row.item_id,
+      item_type:       "fnb" as const,
+      name:            row.name,
+      base_unit:       row.base_unit,
+      unit_of_measure: row.base_unit,
+      unit:            row.base_unit,
+      cost_per_base_unit: costPerBase,
+      stock:           Number(row.stock || 0),
+    };
+  });
 }
 
 // ── Supabase Storage ──────────────────────────────────────────

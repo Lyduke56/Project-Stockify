@@ -123,7 +123,7 @@ export default function ManageCategoriesBase({
               {title}
             </h2>
             <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-10">
-              Organise your {type === "product" ? "products" : "inventory"} by adding or removing categories. Changes apply immediately.
+              Organise your {type.includes("product") ? "products" : "inventory"} by adding or removing categories. Changes apply immediately.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <div className="w-10 h-10 rounded-xl bg-[#F7B71D] flex items-center justify-center text-[#385E31] shadow-lg shadow-[#F7B71D]/20">
@@ -135,11 +135,11 @@ export default function ManageCategoriesBase({
             {/* Type badge */}
             <div className="mt-6">
               <div className={`inline-flex px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                type === "product"
+                type.includes("product")
                   ? "bg-[#F7B71D]/20 text-[#F7B71D]"
                   : "bg-white/10 text-white/60"
               }`}>
-                {type === "product" ? "Product Categories" : "Ingredient Categories"}
+                {type.includes("product") ? "Product Categories" : "Ingredient Categories"}
               </div>
             </div>
 
