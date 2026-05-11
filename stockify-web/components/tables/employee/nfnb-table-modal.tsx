@@ -236,9 +236,30 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
           displayed.map((row, idx) => {
             const isLast         = idx === displayed.length - 1;
             const isOpen         = openDropdownId === row.product_id;
-            const variantSummary = row.variants && row.variants.length > 0
-              ? row.variants.map((v) => v.name).join(", ")
+            const hasVariants = row.variants && row.variants.length > 0;
+            const variantSummary = hasVariants
+              ? row.variants!.map((v) => v.name).join(", ")
               : null;
+
+            let displayQuantity = row.quantity.toString();
+            let displayPrice = `₱${Number(row.price).toFixed(2)}`;
+
+            if (hasVariants) {
+              const allOptions = row.variants!.flatMap((v) => v.options || []);
+              if (allOptions.length > 0) {
+                const totalStock = allOptions.reduce((sum, opt) => sum + (Number(opt.stock) || 0), 0);
+                displayQuantity = totalStock.toString();
+                
+                const prices = allOptions.map((opt) => Number(opt.price) || 0);
+                const minPrice = Math.min(...prices);
+                const maxPrice = Math.max(...prices);
+                if (minPrice === maxPrice) {
+                  displayPrice = `₱${minPrice.toFixed(2)}`;
+                } else {
+                  displayPrice = `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
+                }
+              }
+            }
 
             return (
               <div
@@ -267,7 +288,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
                 {/* Quantity */}
                 <div className={`flex flex-col items-center justify-center ${COLUMNS[3].className}`}>
-                  <span className="text-[#3A6131] text-[13px] font-bold">{row.quantity}</span>
+                  <span className="text-[#3A6131] text-[13px] font-bold">{displayQuantity}</span>
                   <span className="text-[10px] text-[#3A6131]/50">{row.unit_of_measure}</span>
                 </div>
 
@@ -278,7 +299,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
                 {/* Price */}
                 <div className={`flex text-[#385E31] text-[13px] font-extrabold items-center ${COLUMNS[5].className}`}>
-                  ₱{Number(row.price).toFixed(2)}
+                  {displayPrice}
                 </div>
 
                 {/* Variants summary */}
@@ -369,7 +390,8 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
       {showCategories && (
         <ManageCategoriesModal
           tenantId={tenantId}
-          placeholder="e.g. Cleaning Supplies"
+          type="nfb_product"
+          placeholder="e.g. Cleaning supplies"
           onClose={() => { setShowCategories(false); loadProducts(); }}
         />
       )}

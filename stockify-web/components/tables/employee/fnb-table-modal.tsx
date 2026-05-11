@@ -32,14 +32,14 @@ const ChevronDown = () => (
 // ── Columns ───────────────────────────────────────────────────
 
 const COLUMNS = [
-  { label: "Material Name",  className: "flex-[2] min-w-[160px] justify-start  text-left pl-4" },
-  { label: "SKU",            className: "flex-[1.2] min-w-[110px] justify-center text-center" },
-  { label: "Category",       className: "flex-[1] min-w-[90px]  justify-center text-center" },
-  { label: "Current Stock",  className: "flex-[1.4] min-w-[130px] justify-center text-center" },
-  { label: "Alert Limit",    className: "flex-[1] min-w-[90px]  justify-center text-center" },
-  { label: "Unit Cost",      className: "flex-[1] min-w-[90px]  justify-center text-center" },
+  { label: "Material Name", className: "flex-[2] min-w-[160px] justify-start  text-left pl-4" },
+  { label: "SKU", className: "flex-[1.2] min-w-[110px] justify-center text-center" },
+  { label: "Category", className: "flex-[1] min-w-[90px]  justify-center text-center" },
+  { label: "Current Stock", className: "flex-[1.4] min-w-[130px] justify-center text-center" },
+  { label: "Alert Limit", className: "flex-[1] min-w-[90px]  justify-center text-center" },
+  { label: "Unit Cost", className: "flex-[1] min-w-[90px]  justify-center text-center" },
   { label: "Nearest Expiry", className: "flex-[1.2] min-w-[110px] justify-center text-center" },
-  { label: "Actions",        className: "flex-[0.9] min-w-[80px]  justify-center text-center" },
+  { label: "Actions", className: "flex-[0.9] min-w-[80px]  justify-center text-center" },
 ];
 
 // ── Component ─────────────────────────────────────────────────
@@ -49,20 +49,20 @@ interface FnbIngredientsTableProps {
 }
 
 export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTableProps) {
-  const [items,          setItems]          = useState<FnbItem[]>([]);
-  const [loading,        setLoading]        = useState(true);
-  const [error,          setError]          = useState<string | null>(null);
-  const [search,         setSearch]         = useState("");
-  const [filterStatus,   setFilterStatus]   = useState("All");
-  const [visibleCount,   setVisibleCount]   = useState(5);
-  const [showAdd,        setShowAdd]        = useState(false);
-  const [editTarget,     setEditTarget]     = useState<FnbItem | null>(null);
-  const [deleteTarget,   setDeleteTarget]   = useState<FnbItem | null>(null);
+  const [items, setItems] = useState<FnbItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<FnbItem | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FnbItem | null>(null);
   const [showCategories, setShowCategories] = useState(false);
 
   // ── Dropdown state ────────────────────────────────────────
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPos,    setDropdownPos]    = useState<{ top: number; right: number } | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
 
   const loadItems = useCallback(async () => {
     try { setLoading(true); setError(null); setItems(await fetchFnbItems(tenantId)); }
@@ -101,7 +101,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
     } else {
       const rect = e.currentTarget.getBoundingClientRect();
       setDropdownPos({
-        top:   rect.bottom + 4,
+        top: rect.bottom + 4,
         right: window.innerWidth - rect.right,
       });
       setOpenDropdownId(itemId);
@@ -223,12 +223,12 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
           </div>
         ) : (
           displayed.map((row, idx) => {
-            const isLast        = idx === displayed.length - 1;
-            const isOpen        = openDropdownId === row.item_id;
+            const isLast = idx === displayed.length - 1;
+            const isOpen = openDropdownId === row.item_id;
             const purchasingQty = row.conversion > 0
               ? (row.stock / row.conversion).toFixed(1).replace(/\.0$/, "")
               : row.stock.toString();
-            const isLowStock    = row.stock <= row.alert_limit;
+            const isLowStock = row.stock <= row.alert_limit;
             const expiryDisplay = row.nearest_expiry
               ? new Date(row.nearest_expiry).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })
               : "N/A";
@@ -286,9 +286,8 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
                   <button
                     data-action-btn
                     onClick={(e) => handleActionClick(e, row.item_id)}
-                    className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                      isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
-                    }`}
+                    className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
+                      }`}
                   >
                     Action <ChevronDown />
                   </button>
@@ -305,9 +304,9 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
           data-dropdown-menu
           style={{
             position: "fixed",
-            top:      dropdownPos.top,
-            right:    dropdownPos.right,
-            zIndex:   9999,
+            top: dropdownPos.top,
+            right: dropdownPos.right,
+            zIndex: 9999,
           }}
           className="w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[6px] py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col"
         >
@@ -359,7 +358,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
         <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
       )}
       {showCategories && (
-        <ManageMaterialCategoriesModal tenantId={tenantId} placeholder="e.g. Cold Beverages" onClose={() => { setShowCategories(false); loadItems(); }} />
+        <ManageMaterialCategoriesModal tenantId={tenantId} type="fnb_ingredient" placeholder="e.g. Powder" onClose={() => { setShowCategories(false); loadItems(); }} />
       )}
     </div>
   );

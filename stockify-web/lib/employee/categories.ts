@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────
 
-export type CategoryType = "product" | "ingredient";
+export type CategoryType = "fnb_product" | "nfb_product" | "fnb_ingredient" | "nfb_ingredient";
 
 export type Category = {
   category_id: string;

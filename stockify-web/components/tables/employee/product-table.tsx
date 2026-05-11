@@ -181,12 +181,30 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                 {/* Category */}
                 <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[3].className}`}>{row.category_name ?? "—"}</div>
                 {/* Unit Cost */}
-                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[4].className}`}>₱{Number(row.unit_cost).toFixed(2)}</div>
-                {/* Price — shows default size price if sizes exist */}
-                <div className={`flex flex-col items-center ${COLUMNS[5].className}`}>
-                  <span className="text-[#385E31] text-[13px] font-extrabold">₱{displayPrice.toFixed(2)}</span>
+                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[4].className}`}>
+                  {(() => {
+                     const sizes = row.sizes || [];
+                     if (sizes.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
+                     const costs = sizes.map(s => Number(s.unit_cost) || 0);
+                     if (costs.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
+                     const min = Math.min(...costs); const max = Math.max(...costs);
+                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
+                  })()}
+                </div>
+                {/* Price */}
+                <div className={`flex flex-col items-center justify-center ${COLUMNS[5].className}`}>
+                  <span className="text-[#385E31] text-[13px] font-extrabold text-center leading-tight">
+                  {(() => {
+                     const sizes = row.sizes || [];
+                     if (sizes.length === 0) return `₱${Number(row.price).toFixed(2)}`;
+                     const prices = sizes.map(s => Number(s.price) || 0);
+                     if (prices.length === 0) return `₱${Number(row.price).toFixed(2)}`;
+                     const min = Math.min(...prices); const max = Math.max(...prices);
+                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
+                  })()}
+                  </span>
                   {row.sizes && row.sizes.length > 0 && (
-                    <span className="text-[10px] text-[#3A6131]/40 font-semibold">{defaultSize?.label ?? "base"}</span>
+                    <span className="text-[10px] text-[#3A6131]/40 font-semibold mt-0.5">{row.sizes.length} variants</span>
                   )}
                 </div>
                 {/* Max Yield */}
@@ -225,7 +243,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
       {showAdd && <ProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} />}
       {editTarget && <ProductModal mode="edit" tenantId={tenantId} productId={editTarget.product_id} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />}
       {deleteTarget && <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
-      {showCategories && <ManageCategoriesModal tenantId={tenantId} placeholder="e.g. Cold Beverages" onClose={() => { setShowCategories(false); loadProducts(); }} />}
+      {showCategories && <ManageCategoriesModal tenantId={tenantId} type="fnb_product" placeholder="e.g. Cold Beverage" onClose={() => { setShowCategories(false); loadProducts(); }} />}
     </div>
   );
 }

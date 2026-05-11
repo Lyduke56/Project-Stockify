@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export type BusinessType = "Food & Beverage" | "Non Food & Beverage" | "Food and Beverage" | "Non Food and Beverage";
 
-export type CategoryType = "product" | "ingredient";
+export type CategoryType = "fnb_product" | "nfb_product" | "fnb_ingredient" | "nfb_ingredient";
 
 export type Category = {
   category_id: string;
