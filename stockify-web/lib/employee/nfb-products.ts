@@ -1,10 +1,29 @@
-
-// lib/nfb-products.ts
-// Supabase data-access layer for NF&B Products & BOM
+// lib/employee/nfb-products.ts
+// Supabase data-access layer for NF&B Products & Variants
+// NOTE: NF&B no longer has a separate ingredients/components table.
+// Stock is managed directly via nfb_products.quantity.
 
 import { createClient } from "@/lib/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────
+
+export type NfbVariantOption = {
+  option_id:       string;
+  variant_type_id: string;
+  label:           string;
+  price:           number;
+  stock:           number;
+  sku_suffix:      string | null;
+  sort_order:      number;
+};
+
+export type NfbVariantType = {
+  variant_type_id: string;
+  product_id:      string;
+  name:            string;
+  sort_order:      number;
+  options:         NfbVariantOption[];
+};
 
 export type NfbProduct = {
   product_id:      string;
@@ -21,25 +40,8 @@ export type NfbProduct = {
   is_active:       boolean;
   created_at:      string;
   updated_at:      string;
-  // joined:
   category_name?:  string;
-  bom?:            BomItem[];
-};
-
-export type BomItem = {
-  bom_id:         string;
-  product_id:     string;
-  item_id:        string;
-  quantity:       number;
-  unit:           string;
-  // joined:
-  ingredient_name?: string;
-};
-
-export type NfbIngredientOption = {
-  item_id:         string;
-  name:            string;
-  unit_of_measure: string;
+  variants?:       NfbVariantType[];
 };
 
 export type NfbProductInput = {
@@ -54,11 +56,35 @@ export type NfbProductInput = {
   visible:         boolean;
 };
 
-export type BomInput = {
-  item_id:  string;
-  quantity: number;
-  unit:     string;
+export type VariantOptionInput = {
+  label:      string;
+  price:      string;
+  stock:      string;
+  sku_suffix: string;
 };
+
+export type VariantTypeInput = {
+  name:    string;
+  options: VariantOptionInput[];
+};
+
+// ── Error normaliser ──────────────────────────────────────────
+
+function normaliseError(e: any, sku: string): Error {
+  const msg: string  = e?.message ?? "";
+  const code: string = e?.code    ?? "";
+
+  if (
+    code === "23505" ||
+    msg.includes("uq_nfb_product_sku_per_tenant") ||
+    msg.includes("duplicate key value")
+  ) {
+    return new Error(
+      `SKU "${sku.toUpperCase()}" is already used by another product. Please choose a unique SKU code.`
+    );
+  }
+  return new Error(msg || "An unexpected error occurred. Please try again.");
+}
 
 // ── Products CRUD ─────────────────────────────────────────────
 
@@ -70,8 +96,9 @@ export async function fetchNfbProducts(tenantId: string): Promise<NfbProduct[]> 
     .select(`
       *,
       product_categories ( name ),
-      nfb_product_bom (
-        bom_id, item_id, quantity, unit
+      nfb_variant_types (
+        variant_type_id, name, sort_order,
+        nfb_variant_options ( option_id, label, price, stock, sku_suffix, sort_order )
       )
     `)
     .eq("tenant_id", tenantId)
@@ -85,14 +112,21 @@ export async function fetchNfbProducts(tenantId: string): Promise<NfbProduct[]> 
     unit_cost:     Number(row.unit_cost),
     price:         Number(row.price),
     category_name: row.product_categories?.name ?? "Uncategorized",
-    bom:           row.nfb_product_bom ?? [],
+    variants: (row.nfb_variant_types ?? [])
+      .sort((a: NfbVariantType, b: NfbVariantType) => a.sort_order - b.sort_order)
+      .map((vt: any) => ({
+        ...vt,
+        options: (vt.nfb_variant_options ?? []).sort(
+          (a: NfbVariantOption, b: NfbVariantOption) => a.sort_order - b.sort_order
+        ),
+      })),
   }));
 }
 
 export async function addNfbProduct(
   tenantId: string,
   input:    NfbProductInput,
-  bom:      BomInput[]
+  variants: VariantTypeInput[]
 ): Promise<NfbProduct> {
   const supabase = createClient();
 
@@ -102,18 +136,43 @@ export async function addNfbProduct(
     .select()
     .single();
 
-  if (productError) throw productError;
+  if (productError) throw normaliseError(productError, input.sku);
 
-  if (bom.length > 0) {
-    const bomRows = bom.map((b) => ({
-      ...b,
-      product_id: product.product_id,
-      tenant_id:  tenantId,
-    }));
-    const { error: bomError } = await supabase
-      .from("nfb_product_bom")
-      .insert(bomRows);
-    if (bomError) throw bomError;
+  // Insert variant types + options
+  for (const [i, vt] of variants.entries()) {
+    if (!vt.name.trim()) continue;
+
+    const { data: vtRow, error: vtError } = await supabase
+      .from("nfb_variant_types")
+      .insert({
+        product_id: product.product_id,
+        tenant_id:  tenantId,
+        name:       vt.name.trim(),
+        sort_order: i,
+      })
+      .select()
+      .single();
+
+    if (vtError) throw vtError;
+
+    const validOptions = vt.options.filter((o) => o.label.trim());
+    if (vtRow && validOptions.length > 0) {
+      const { error: optError } = await supabase
+        .from("nfb_variant_options")
+        .insert(
+          validOptions.map((o, j) => ({
+            variant_type_id: vtRow.variant_type_id,
+            product_id:      product.product_id,
+            tenant_id:       tenantId,
+            label:           o.label.trim(),
+            price:           Number(o.price) || 0,
+            stock:           Number(o.stock) || 0,
+            sku_suffix:      o.sku_suffix.trim() || null,
+            sort_order:      j,
+          }))
+        );
+      if (optError) throw optError;
+    }
   }
 
   return product;
@@ -123,7 +182,7 @@ export async function updateNfbProduct(
   productId: string,
   tenantId:  string,
   input:     Partial<NfbProductInput>,
-  bom:       BomInput[]
+  variants:  VariantTypeInput[]
 ): Promise<void> {
   const supabase = createClient();
 
@@ -132,26 +191,45 @@ export async function updateNfbProduct(
     .update(input)
     .eq("product_id", productId);
 
-  if (productError) throw productError;
+  if (productError) throw normaliseError(productError, input.sku ?? "");
 
-  // Replace BOM
-  const { error: deleteError } = await supabase
-    .from("nfb_product_bom")
-    .delete()
-    .eq("product_id", productId);
+  // Replace variants — cascade delete handles options automatically
+  await supabase.from("nfb_variant_types").delete().eq("product_id", productId);
 
-  if (deleteError) throw deleteError;
+  for (const [i, vt] of variants.entries()) {
+    if (!vt.name.trim()) continue;
 
-  if (bom.length > 0) {
-    const bomRows = bom.map((b) => ({
-      ...b,
-      product_id: productId,
-      tenant_id:  tenantId,
-    }));
-    const { error: bomError } = await supabase
-      .from("nfb_product_bom")
-      .insert(bomRows);
-    if (bomError) throw bomError;
+    const { data: vtRow, error: vtError } = await supabase
+      .from("nfb_variant_types")
+      .insert({
+        product_id: productId,
+        tenant_id:  tenantId,
+        name:       vt.name.trim(),
+        sort_order: i,
+      })
+      .select()
+      .single();
+
+    if (vtError) throw vtError;
+
+    const validOptions = vt.options.filter((o) => o.label.trim());
+    if (vtRow && validOptions.length > 0) {
+      const { error: optError } = await supabase
+        .from("nfb_variant_options")
+        .insert(
+          validOptions.map((o, j) => ({
+            variant_type_id: vtRow.variant_type_id,
+            product_id:      productId,
+            tenant_id:       tenantId,
+            label:           o.label.trim(),
+            price:           Number(o.price) || 0,
+            stock:           Number(o.stock) || 0,
+            sku_suffix:      o.sku_suffix.trim() || null,
+            sort_order:      j,
+          }))
+        );
+      if (optError) throw optError;
+    }
   }
 }
 
@@ -162,22 +240,4 @@ export async function deleteNfbProduct(productId: string): Promise<void> {
     .update({ is_active: false })
     .eq("product_id", productId);
   if (error) throw error;
-}
-
-// ── NF&B Ingredient Options ───────────────────────────────────
-
-export async function fetchNfbIngredientOptions(
-  tenantId: string
-): Promise<NfbIngredientOption[]> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from("nfb_inventory_items")
-    .select("item_id, name, unit_of_measure")
-    .eq("tenant_id", tenantId)
-    .eq("is_active", true)
-    .order("name");
-
-  if (error) throw error;
-  return data ?? [];
 }

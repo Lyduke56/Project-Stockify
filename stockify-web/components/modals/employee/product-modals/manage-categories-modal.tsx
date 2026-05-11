@@ -1,4 +1,4 @@
-
+// components/modals/employee/inventories-modal/manage-categories-modal.tsx
 
 import ManageCategoriesBase from "@/components/modals/employee/shared/manage-categories-base";
 
