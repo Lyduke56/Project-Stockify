@@ -38,13 +38,25 @@ const formatDate = (iso: string) =>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-
 type ActiveModal =
   | { type: "view";      tenant: SuspendedTenant }
   | { type: "notify";    tenant: SuspendedTenant }
   | { type: "restore";   tenant: SuspendedTenant }
   | { type: "terminate"; tenant: SuspendedTenant }
   | null;
+
+// ─── Skeleton Loader ──────────────────────────────────────────────────────────
+
+const SkeletonRow = () => (
+  <div className="w-full flex px-4 py-[14px] items-center border-b border-[#385E31]/10">
+    <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80%]" style={{ animationDelay: "0ms" }} /></div>
+    <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80%]" style={{ animationDelay: "100ms" }} /></div>
+    <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80%]" style={{ animationDelay: "200ms" }} /></div>
+    {/* Remarks Column (Wider, left aligned) */}
+    <div className="flex-[1.5] px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[90%]" style={{ animationDelay: "300ms" }} /></div>
+    <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80px]" style={{ animationDelay: "400ms" }} /></div>
+  </div>
+);
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -55,6 +67,9 @@ export default function SuspendedTenantsTab() {
   const [search,         setSearch]         = useState("");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [activeModal,    setActiveModal]    = useState<ActiveModal>(null);
+
+  // Pagination limit
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Shared state for ConfirmActionModal (terminate)
   const [actionLoading, setActionLoading] = useState(false);
@@ -90,6 +105,7 @@ export default function SuspendedTenantsTab() {
           t.owner_name.toLowerCase().includes(q)
       )
     );
+    setVisibleCount(10); // Reset pagination on search
   }, [search, tenants]);
 
   // ── Close dropdown on outside click ──────────────────────────────────────
@@ -165,12 +181,8 @@ export default function SuspendedTenantsTab() {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  if (loading)
-    return (
-      <div className="py-20 text-center text-[#385E31] font-bold">
-        Loading Suspended Database...
-      </div>
-    );
+
+  const visibleTenants = filtered.slice(0, visibleCount);
 
   return (
     <>
@@ -243,103 +255,121 @@ export default function SuspendedTenantsTab() {
         className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm"
       >
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-          {["Business Name", "Owner", "Date of Suspension", "Remarks", "Actions"].map((col) => (
-            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">
-              {col}
-            </div>
-          ))}
+          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Business Name</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Owner</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Date of Suspension</div>
+          <div className="flex-[1.5] text-left text-[#FFFCEB] text-[14px] font-bold">Remarks</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Actions</div>
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
-            No suspended records found.
-          </div>
-        ) : (
-          filtered.map((row, idx) => {
-            const isLast   = idx === filtered.length - 1;
-            const isOpen   = openDropdownId === row.id;
-            const daysLeft = daysUntilExpiry(row.suspension_expires_at);
-            const isUrgent = daysLeft !== null && daysLeft <= 2;
+        <div className="flex flex-col w-full py-1">
+          {loading ? (
+             Array.from({ length: 10 }).map((_, idx) => <SkeletonRow key={idx} />)
+          ) : filtered.length === 0 ? (
+            <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
+              No suspended records found.
+            </div>
+          ) : (
+            visibleTenants.map((row, idx) => {
+              const isLast   = idx === visibleTenants.length - 1;
+              const isOpen   = openDropdownId === row.id;
+              const daysLeft = daysUntilExpiry(row.suspension_expires_at);
+              const isUrgent = daysLeft !== null && daysLeft <= 2;
 
-            return (
-              <div
-                key={row.id}
-                className={`w-full flex px-4 py-[14px] items-center transition-colors ${
-                  !isLast ? "border-b border-[#385E31]/20" : ""
-                } ${isUrgent ? "bg-red-50/40" : "hover:bg-[#385E31]/5"}`}
-              >
-                <div className="flex-1 text-center text-[13px] font-bold text-[#3A6131]">
-                  {row.business_name}
-                  {isUrgent && (
-                    <span className="ml-2 text-[10px] bg-red-100 text-red-600 border border-red-300 rounded-full px-2 py-0.5 font-bold">
-                      {daysLeft! <= 0 ? "Expired" : `${daysLeft}d left`}
-                    </span>
-                  )}
+              return (
+                <div
+                  key={row.id}
+                  className={`w-full flex px-4 py-[14px] items-center transition-colors ${
+                    !isLast ? "border-b border-[#385E31]/20" : ""
+                  } ${isUrgent ? "bg-red-50/40" : "hover:bg-[#385E31]/5"}`}
+                >
+                  <div className="flex-1 text-center text-[13px] font-bold text-[#3A6131]">
+                    {row.business_name}
+                    {isUrgent && (
+                      <span className="ml-2 text-[10px] bg-red-100 text-red-600 border border-red-300 rounded-full px-2 py-0.5 font-bold">
+                        {daysLeft! <= 0 ? "Expired" : `${daysLeft}d left`}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                    {row.owner_name}
+                  </div>
+
+                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                    {formatDate(row.suspended_at)}
+                  </div>
+
+                  {/* Styled like Audit Logs Description */}
+                  <div className="flex-[1.5] text-left text-[#3A6131] text-[13px] leading-relaxed pt-0.5 font-medium">
+                    {row.reason || "N/A"}
+                  </div>
+
+                  <div className="flex-1 flex justify-center items-center relative">
+                    <button
+                      onClick={() => setOpenDropdownId(isOpen ? null : row.id)}
+                      className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
+                        isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
+                      }`}
+                    >
+                      Action <ChevronDown />
+                    </button>
+
+                    {isOpen && (
+                      <div className="absolute top-8 right-[50%] translate-x-1/2 w-[200px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col">
+                        <button
+                          onClick={() => openModal("view", row)}
+                          className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                        >
+                          View Suspension Details
+                        </button>
+                        <button
+                          onClick={() => openModal("notify", row)}
+                          className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+                        >
+                          Send Notification
+                        </button>
+                        <hr className="border-[#385E31]/20 mx-2" />
+                        <button
+                          onClick={() => openModal("restore", row)}
+                          className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors text-emerald-700"
+                        >
+                          ✓ Restore Tenant
+                        </button>
+                        <button
+                          onClick={() => openModal("terminate", row)}
+                          className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors text-red-600"
+                        >
+                          ✗ Terminate Tenant
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  {row.owner_name}
-                </div>
-
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  {formatDate(row.suspended_at)}
-                </div>
-
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  {row.reason || "N/A"}
-                </div>
-
-                <div className="flex-1 flex justify-center items-center relative">
-                  <button
-                    onClick={() => setOpenDropdownId(isOpen ? null : row.id)}
-                    className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                      isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
-                    }`}
-                  >
-                    Action <ChevronDown />
-                  </button>
-
-                  {isOpen && (
-                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[200px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col">
-                      <button
-                        onClick={() => openModal("view", row)}
-                        className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                      >
-                        View Suspension Details
-                      </button>
-                      <button
-                        onClick={() => openModal("notify", row)}
-                        className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
-                      >
-                        Send Notification
-                      </button>
-                      <hr className="border-[#385E31]/20 mx-2" />
-                      <button
-                        onClick={() => openModal("restore", row)}
-                        className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors text-emerald-700"
-                      >
-                        ✓ Restore Tenant
-                      </button>
-                      <button
-                        onClick={() => openModal("terminate", row)}
-                        className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors text-red-600"
-                      >
-                        ✗ Terminate Tenant
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* Pagination */}
-      <div className="w-full flex justify-end mt-6">
-        <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
-          Load More
-        </button>
+      {/* Pagination Controls */}
+      <div className="w-full flex justify-end mt-6 gap-3">
+        {visibleCount > 10 && (
+          <button 
+            onClick={() => setVisibleCount(10)}
+            className="border border-[#385E31] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
+          >
+            Show Less
+          </button>
+        )}
+        {visibleCount < filtered.length && (
+          <button 
+            onClick={() => setVisibleCount(prev => prev + 10)}
+            className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Load More
+          </button>
+        )}
       </div>
     </>
   );

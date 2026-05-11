@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { createClient } from "@/lib/supabase/client"; 
+import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Tab =  "security" | "notifications";
+type Tab = "security" | "notifications";
 
 // --- Icon Components ---
 const XIcon = () => (
@@ -19,7 +20,6 @@ const XIcon = () => (
     <line x1="6" y1="6" x2="18" y2="18" />
   </svg>
 );
-
 
 const EyeIcon = ({ show }: { show: boolean }) =>
   show ? (
@@ -39,7 +39,7 @@ const EyeIcon = ({ show }: { show: boolean }) =>
 
 const BellIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
     <path d="M13.73 21a2 2 0 0 1-3.46 0" />
   </svg>
@@ -47,16 +47,23 @@ const BellIcon = () => (
 
 const ShieldIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
   </svg>
 );
 
-const UserIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
+const LoaderIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    className="animate-spin">
+    <line x1="12" y1="2" x2="12" y2="6" />
+    <line x1="12" y1="18" x2="12" y2="22" />
+    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76" />
+    <line x1="16.24" y1="16.24" x2="19.07" y2="19.07" />
+    <line x1="2" y1="12" x2="6" y2="12" />
+    <line x1="18" y1="12" x2="22" y2="12" />
+    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24" />
+    <line x1="16.24" y1="7.76" x2="19.07" y2="4.93" />
   </svg>
 );
 
@@ -66,65 +73,19 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="relative inline-flex items-center shrink-0 cursor-pointer"
-      style={{ width: 44, height: 24 }}
+      className="relative inline-flex items-center shrink-0 cursor-pointer rounded-full transition-colors duration-300 focus:outline-none focus:ring-4 focus:ring-[#F7B71D]/20"
+      style={{ width: 48, height: 26, backgroundColor: checked ? "#3A6131" : "#D1D5DB" }}
     >
       <div
-        className="w-full h-full rounded-full transition-colors duration-200"
-        style={{ backgroundColor: checked ? "#385E31" : "#D1D5DB" }}
-      />
-      <div
-        className="absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow transition-transform duration-200"
-        style={{ transform: checked ? "translateX(23px)" : "translateX(3px)" }}
+        className="absolute top-[3px] w-[20px] h-[20px] bg-white rounded-full shadow-md transition-transform duration-300"
+        style={{ transform: checked ? "translateX(25px)" : "translateX(3px)" }}
       />
     </button>
   );
 }
 
-// --- Input Field Component ---
-function InputField({
-  label, value, onChange, type = "text", placeholder = "", disabled = false,
-  rightElement,
-}: {
-  label: string;
-  value: string;
-  onChange?: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-  disabled?: boolean;
-  rightElement?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-[#385E31] text-[13px] font-semibold font-['Inter']">
-        {label}
-      </label>
-      <div className="relative w-full">
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled}
-          className={`w-full h-10 px-4 rounded-lg border text-[14px] font-['Inter'] outline-none transition-all duration-150 ${
-            disabled
-              ? "bg-[#F3F4F6] border-[#D1D5DB] text-[#6B7280] cursor-not-allowed"
-              : "bg-white border-[#C4D6C1] text-[#1F2937] placeholder-[#9CA3AF] focus:border-[#385E31]"
-          } ${rightElement ? "pr-10" : ""}`}
-        />
-        {rightElement && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B7280]">
-            {rightElement}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // --- Main Modal Component ---
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  // SSR Check: Only render on the client side
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -132,6 +93,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }, []);
 
   const [activeTab, setActiveTab] = useState<Tab>("security");
+  const [saving, setSaving] = useState(false);
 
   // Security state
   const [currentPass, setCurrentPass] = useState("");
@@ -155,13 +117,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   if (!isOpen || !mounted) return null;
 
-
   const handlePasswordSave = async () => {
     const supabase = createClient();
     setPassError("");
     setPassSaved(false);
 
-    // 1. Basic Frontend Validation
     if (!currentPass || !newPass || !confirmPass) {
       setPassError("All password fields are required.");
       return;
@@ -176,8 +136,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
 
     try {
-      // 2. Re-authenticate to verify the 'Current Password'
-      // Supabase requires a fresh login to change sensitive data
+      setSaving(true);
       const { data: sessionData } = await supabase.auth.getSession();
       const userEmail = sessionData.session?.user.email;
 
@@ -190,31 +149,40 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
       if (signInError) {
         setPassError("The 'Current Password' you entered is incorrect.");
+        setSaving(false);
         return;
       }
 
-      // 3. Perform the actual update
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPass,
       });
 
       if (updateError) {
         setPassError(updateError.message);
+        setSaving(false);
         return;
       }
 
-      // 4. Success State (Matches image_98c05a.jpg layout)
       setPassSaved(true);
       setCurrentPass("");
       setNewPass("");
       setConfirmPass("");
-      
-      // Clear success message after 5 seconds
       setTimeout(() => setPassSaved(false), 5000);
-
     } catch (err: any) {
       setPassError("An unexpected error occurred. Please try again.");
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const handleNotificationSave = async () => {
+    setSaving(true);
+    // Simulate API call for saving preferences
+    setTimeout(() => {
+      setSaving(false);
+      setPassSaved(true);
+      setTimeout(() => setPassSaved(false), 5000);
+    }, 800);
   };
 
   const tabs: { key: Tab; label: string; Icon: React.FC }[] = [
@@ -231,196 +199,279 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     { key: "smsAlerts" as const, label: "SMS Alerts", desc: "Text alerts for critical system outages." },
   ];
 
-  // TELEPORT TO BODY
+  // ── Styles matched to FnbItemModal ──
+  const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
+  const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
+
   return createPortal(
-    <>
-      {/* Backdrop - High Z-Index */}
-      <div
-        className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-[2px]"
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
-      {/* Modal Container - Highest Z-Index */}
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none">
-        <div
-          className="w-full max-w-[640px] bg-[#FFFCEB] rounded-2xl shadow-2xl flex flex-col pointer-events-auto overflow-hidden"
-          style={{ maxHeight: "90vh" }}
-        >
-          {/* Header */}
-          <div className="bg-[#385E31] px-7 py-5 flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="text-white text-[20px] font-extrabold font-['Inter'] tracking-wide uppercase">
-                Settings
-              </h2>
-              <div className="w-16 h-1 bg-[#F7B71D] rounded-full mt-1" />
-            </div>
-            <button
-              onClick={onClose}
-              className="text-white/70 hover:text-white transition-colors duration-150"
-            >
-              <XIcon />
-            </button>
-          </div>
-
-          {/* Tab Bar */}
-          <div className="flex bg-[#2E4E28] shrink-0">
-            {tabs.map(({ key, label, Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3.5 text-[13px] font-bold font-['Inter'] transition-all duration-150 ${
-                  activeTab === key
-                    ? "bg-[#FFFCEB] text-[#385E31] shadow-sm"
-                    : "text-white/60 hover:text-white/90"
-                }`}
-              >
-                <Icon />
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto px-7 py-6">
-
-            {/* ── SECURITY TAB ── */}
-            {activeTab === "security" && (
-              <div className="flex flex-col gap-6">
-                <div className="bg-[#385E31]/8 border border-[#385E31]/20 rounded-xl px-5 py-4">
-                  <p className="text-[#385E31] text-[13px] font-['Inter'] font-medium leading-relaxed">
-                    For your security, choose a strong password with at least 8 characters, including
-                    uppercase letters, numbers, and symbols.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                  <InputField
-                    label="Current Password"
-                    value={currentPass}
-                    onChange={setCurrentPass}
-                    type={showCurrent ? "text" : "password"}
-                    placeholder="Enter current password"
-                    rightElement={
-                      <button type="button" onClick={() => setShowCurrent(!showCurrent)}>
-                        <EyeIcon show={showCurrent} />
-                      </button>
-                    }
-                  />
-                  <InputField
-                    label="New Password"
-                    value={newPass}
-                    onChange={setNewPass}
-                    type={showNew ? "text" : "password"}
-                    placeholder="Enter new password"
-                    rightElement={
-                      <button type="button" onClick={() => setShowNew(!showNew)}>
-                        <EyeIcon show={showNew} />
-                      </button>
-                    }
-                  />
-                  <InputField
-                    label="Confirm New Password"
-                    value={confirmPass}
-                    onChange={setConfirmPass}
-                    type={showConfirm ? "text" : "password"}
-                    placeholder="Re-enter new password"
-                    rightElement={
-                      <button type="button" onClick={() => setShowConfirm(!showConfirm)}>
-                        <EyeIcon show={showConfirm} />
-                      </button>
-                    }
-                  />
-                </div>
-
-                {newPass.length > 0 && (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between text-[12px] font-['Inter'] font-semibold">
-                      <span className="text-[#385E31]/60">Password strength</span>
-                      <span className={
-                        newPass.length < 6 ? "text-red-500"
-                        : newPass.length < 10 ? "text-amber-500"
-                        : "text-[#385E31]"
-                      }>
-                        {newPass.length < 6 ? "Weak" : newPass.length < 10 ? "Fair" : "Strong"}
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-[#D1D5DB] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          newPass.length < 6 ? "bg-red-500 w-1/4"
-                          : newPass.length < 10 ? "bg-amber-400 w-1/2"
-                          : "bg-[#385E31] w-full"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {passError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5">
-                    <p className="text-red-600 text-[13px] font-['Inter'] font-medium">{passError}</p>
-                  </div>
-                )}
-                {passSaved && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-                    <p className="text-green-700 text-[13px] font-['Inter'] font-medium">
-                      Password updated successfully.
-                    </p>
-                  </div>
-                )}
-
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={handlePasswordSave}
-                    className="bg-[#385E31] text-white text-[14px] font-bold font-['Inter'] px-8 py-2.5 rounded-full hover:bg-[#2E4E28] transition-colors duration-150"
-                  >
-                    Update Password
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── NOTIFICATIONS TAB ── */}
-            {activeTab === "notifications" && (
-              <div className="flex flex-col gap-2">
-                <p className="text-[#385E31]/70 text-[13px] font-['Inter'] mb-3">
-                  Choose which events you&apos;d like to be alerted about.
-                </p>
-                {notifItems.map(({ key, label, desc }) => (
+      {/* Modal Container */}
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-['Inter'] relative z-10"
+      >
+        {/* LEFT SIDEBAR */}
+        <div className="w-full md:w-[320px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10">
+            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[#FFFCEB] text-3xl font-black leading-tight mb-2 tracking-wide uppercase">
+              Settings
+            </h2>
+            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-12">
+              Manage your account security, passwords, and notification preferences here.
+            </p>
+            <nav className="flex flex-col gap-8">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => {
+                    setActiveTab(t.key);
+                    setPassError("");
+                    setPassSaved(false);
+                  }}
+                  className={`flex items-center gap-4 transition-all duration-300 w-full text-left outline-none ${
+                    activeTab === t.key ? "translate-x-2" : "opacity-40 hover:opacity-70"
+                  }`}
+                >
                   <div
-                    key={key}
-                    className="flex items-center justify-between gap-4 px-4 py-4 bg-white rounded-xl border border-[#C4D6C1] hover:border-[#385E31]/40 transition-colors duration-150"
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      activeTab === t.key
+                        ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20"
+                        : "bg-white/10 text-white"
+                    }`}
                   >
-                    <div className="flex flex-col">
-                      <span className="text-[#1F2937] text-[14px] font-bold font-['Inter']">
-                        {label}
-                      </span>
-                      <span className="text-[#6B7280] text-[12px] font-['Inter'] mt-0.5">
-                        {desc}
-                      </span>
-                    </div>
-                    <Toggle
-                      checked={notifs[key]}
-                      onChange={(v) => setNotifs((prev) => ({ ...prev, [key]: v }))}
-                    />
+                    <t.Icon />
                   </div>
-                ))}
-
-                <div className="flex justify-end pt-4">
-                  <button
-                    onClick={() => {}}
-                    className="bg-[#385E31] text-white text-[14px] font-bold font-['Inter'] px-8 py-2.5 rounded-full hover:bg-[#2E4E28] transition-colors duration-150"
+                  <span
+                    className={`text-sm font-bold tracking-wide ${
+                      activeTab === t.key ? "text-[#FFFCEB]" : "text-white"
+                    }`}
                   >
-                    Save Preferences
-                  </button>
-                </div>
-              </div>
-            )}
-
+                    {t.label}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="mt-auto relative z-10">
+            <div className="flex gap-2">
+              {tabs.map((t) => (
+                <div
+                  key={t.key}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    activeTab === t.key ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </>,
+
+        {/* RIGHT CONTENT */}
+        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm">
+
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#3A6131]/25">
+            {/* Feedback Banners */}
+            {passError && (
+              <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold">
+                {passError}
+              </div>
+            )}
+            {passSaved && (
+              <div className="mb-6 px-4 py-3 bg-[#3A6131]/10 border border-[#3A6131]/20 rounded-2xl text-[#3A6131] text-xs font-semibold">
+                ✓ Successfully updated {activeTab === "security" ? "password" : "preferences"}.
+              </div>
+            )}
+
+            <AnimatePresence mode="wait">
+              {/* STEP 1: SECURITY */}
+              {activeTab === "security" && (
+                <motion.div
+                  key="security"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 italic font-['Raleway']">
+                      Security & Password
+                    </h3>
+                    <p className="text-[12px] text-[#3A6131]/60 font-medium leading-relaxed mt-2">
+                      For your security, choose a strong password with at least 8 characters, including
+                      uppercase letters, numbers, and symbols.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-5">
+                    <div>
+                      <label className={labelStyle}>Current Password</label>
+                      <div className="relative w-full">
+                        <input
+                          className={`${inputStyle} pr-12`}
+                          type={showCurrent ? "text" : "password"}
+                          value={currentPass}
+                          onChange={(e) => setCurrentPass(e.target.value)}
+                          placeholder="Enter current password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrent(!showCurrent)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3A6131]/40 hover:text-[#3A6131] transition-colors"
+                        >
+                          <EyeIcon show={showCurrent} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelStyle}>New Password</label>
+                      <div className="relative w-full">
+                        <input
+                          className={`${inputStyle} pr-12`}
+                          type={showNew ? "text" : "password"}
+                          value={newPass}
+                          onChange={(e) => setNewPass(e.target.value)}
+                          placeholder="Enter new password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNew(!showNew)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3A6131]/40 hover:text-[#3A6131] transition-colors"
+                        >
+                          <EyeIcon show={showNew} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className={labelStyle}>Confirm New Password</label>
+                      <div className="relative w-full">
+                        <input
+                          className={`${inputStyle} pr-12`}
+                          type={showConfirm ? "text" : "password"}
+                          value={confirmPass}
+                          onChange={(e) => setConfirmPass(e.target.value)}
+                          placeholder="Re-enter new password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirm(!showConfirm)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3A6131]/40 hover:text-[#3A6131] transition-colors"
+                        >
+                          <EyeIcon show={showConfirm} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Password Strength Indicator */}
+                  {newPass.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-2">
+                      <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider">
+                        <span className="text-[#3A6131]/50">Password strength</span>
+                        <span
+                          className={
+                            newPass.length < 6
+                              ? "text-red-500"
+                              : newPass.length < 10
+                              ? "text-[#F7B71D]"
+                              : "text-[#3A6131]"
+                          }
+                        >
+                          {newPass.length < 6 ? "Weak" : newPass.length < 10 ? "Fair" : "Strong"}
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-[#3A6131]/10 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            newPass.length < 6
+                              ? "bg-red-500 w-1/4"
+                              : newPass.length < 10
+                              ? "bg-[#F7B71D] w-1/2"
+                              : "bg-[#3A6131] w-full"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* STEP 2: NOTIFICATIONS */}
+              {activeTab === "notifications" && (
+                <motion.div
+                  key="notifications"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="mb-6">
+                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 italic font-['Raleway']">
+                      Alerts & Notifications
+                    </h3>
+                    <p className="text-[12px] text-[#3A6131]/60 font-medium leading-relaxed mt-2">
+                      Choose which events you'd like to be alerted about. These settings apply to your admin account across the platform.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    {notifItems.map(({ key, label, desc }) => (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between gap-4 p-5 bg-white rounded-[20px] border-[1.5px] border-[#3A6131]/10 hover:border-[#F7B71D]/50 transition-all shadow-sm"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-[#3A6131] text-[14px] font-bold">
+                            {label}
+                          </span>
+                          <span className="text-[#3A6131]/60 text-[12px] font-medium mt-1">
+                            {desc}
+                          </span>
+                        </div>
+                        <Toggle
+                          checked={notifs[key]}
+                          onChange={(v) => setNotifs((prev) => ({ ...prev, [key]: v }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Footer */}
+          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-end items-center z-20 shrink-0">
+            <button
+              onClick={activeTab === "security" ? handlePasswordSave : handleNotificationSave}
+              disabled={saving}
+              className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <>
+                  <LoaderIcon /> Saving...
+                </>
+              ) : (
+                <>{activeTab === "security" ? "Update Password" : "Save Preferences"}</>
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>,
     document.body
   );
 }

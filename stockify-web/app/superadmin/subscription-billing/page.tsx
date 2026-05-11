@@ -44,7 +44,7 @@ function StatCard({ title, value, trendText, svgName, delay = 0 }: StatCardProps
       <div className="bg-[#FFFCEB] rounded-[6px] flex flex-col items-center justify-center py-5 flex-1">
         <div className="flex items-center justify-center gap-3">
           <img src={`/${svgName}.svg`} alt={title} className="w-14 h-14 object-contain" />
-          <span className="text-[#385E31] text-[3rem] font-black leading-none">{value}</span>
+          <span className="text-[#385E31] text-[3.8rem] font-black leading-none">{value}</span>
         </div>
         <p className="text-[#385E31] text-[11px] mt-2 font-bold">{trendText}</p>
       </div>
@@ -135,7 +135,6 @@ export default function SubscriptionBilling() {
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           openNotifs={() => setIsNotifsOpen(true)}
-          openProfile={() => setIsProfileOpen(true)}
         />
 
         {/* Page Header */}
@@ -213,14 +212,6 @@ export default function SubscriptionBilling() {
             <BillingPaymentTable rows={rows} onRefresh={fetchData} />
           )}
 
-          {/* Load More */}
-          {!loading && rows.length > 0 && (
-            <div className="w-full flex justify-end mt-6">
-              <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
-                Load More
-              </button>
-            </div>
-          )}
         </motion.div>
           
         {/* Modals */}

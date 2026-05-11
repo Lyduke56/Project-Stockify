@@ -30,6 +30,7 @@ export interface BillingRow {
 interface Props {
   rows:      BillingRow[];
   onRefresh: () => void;
+  isLoading?: boolean;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -103,9 +104,27 @@ const ChevronDown = () => (
   </svg>
 );
 
+// ── Skeleton Loader ───────────────────────────────────────────────────────────
+
+const SkeletonRow = () => (
+  <div
+    className="w-full grid px-4 py-[13px] items-center border-b border-[#385E31]/10"
+    style={{ gridTemplateColumns: "2fr 1.5fr 1.2fr 1.2fr 1.2fr 1.1fr 1.1fr 1fr" }}
+  >
+    <div className="px-1"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[80%]" style={{ animationDelay: "0ms" }} /></div>
+    <div className="px-1"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[80%] mx-auto" style={{ animationDelay: "100ms" }} /></div>
+    <div><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[80%] mx-auto" style={{ animationDelay: "200ms" }} /></div>
+    <div><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[80%] mx-auto" style={{ animationDelay: "300ms" }} /></div>
+    <div><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[80%] mx-auto" style={{ animationDelay: "400ms" }} /></div>
+    <div className="flex justify-center"><div className="h-[22px] bg-[#385E31]/10 rounded-[40px] animate-pulse w-[68px]" style={{ animationDelay: "500ms" }} /></div>
+    <div><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[80%] mx-auto" style={{ animationDelay: "600ms" }} /></div>
+    <div className="flex justify-center"><div className="h-6 bg-[#385E31]/10 rounded-full animate-pulse w-[60px]" style={{ animationDelay: "700ms" }} /></div>
+  </div>
+);
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function BillingPaymentTable({ rows, onRefresh }: Props) {
+export default function BillingPaymentTable({ rows, onRefresh, isLoading = false }: Props) {
   const router = useRouter();
 
   const [activeTab,      setActiveTab]      = useState<BillingTab>("Overall");
@@ -114,6 +133,9 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
   const [actionLoading,  setActionLoading]  = useState(false);
   const [actionError,    setActionError]    = useState("");
   const [successMsg,     setSuccessMsg]     = useState("");
+
+  // Pagination limit
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Selected tenant for modals
   const [selectedRow, setSelectedRow] = useState<BillingRow | null>(null);
@@ -148,6 +170,13 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
         r.owner_full_name?.toLowerCase().includes(q)
       );
     });
+
+  // Reset pagination on search or tab change
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [search, activeTab]);
+
+  const visibleRows = filtered.slice(0, visibleCount);
 
   // ── Flash helper ───────────────────────────────────────────────────────────
 
@@ -227,19 +256,11 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
       )}
 
       {/* ── 5-Tab Navigator ─────────────────────────────────────────────────── */}
-      <div className="w-full flex justify-center mb-6">
-        <div className="relative flex w-full max-w-[750px] h-[44px] items-center my-2">
-
+      <div className="w-full flex justify-center mb-8">
+        <div className="relative flex w-full max-w-[900px] h-[45px] items-center my-2">
+          
           {/* Outer border */}
           <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
-
-          {/* Vertical dividers */}
-          <div className="absolute inset-0 flex pointer-events-none">
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex-1 border-r-2 border-[#385E31]" />
-            ))}
-            <div className="flex-1" />
-          </div>
 
           {/* Sliding pill */}
           <div
@@ -258,7 +279,7 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setOpenDropdownId(null); }}
-                className={`flex-1 h-full z-20 text-center font-bold text-[14px] transition-colors duration-300 flex items-center justify-center gap-1.5 ${
+                className={`flex-1 h-full z-20 text-center font-bold text-[15px] transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
                   isActive ? getTabConfig(tab).text : "text-[#385E31]"
                 }`}
               >
@@ -311,14 +332,16 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
         </div>
 
         {/* Rows */}
-        {filtered.length === 0 ? (
+        {isLoading ? (
+           Array.from({ length: 10 }).map((_, idx) => <SkeletonRow key={idx} />)
+        ) : filtered.length === 0 ? (
           <div className="w-full text-center py-12 text-[#385E31]/50 font-semibold text-sm">
             {search ? "No results match your search." : `No ${activeTab === "Overall" ? "" : activeTab.toLowerCase() + " "}records found.`}
           </div>
         ) : (
-          filtered.map((row, idx) => {
+          visibleRows.map((row, idx) => {
             const { bg, text } = getPillStyles(row.display_status);
-            const isLast = idx === filtered.length - 1;
+            const isLast = idx === visibleRows.length - 1;
             const rowKey = row.subscription_id ?? `${row.tenant_id}-${idx}`;
             const isOpen = openDropdownId === rowKey;
 
@@ -470,6 +493,26 @@ export default function BillingPaymentTable({ rows, onRefresh }: Props) {
               </div>
             );
           })
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="w-full flex justify-end mt-6 gap-3">
+        {visibleCount > 10 && (
+          <button 
+            onClick={() => setVisibleCount(10)}
+            className="border border-[#385E31] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
+          >
+            Show Less
+          </button>
+        )}
+        {visibleCount < filtered.length && (
+          <button 
+            onClick={() => setVisibleCount(prev => prev + 10)}
+            className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Load More
+          </button>
         )}
       </div>
 

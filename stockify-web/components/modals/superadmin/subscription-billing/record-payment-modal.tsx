@@ -1,11 +1,7 @@
-// components/modals/superadmin/subscription-billing/record-payment-modal.tsx
-// Full-featured payment modal with:
-//   Tab 1 — Payment Submissions (proof screenshots from tenant, Accept / Reject)
-//   Tab 2 — Billing Records     (existing records, manual mark-as-paid)
-
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
@@ -71,14 +67,49 @@ const fmtPHP = (n: number) =>
 
 const getPill = (status: string) => {
   switch (status) {
-    case "Paid":     return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Pending":  return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
-    case "Overdue":  return { bg: "bg-[#FFD980]", text: "text-[#385E31]" };
-    case "Accepted": return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
+    case "Paid":     return { bg: "bg-[#3A6131]", text: "text-[#FFFCEB]" };
+    case "Pending":  return { bg: "bg-[#F7B71D]", text: "text-[#3A6131]" };
+    case "Overdue":  return { bg: "bg-[#FFD980]", text: "text-[#3A6131]" };
+    case "Accepted": return { bg: "bg-[#3A6131]", text: "text-[#FFFCEB]" };
     case "Rejected": return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
     default:         return { bg: "bg-[#E2E8F0]", text: "text-[#475569]" };
   }
 };
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const XIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const LoaderIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+    className="animate-spin">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+  </svg>
+);
+
+const InboxIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+    <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+  </svg>
+);
+
+const ReceiptIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"/>
+    <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+    <path d="M12 17.5v-11"/>
+  </svg>
+);
 
 // ── Proof Image Lightbox ──────────────────────────────────────────────────────
 
@@ -89,7 +120,7 @@ function ProofImageViewer({ url }: { url: string }) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-[#385E31] text-[11px] font-bold underline underline-offset-2 hover:text-[#E5AD24] transition-colors"
+        className="flex items-center gap-1.5 text-[#3A6131] text-[11px] font-bold underline underline-offset-2 hover:text-[#F7B71D] transition-colors"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
           fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -106,7 +137,7 @@ function ProofImageViewer({ url }: { url: string }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           >
             <motion.div
@@ -115,26 +146,22 @@ function ProofImageViewer({ url }: { url: string }) {
               exit={{ scale: 0.85, opacity: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative bg-white rounded-[14px] p-3 shadow-2xl max-w-[88vw] max-h-[88vh] overflow-auto"
+              className="relative bg-white rounded-[24px] p-4 shadow-2xl max-w-[88vw] max-h-[88vh] overflow-auto flex flex-col items-center"
             >
-              {/* Close button */}
               <button
                 onClick={() => setOpen(false)}
-                className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/10 flex items-center justify-center hover:bg-black/20 transition-colors z-10"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors z-10"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
-                  fill="none" stroke="#333" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
+                <XIcon />
               </button>
 
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={url}
                 alt="Proof of Payment"
-                className="max-w-[80vw] max-h-[80vh] object-contain rounded-[8px]"
+                className="max-w-[80vw] max-h-[75vh] object-contain rounded-[12px]"
               />
-              <p className="text-center text-[11px] text-gray-400 mt-2 font-medium">
+              <p className="text-center text-[12px] text-gray-400 mt-4 font-semibold">
                 Proof of Payment · Click outside to close
               </p>
             </motion.div>
@@ -153,6 +180,9 @@ export default function RecordPaymentModal({
   onClose,
   onPaid,
 }: RecordPaymentModalProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); return () => setMounted(false); }, []);
+
   const [activeTab,    setActiveTab]    = useState<ModalTab>("submissions");
   const [tenant,       setTenant]       = useState<TenantInfo | null>(null);
   const [records,      setRecords]      = useState<PaymentRecord[]>([]);
@@ -303,163 +333,173 @@ export default function RecordPaymentModal({
     .reduce((s, r) => s + Number(r.amount), 0);
   const pendingSubCount = submissions.filter((s) => s.status === "Pending").length;
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  const TABS: { key: ModalTab; label: string; Icon: React.FC; badge: number }[] = [
+    { key: "submissions", label: "Submissions", Icon: InboxIcon, badge: pendingSubCount },
+    { key: "records", label: "Billing Records", Icon: ReceiptIcon, badge: unpaidCount },
+  ];
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-center justify-center"
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
+  // ── Styles ─────────────────────────────────────────────────────────────────
+  const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
+  const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
 
-          {/* Modal card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 18 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 18 }}
-            transition={{ type: "spring", stiffness: 320, damping: 26 }}
-            className="relative z-10 w-full max-w-2xl mx-4 bg-[#FFFCEB] rounded-[14px] shadow-2xl border border-[#385E31]/15 overflow-hidden max-h-[92vh] flex flex-col"
-          >
-            {/* Top accent bar */}
-            <div className="h-[5px] w-full bg-[#385E31] shrink-0" />
+  if (!isOpen || !mounted) return null;
 
-            {/* ── Header ─────────────────────────────────────────────────── */}
-            <div className="px-7 pt-5 pb-0 shrink-0">
-              <div className="flex items-center justify-between mb-4">
-                {/* Icon + title */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#385E31]/10 border border-[#385E31]/15 flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24"
-                      fill="none" stroke="#385E31" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                      <line x1="16" y1="13" x2="8" y2="13"/>
-                      <line x1="16" y1="17" x2="8" y2="17"/>
-                      <polyline points="10 9 9 9 8 9"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-[#385E31] text-[17px] font-extrabold leading-tight">
-                      Payment Records
-                    </h3>
-                    {tenant && (
-                      <p className="text-[#385E31]/55 text-[12px] font-medium mt-0.5">
-                        {tenant.business_name} · {tenant.owner_full_name}
-                      </p>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        onClick={onClose}
+      />
+
+      {/* Modal Container */}
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 20 }}
+        className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-['Inter'] relative z-10"
+      >
+        {/* LEFT SIDEBAR */}
+        <div className="w-full md:w-[320px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10">
+            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[#FFFCEB] text-3xl font-black leading-tight mb-2 tracking-wide uppercase font-['Raleway']">
+              Payments
+            </h2>
+            {tenant ? (
+              <p className="text-[#FFFCEB]/70 text-[13px] font-medium leading-relaxed mb-8">
+                {tenant.business_name} <br/> 
+                <span className="opacity-75">{tenant.owner_full_name}</span>
+              </p>
+            ) : (
+              <div className="h-10 mb-8" /> // placeholder
+            )}
+
+            {/* Total Due Badge */}
+            {!loading && unpaidCount > 0 && (
+              <div className="mb-8 p-5 bg-red-500/20 border border-red-500/30 rounded-2xl shadow-inner">
+                <p className="text-red-200 text-[10px] font-black uppercase tracking-widest mb-1">
+                  Total Due ({unpaidCount} unpaid)
+                </p>
+                <p className="text-white text-3xl font-black tracking-tight">
+                  {fmtPHP(totalBalance)}
+                </p>
+              </div>
+            )}
+
+            <nav className="flex flex-col gap-6">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => {
+                    setActiveTab(t.key);
+                    setConfirm(null);
+                    setReviewTarget(null);
+                    setReviewAction(null);
+                  }}
+                  className={`flex items-center gap-4 transition-all duration-300 w-full text-left outline-none ${
+                    activeTab === t.key ? "translate-x-2" : "opacity-40 hover:opacity-70"
+                  }`}
+                >
+                  <div
+                    className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      activeTab === t.key
+                        ? "bg-[#F7B71D] text-[#3A6131] shadow-lg shadow-[#F7B71D]/20"
+                        : "bg-white/10 text-white"
+                    }`}
+                  >
+                    <t.Icon />
+                    {/* Notification Badge */}
+                    {t.badge > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-[#E91F22] text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-extrabold border border-[#3A6131]">
+                        {t.badge}
+                      </span>
                     )}
                   </div>
-                </div>
-
-                {/* Balance badge + close */}
-                <div className="flex items-center gap-4">
-                  {!loading && unpaidCount > 0 && (
-                    <div className="flex flex-col items-end">
-                      <span className="text-[#E91F22] text-[18px] font-black leading-tight">
-                        {fmtPHP(totalBalance)}
-                      </span>
-                      <span className="text-[#E91F22]/60 text-[11px] font-semibold">
-                        {unpaidCount} unpaid record{unpaidCount !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  )}
-                  <button
-                    onClick={onClose}
-                    className="w-7 h-7 rounded-full bg-[#385E31]/10 flex items-center justify-center hover:bg-[#385E31]/20 transition-colors"
+                  <span
+                    className={`text-sm font-bold tracking-wide ${
+                      activeTab === t.key ? "text-[#FFFCEB]" : "text-white"
+                    }`}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
-                      fill="none" stroke="#385E31" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"/>
-                      <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Tab switcher */}
-              <div className="flex gap-1 border-b border-[#385E31]/10 pb-0">
-                {(["submissions", "records"] as ModalTab[]).map((tab) => {
-                  const labels: Record<ModalTab, string> = {
-                    submissions: "Payment Submissions",
-                    records:     "Billing Records",
-                  };
-                  const isActive = activeTab === tab;
-                  const badge    = tab === "submissions" ? pendingSubCount : 0;
-
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`relative flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-bold transition-all rounded-t-[6px] ${
-                        isActive
-                          ? "text-[#385E31] bg-[#385E31]/8"
-                          : "text-[#385E31]/50 hover:text-[#385E31] hover:bg-[#385E31]/5"
-                      }`}
-                    >
-                      {labels[tab]}
-                      {badge > 0 && (
-                        <span className="bg-[#E91F22] text-white text-[9px] px-1.5 py-0.5 rounded-full font-extrabold">
-                          {badge}
-                        </span>
-                      )}
-                      {isActive && (
-                        <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#385E31] rounded-t-full" />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    {t.label}
+                  </span>
+                </button>
+              ))}
+            </nav>
+          </div>
+          <div className="mt-auto relative z-10">
+            <div className="flex gap-2">
+              {TABS.map((t) => (
+                <div
+                  key={t.key}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    activeTab === t.key ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
+                  }`}
+                />
+              ))}
             </div>
+          </div>
+        </div>
 
-            {/* ── Scrollable body ─────────────────────────────────────────── */}
-            <div className="overflow-y-auto flex-1 px-7 py-5">
+        {/* RIGHT CONTENT */}
+        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm">
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-[#FFFCEB] border border-[#3A6131]/10 flex items-center justify-center text-[#3A6131] hover:bg-[#3A6131] hover:text-[#FFFCEB] transition-all z-20"
+          >
+            <XIcon />
+          </button>
 
-              {/* Feedback banners */}
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                  className="text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-[8px] text-[12px] font-medium mb-4"
-                >
-                  ✕ {error}
-                </motion.p>
-              )}
-              {success && (
-                <motion.p
-                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-                  className="text-[#385E31] bg-[#e8f5e2] border border-[#385E31]/30 px-3 py-2 rounded-[8px] text-[12px] font-medium mb-4"
-                >
-                  ✓ {success}
-                </motion.p>
-              )}
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#3A6131]/25">
+            
+            {/* Feedback Banners */}
+            {error && (
+              <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold">
+                ✕ {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-6 px-4 py-3 bg-[#3A6131]/10 border border-[#3A6131]/20 rounded-2xl text-[#3A6131] text-xs font-semibold">
+                ✓ {success}
+              </div>
+            )}
 
+            <AnimatePresence mode="wait">
               {/* ════════════════════════════════════════════════════════════
                   TAB: Payment Submissions
               ════════════════════════════════════════════════════════════ */}
               {activeTab === "submissions" && (
-                <>
+                <motion.div
+                  key="submissions"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 italic font-['Raleway']">
+                      Payment Submissions
+                    </h3>
+                    <p className="text-[12px] text-[#3A6131]/60 font-medium leading-relaxed mt-2">
+                      Review proof of payments submitted by the tenant. Accepting a payment will automatically clear the balance for the targeted billing period.
+                    </p>
+                  </div>
+
                   {submissions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
-                      <div className="w-12 h-12 rounded-full bg-[#385E31]/8 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-                          fill="none" stroke="#385E31" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="5" width="20" height="14" rx="2"/>
-                          <line x1="2" y1="10" x2="22" y2="10"/>
-                        </svg>
+                      <div className="w-12 h-12 rounded-full bg-[#3A6131]/8 flex items-center justify-center">
+                        <InboxIcon />
                       </div>
-                      <p className="text-[#385E31]/40 text-[13px] font-semibold">
+                      <p className="text-[#3A6131]/40 text-[13px] font-semibold">
                         No payment submissions from this tenant yet.
                       </p>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-4">
                       {submissions.map((sub) => {
                         const { bg, text } = getPill(sub.status);
                         const isPending    = sub.status === "Pending";
@@ -468,35 +508,35 @@ export default function RecordPaymentModal({
                         return (
                           <div
                             key={sub.submission_id}
-                            className={`rounded-[10px] border p-4 transition-all ${
+                            className={`rounded-[20px] border-[1.5px] p-5 transition-all ${
                               isPending
-                                ? "border-[#E5AD24]/50 bg-[#FFFDE7]"
+                                ? "border-[#F7B71D]/40 bg-[#FFFCEB]"
                                 : sub.status === "Accepted"
-                                ? "border-[#385E31]/20 bg-white/40"
-                                : "border-[#E91F22]/20 bg-red-50/40"
+                                ? "border-[#3A6131]/10 bg-white"
+                                : "border-[#E91F22]/20 bg-red-50/50"
                             }`}
                           >
                             {/* Submission row header */}
-                            <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-start justify-between mb-4">
                               <div>
-                                <p className="text-[#385E31] text-[12px] font-extrabold">
+                                <p className="text-[#3A6131] text-[13px] font-extrabold">
                                   Submitted {fmtDate(sub.created_at)}
                                 </p>
                                 {sub.amount_declared != null && (
-                                  <p className="text-[#385E31]/60 text-[11px] font-bold mt-0.5">
-                                    Declared amount: {fmtPHP(sub.amount_declared)}
+                                  <p className="text-[#3A6131]/60 text-[11px] font-bold mt-1">
+                                    Declared amount: <span className="text-[#3A6131]">{fmtPHP(sub.amount_declared)}</span>
                                   </p>
                                 )}
                               </div>
-                              <div className={`px-3 py-[3px] rounded-[40px] ${bg}`}>
+                              <div className={`px-3 pb-1 rounded-[40px] ${bg}`}>
                                 <span className={`${text} text-[10px] font-bold`}>{sub.status}</span>
                               </div>
                             </div>
 
                             {/* Detail grid */}
-                            <div className="grid grid-cols-2 gap-3 mb-3 text-[11px]">
+                            <div className="grid grid-cols-2 gap-4 mb-4 text-[12px]">
                               <div>
-                                <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-1">
+                                <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1.5 text-[10px]">
                                   Proof of Payment
                                 </p>
                                 <ProofImageViewer url={sub.proof_url} />
@@ -504,22 +544,22 @@ export default function RecordPaymentModal({
 
                               {sub.remarks_tenant && (
                                 <div>
-                                  <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-1">
+                                  <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1.5 text-[10px]">
                                     Tenant Note
                                   </p>
-                                  <p className="text-[#385E31] font-medium leading-relaxed">
+                                  <p className="text-[#3A6131] font-medium leading-relaxed bg-white/50 p-2 rounded-lg">
                                     {sub.remarks_tenant}
                                   </p>
                                 </div>
                               )}
 
                               {!isPending && sub.remarks_admin && (
-                                <div className="col-span-2 pt-2 border-t border-[#385E31]/10 mt-1">
-                                  <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-1">
+                                <div className="col-span-2 pt-3 border-t border-[#3A6131]/10 mt-2">
+                                  <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1.5 text-[10px]">
                                     Admin Remarks
                                   </p>
-                                  <p className={`font-semibold text-[12px] ${
-                                    sub.status === "Rejected" ? "text-[#E91F22]" : "text-[#385E31]"
+                                  <p className={`font-semibold ${
+                                    sub.status === "Rejected" ? "text-[#E91F22]" : "text-[#3A6131]"
                                   }`}>
                                     {sub.remarks_admin}
                                   </p>
@@ -528,10 +568,10 @@ export default function RecordPaymentModal({
 
                               {!isPending && sub.reviewed_at && (
                                 <div className="col-span-2">
-                                  <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-0.5">
-                                    Reviewed
+                                  <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1 text-[10px]">
+                                    Reviewed At
                                   </p>
-                                  <p className="text-[#385E31]/60 font-semibold">
+                                  <p className="text-[#3A6131] font-semibold">
                                     {fmtDate(sub.reviewed_at)}
                                   </p>
                                 </div>
@@ -540,24 +580,18 @@ export default function RecordPaymentModal({
 
                             {/* Action buttons — only for Pending */}
                             {isPending && !isTarget && (
-                              <div className="flex gap-2 mt-2">
+                              <div className="flex gap-3 mt-4 pt-4 border-t border-[#3A6131]/10">
                                 <button
                                   onClick={() => {
                                     setReviewTarget(sub);
                                     setReviewAction("accept");
                                     setRemarksAdmin("");
                                     setAmountOverride(
-                                      sub.amount_declared != null
-                                        ? sub.amount_declared.toString()
-                                        : ""
+                                      sub.amount_declared != null ? sub.amount_declared.toString() : ""
                                     );
                                   }}
-                                  className="flex-1 bg-[#385E31] text-[#FFFCEB] text-[11px] font-bold py-[8px] rounded-[40px] hover:bg-[#2D4B24] transition-colors flex items-center justify-center gap-1.5"
+                                  className="flex-1 bg-[#3A6131] text-[#FFFCEB] text-[12px] font-bold py-2.5 rounded-xl hover:bg-[#2D4B24] transition-colors shadow-sm"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                  </svg>
                                   Accept Payment
                                 </button>
                                 <button
@@ -567,13 +601,8 @@ export default function RecordPaymentModal({
                                     setRemarksAdmin("");
                                     setAmountOverride("");
                                   }}
-                                  className="flex-1 bg-[#E91F22]/90 text-white text-[11px] font-bold py-[8px] rounded-[40px] hover:bg-[#C01A1D] transition-colors flex items-center justify-center gap-1.5"
+                                  className="flex-1 bg-white border border-[#E91F22]/50 text-[#E91F22] text-[12px] font-bold py-2.5 rounded-xl hover:bg-red-50 transition-colors shadow-sm"
                                 >
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"/>
-                                    <line x1="6" y1="6" x2="18" y2="18"/>
-                                  </svg>
                                   Reject Payment
                                 </button>
                               </div>
@@ -585,59 +614,30 @@ export default function RecordPaymentModal({
                                 initial={{ opacity: 0, height: 0 }}
                                 animate={{ opacity: 1, height: "auto" }}
                                 transition={{ duration: 0.2 }}
-                                className="mt-3 border-t border-[#385E31]/10 pt-3 flex flex-col gap-3 overflow-hidden"
+                                className="mt-4 border-t border-[#3A6131]/10 pt-4 flex flex-col gap-4 overflow-hidden"
                               >
-                                {/* Review heading */}
-                                <div className={`flex items-center gap-2 text-[12px] font-extrabold ${
-                                  reviewAction === "accept" ? "text-[#385E31]" : "text-[#E91F22]"
+                                <div className={`flex items-center gap-2 text-[14px] font-black ${
+                                  reviewAction === "accept" ? "text-[#3A6131]" : "text-[#E91F22]"
                                 }`}>
-                                  {reviewAction === "accept" ? (
-                                    <>
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="20 6 9 17 4 12"/>
-                                      </svg>
-                                      Confirm Acceptance
-                                    </>
-                                  ) : (
-                                    <>
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <line x1="18" y1="6" x2="6" y2="18"/>
-                                        <line x1="6" y1="6" x2="18" y2="18"/>
-                                      </svg>
-                                      Confirm Rejection
-                                    </>
-                                  )}
+                                  {reviewAction === "accept" ? "Confirm Acceptance" : "Confirm Rejection"}
                                 </div>
 
-                                {/* Confirmed amount (accept only) */}
                                 {reviewAction === "accept" && (
                                   <div>
-                                    <label className="block text-[10px] font-bold text-[#385E31]/60 uppercase tracking-wide mb-1">
-                                      Confirmed Amount (₱)
-                                    </label>
+                                    <label className={labelStyle}>Confirmed Amount (₱)</label>
                                     <input
-                                      type="number"
-                                      min="0"
-                                      step="0.01"
+                                      type="number" min="0" step="0.01"
                                       placeholder="e.g. 1000.00"
                                       value={amountOverride}
                                       onChange={(e) => setAmountOverride(e.target.value)}
-                                      className="w-full border border-[#385E31]/30 rounded-[6px] px-3 py-2 text-[12px] text-[#385E31] bg-white placeholder-[#385E31]/30 outline-none focus:border-[#385E31] transition-colors"
+                                      className={inputStyle}
                                     />
-                                    <p className="text-[10px] text-[#385E31]/40 mt-1">
-                                      Leave empty to use the default billing amount.
-                                    </p>
                                   </div>
                                 )}
 
-                                {/* Admin remarks */}
                                 <div>
-                                  <label className="block text-[10px] font-bold text-[#385E31]/60 uppercase tracking-wide mb-1">
-                                    {reviewAction === "reject"
-                                      ? "Rejection Reason *"
-                                      : "Admin Remarks (optional)"}
+                                  <label className={labelStyle}>
+                                    {reviewAction === "reject" ? "Rejection Reason *" : "Admin Remarks (optional)"}
                                   </label>
                                   <textarea
                                     rows={2}
@@ -648,45 +648,33 @@ export default function RecordPaymentModal({
                                     }
                                     value={remarksAdmin}
                                     onChange={(e) => setRemarksAdmin(e.target.value)}
-                                    className="w-full border border-[#385E31]/30 rounded-[6px] px-3 py-2 text-[12px] text-[#385E31] bg-white placeholder-[#385E31]/30 outline-none focus:border-[#385E31] transition-colors resize-none"
+                                    className={`${inputStyle} resize-none`}
                                   />
                                 </div>
 
-                                {/* Confirm / Cancel */}
-                                <div className="flex gap-2">
+                                <div className="flex gap-3 pt-2">
                                   <button
                                     onClick={() => {
                                       setReviewTarget(null);
                                       setReviewAction(null);
-                                      setRemarksAdmin("");
-                                      setAmountOverride("");
                                     }}
                                     disabled={reviewing}
-                                    className="flex-1 border border-[#385E31] text-[#385E31] text-[11px] font-bold py-[8px] rounded-[40px] hover:bg-[#385E31]/5 transition-colors disabled:opacity-50"
+                                    className="flex-1 bg-white border border-[#3A6131]/30 text-[#3A6131] text-[12px] font-bold py-2.5 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
                                   >
                                     Cancel
                                   </button>
                                   <button
                                     onClick={handleReview}
                                     disabled={reviewing}
-                                    className={`flex-1 text-[11px] font-bold py-[8px] rounded-[40px] transition-colors disabled:opacity-60 ${
+                                    className={`flex-1 text-[12px] font-bold py-2.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${
                                       reviewAction === "accept"
-                                        ? "bg-[#385E31] text-[#FFFCEB] hover:bg-[#2D4B24]"
+                                        ? "bg-[#3A6131] text-[#FFFCEB] hover:bg-[#2D4B24]"
                                         : "bg-[#E91F22] text-white hover:bg-[#C01A1D]"
                                     }`}
                                   >
                                     {reviewing ? (
-                                      <span className="flex items-center justify-center gap-2">
-                                        <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="11" height="11"
-                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                                          strokeLinecap="round" strokeLinejoin="round">
-                                          <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                                        </svg>
-                                        Processing…
-                                      </span>
-                                    ) : reviewAction === "accept"
-                                      ? "Confirm Acceptance"
-                                      : "Confirm Rejection"}
+                                      <><LoaderIcon /> Processing…</>
+                                    ) : reviewAction === "accept" ? "Confirm & Record" : "Confirm Rejection"}
                                   </button>
                                 </div>
                               </motion.div>
@@ -696,74 +684,62 @@ export default function RecordPaymentModal({
                       })}
                     </div>
                   )}
-                </>
+                </motion.div>
               )}
 
               {/* ════════════════════════════════════════════════════════════
                   TAB: Billing Records (manual entry)
               ════════════════════════════════════════════════════════════ */}
               {activeTab === "records" && (
-                <>
+                <motion.div
+                  key="records"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="mb-8">
+                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 italic font-['Raleway']">
+                      Billing Records
+                    </h3>
+                    <p className="text-[12px] text-[#3A6131]/60 font-medium leading-relaxed mt-2">
+                      View all past and current billing periods. Use this tab to manually mark a period as paid if the payment was received outside the platform (e.g., in-person cash).
+                    </p>
+                  </div>
+
                   {/* Inline confirm panel */}
                   {confirm && (
-                    <div className="bg-[#FFFCEB] border border-[#E5AD24]/60 rounded-[10px] p-4 mb-5 flex flex-col gap-3 shadow-sm">
-                      <div className="flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                          fill="none" stroke="#E5AD24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"/>
-                          <line x1="12" y1="8" x2="12" y2="12"/>
-                          <line x1="12" y1="16" x2="12.01" y2="16"/>
-                        </svg>
-                        <p className="text-[#385E31] text-[13px] font-bold">
-                          Manually record payment for{" "}
-                          <span className="text-[#E5AD24]">{fmtPeriod(confirm.billing_period)}</span>?
-                        </p>
-                      </div>
-
-                      {/* Amount input */}
+                    <div className="bg-[#F7B71D]/10 border border-[#F7B71D]/50 rounded-[20px] p-6 mb-6 flex flex-col gap-4 shadow-sm">
+                      <h4 className="text-[#3A6131] text-[15px] font-black flex items-center gap-2">
+                        Mark {fmtPeriod(confirm.billing_period)} as Paid
+                      </h4>
                       <div>
-                        <label className="block text-[10px] font-bold text-[#385E31]/60 uppercase tracking-wide mb-1">
-                          Amount Paid (₱) — leave blank for default
-                        </label>
+                        <label className={labelStyle}>Amount Paid (₱) — leave blank for default</label>
                         <input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                          type="number" min="0" step="0.01"
                           placeholder={`Default: ${fmtPHP(Number(confirm.amount))}`}
                           value={manualAmount}
                           onChange={(e) => setManualAmount(e.target.value)}
-                          className="w-full border border-[#385E31]/30 rounded-[6px] px-3 py-2 text-[12px] text-[#385E31] bg-white placeholder-[#385E31]/30 outline-none focus:border-[#385E31] transition-colors"
+                          className={inputStyle}
                         />
                       </div>
-
-                      <p className="text-[#385E31]/55 text-[11px] leading-relaxed">
-                        This marks the record as <strong>Paid</strong> directly. Use only for
-                        in-person or otherwise verified cash payments — not for screenshot proofs.
+                      <p className="text-[#3A6131]/60 text-[11px] font-medium leading-relaxed">
+                        This marks the record as <strong>Paid</strong> directly. Use only for in-person or otherwise verified cash payments — not for screenshot proofs.
                       </p>
-
-                      <div className="flex gap-2">
+                      <div className="flex gap-3 pt-2">
                         <button
                           onClick={() => { setConfirm(null); setManualAmount(""); }}
                           disabled={!!paying}
-                          className="flex-1 border border-[#385E31] text-[#385E31] text-[12px] font-bold py-[8px] rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
+                          className="flex-1 bg-white border border-[#3A6131]/30 text-[#3A6131] text-[12px] font-bold py-2.5 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleMarkPaid(confirm)}
                           disabled={!!paying}
-                          className="flex-1 bg-[#385E31] text-[#FFFCEB] text-[12px] font-bold py-[8px] rounded-[40px] hover:bg-[#2D4B24] transition-colors disabled:opacity-60"
+                          className="flex-1 bg-[#3A6131] text-[#FFFCEB] text-[12px] font-bold py-2.5 rounded-xl hover:bg-[#2D4B24] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                         >
-                          {paying ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
-                                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                                strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                              </svg>
-                              Recording…
-                            </span>
-                          ) : "Confirm Payment"}
+                          {paying ? <><LoaderIcon /> Recording…</> : "Confirm Payment"}
                         </button>
                       </div>
                     </div>
@@ -771,24 +747,20 @@ export default function RecordPaymentModal({
 
                   {/* Records list */}
                   {loading ? (
-                    <div className="text-center py-12 text-[#385E31] font-semibold text-sm">
-                      Loading payment records…
+                    <div className="text-center py-12 text-[#3A6131] font-semibold text-sm flex items-center justify-center gap-2">
+                      <LoaderIcon /> Loading records...
                     </div>
                   ) : records.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-14 gap-3 text-center">
-                      <div className="w-12 h-12 rounded-full bg-[#385E31]/8 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-                          fill="none" stroke="#385E31" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                          <polyline points="14 2 14 8 20 8"/>
-                        </svg>
+                      <div className="w-12 h-12 rounded-full bg-[#3A6131]/8 flex items-center justify-center">
+                        <ReceiptIcon />
                       </div>
-                      <p className="text-[#385E31]/40 text-[13px] font-semibold">
+                      <p className="text-[#3A6131]/40 text-[13px] font-semibold">
                         No subscription records found for this tenant.
                       </p>
                     </div>
                   ) : (
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-4">
                       {records.map((record) => {
                         const { bg, text } = getPill(record.payment_status);
                         const isPaid       = record.payment_status === "Paid";
@@ -797,62 +769,59 @@ export default function RecordPaymentModal({
                         return (
                           <div
                             key={record.subscription_id}
-                            className={`rounded-[10px] border p-4 transition-all ${
+                            className={`rounded-[20px] border-[1.5px] p-5 transition-all ${
                               isPaid
-                                ? "border-[#385E31]/12 bg-white/30"
+                                ? "border-[#3A6131]/10 bg-white"
                                 : record.payment_status === "Overdue"
-                                ? "border-[#E5AD24]/40 bg-[#FFD980]/10"
-                                : "border-[#385E31]/20 bg-white/20"
+                                ? "border-[#F7B71D]/40 bg-[#FFFCEB]"
+                                : "border-[#3A6131]/20 bg-[#3A6131]/5"
                             }`}
                           >
-                            {/* Row header */}
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-[#385E31] text-[13px] font-extrabold">
+                            <div className="flex items-center justify-between mb-4">
+                              <span className="text-[#3A6131] text-[14px] font-black">
                                 {fmtPeriod(record.billing_period)}
                               </span>
-                              <div className={`px-3 py-[3px] rounded-[40px] ${bg}`}>
+                              <div className={`px-3 pb-1 rounded-[40px] ${bg}`}>
                                 <span className={`${text} text-[10px] font-bold`}>
                                   {record.payment_status}
                                 </span>
                               </div>
                             </div>
 
-                            {/* Detail grid */}
-                            <div className="grid grid-cols-3 gap-x-4 gap-y-2 text-[11px] mb-3">
+                            <div className="grid grid-cols-3 gap-x-4 gap-y-4 text-[12px] mb-4">
                               <div>
-                                <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-0.5">Amount</p>
-                                <p className={`font-extrabold ${isPaid ? "text-[#385E31]" : "text-[#E91F22]"}`}>
+                                <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1 text-[10px]">Amount</p>
+                                <p className={`font-extrabold text-[14px] ${isPaid ? "text-[#3A6131]" : "text-[#E91F22]"}`}>
                                   {fmtPHP(Number(record.amount))}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-0.5">Due Date</p>
-                                <p className={`font-bold ${record.payment_status === "Overdue" ? "text-[#E91F22]" : "text-[#385E31]"}`}>
+                                <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1 text-[10px]">Due Date</p>
+                                <p className={`font-bold ${record.payment_status === "Overdue" ? "text-[#E91F22]" : "text-[#3A6131]"}`}>
                                   {fmtDate(record.overdue_at)}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-0.5">Paid At</p>
-                                <p className="text-[#385E31] font-bold">{fmtDate(record.paid_at)}</p>
+                                <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1 text-[10px]">Paid At</p>
+                                <p className="text-[#3A6131] font-bold">{fmtDate(record.paid_at)}</p>
                               </div>
                               {record.grace_ends_at && !isPaid && (
-                                <div className="col-span-3 pt-1 border-t border-[#E5AD24]/20 mt-1">
-                                  <p className="text-[#385E31]/45 font-bold uppercase tracking-wide mb-0.5">
+                                <div className="col-span-3 pt-3 border-t border-[#F7B71D]/30 mt-1">
+                                  <p className="text-[#3A6131]/45 font-bold uppercase tracking-wide mb-1 text-[10px]">
                                     Grace Period Ends
                                   </p>
-                                  <p className="text-[#E5AD24] font-extrabold">
+                                  <p className="text-[#E91F22] font-black">
                                     {fmtDate(record.grace_ends_at)}
                                   </p>
                                 </div>
                               )}
                             </div>
 
-                            {/* Manual mark paid button */}
                             {!isPaid && !isConfirming && (
                               <button
                                 onClick={() => { setConfirm(record); setError(""); }}
                                 disabled={!!paying || !!confirm}
-                                className="w-full bg-[#385E31] text-[#FFFCEB] text-[11px] font-bold py-[7px] rounded-[40px] hover:bg-[#2D4B24] transition-colors disabled:opacity-40"
+                                className="w-full bg-white border border-[#3A6131]/20 text-[#3A6131] text-[12px] font-bold py-2.5 rounded-xl hover:bg-[#3A6131] hover:text-[#FFFCEB] transition-colors shadow-sm disabled:opacity-40"
                               >
                                 Manually Mark as Paid
                               </button>
@@ -862,22 +831,15 @@ export default function RecordPaymentModal({
                       })}
                     </div>
                   )}
-                </>
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
+          </div>
 
-            {/* ── Footer ─────────────────────────────────────────────────── */}
-            <div className="px-7 py-4 border-t border-[#385E31]/10 bg-[#FFFCEB] shrink-0">
-              <button
-                onClick={onClose}
-                className="w-full border-2 border-[#385E31] text-[#385E31] font-bold text-[14px] py-[10px] rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          
+        </div>
+      </motion.div>
+    </div>,
+    document.body
   );
 }
