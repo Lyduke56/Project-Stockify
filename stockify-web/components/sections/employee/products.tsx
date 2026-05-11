@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react";
 import {
   getCurrentUserContext,
-  isFoodAndBeverage,
   type BusinessType,
 } from "@/lib/employee/inventory";
-import ProductsTable from "@/components/tables/employee/product-table";
-import NfbProductsTable from "@/components/tables/employee/nfnb-product-table";
+import ProductsTable    from "@/components/tables/employee/product-table";
+import NfbProductsTable from "@/components/tables/employee/nfnb-table-modal";
 import { Loader2 } from "lucide-react";
 
 type UserContext = {
@@ -31,7 +30,8 @@ export default function ProductsSection() {
       .finally(() => setLoading(false));
   }, []);
 
-const isFnb = ctx?.businessType === "Food & Beverage";
+  // ✅ Must match the exact BusinessType literal from inventory.ts
+  const isFnb = ctx?.businessType === "Food and Beverages";
 
   return (
     <div className="w-full flex flex-col font-['Inter']">
@@ -76,7 +76,7 @@ const isFnb = ctx?.businessType === "Food & Beverage";
       {!loading && !error && ctx && (
         isFnb
           ? <ProductsTable    tenantId={ctx.tenantId} /> // F&B: menu items + recipe builder
-          :  <NfbProductsTable tenantId={ctx.tenantId} />   // NF&B: physical goods + BOM
+          : <NfbProductsTable tenantId={ctx.tenantId} /> // NF&B: physical goods + variants
       )}
     </div>
   );

@@ -1,70 +1,65 @@
-// lib/inventory.ts
-// Supabase data-access layer for F&B and NF&B inventory
 
-import { createClient } from "@/lib/supabase/client"; // adjust to your supabase client path
+import { createClient } from "@/lib/supabase/client";
 
 // ── Types ─────────────────────────────────────────────────────
 
-export type BusinessType = "Food & Beverage" | "Non-Food & Beverage";
+export type BusinessType = "Food & Beverage" | "Non Food & Beverage" | "Food and Beverage" | "Non Food and Beverage";
 
-// Add a helper so the comparison is never scattered as a raw string
-export function isFoodAndBeverage(bt: BusinessType | string | null | undefined): boolean {
-  return bt?.trim().toLowerCase() === "food and beverages";
-}
+export type CategoryType = "product" | "ingredient";
+
+export type Category = {
+  category_id: string;
+  tenant_id:   string;
+  name:        string;
+  type:        CategoryType;
+  created_at:  string;
+};
 
 export type FnbItem = {
-  item_id: string;
-  tenant_id: string;
-  category_id: string | null;
-  name: string;
-  sku: string;
-  stock: number;
-  base_unit: string;
-  purchase_unit: string;
-  conversion: number;
-  alert_limit: number;
-  unit_cost: number;
-  nearest_expiry: string | null; // ISO date string or null
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  item_id:        string;
+  tenant_id:      string;
+  category_id:    string | null;
+  name:           string;
+  sku:            string;
+  stock:          number;
+  base_unit:      string;
+  purchase_unit:  string;
+  conversion:     number;
+  alert_limit:    number;
+  unit_cost:      number;
+  nearest_expiry: string | null;
+  is_active:      boolean;
+  created_at:     string;
+  updated_at:     string;
   // joined:
   category_name?: string;
 };
 
 export type NfbItem = {
-  item_id: string;
-  tenant_id: string;
-  category_id: string | null;
-  name: string;
-  sku: string;
-  quantity: number;
-  unit_of_measure: string;
+  item_id:           string;
+  tenant_id:         string;
+  category_id:       string | null;
+  name:              string;
+  sku:               string;
+  quantity:          number;
+  unit_of_measure:   string;
   reorder_threshold: number;
-  unit_price: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  unit_price:        number;
+  is_active:         boolean;
+  created_at:        string;
+  updated_at:        string;
   // joined:
   category_name?: string;
 };
 
-export type Category = {
-  category_id: string;
-  tenant_id: string;
-  name: string;
-  created_at: string;
-};
-
-// ── Auth helper ───────────────────────────────────────────────
+// ── Auth context helper ───────────────────────────────────────
 
 export async function getCurrentUserContext(): Promise<{
-  userId: string;
-  tenantId: string;
+  userId:       string;
+  tenantId:     string;
   businessType: BusinessType;
 } | null> {
   const supabase = createClient();
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -85,36 +80,58 @@ export async function getCurrentUserContext(): Promise<{
   if (!tenantData) return null;
 
   return {
-    userId: user.id,
-    tenantId: userData.tenant_id,
+    userId:       user.id,
+    tenantId:     userData.tenant_id,
     businessType: tenantData.business_type as BusinessType,
   };
 }
 
 // ── Categories ────────────────────────────────────────────────
+// ✅ Always requires a type — prevents product/ingredient categories mixing
 
-export async function fetchCategories(tenantId: string): Promise<Category[]> {
+export async function fetchCategories(
+  tenantId: string,
+  type: CategoryType
+): Promise<Category[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("product_categories")
     .select("*")
     .eq("tenant_id", tenantId)
+    .eq("type", type)
     .order("name");
 
   if (error) throw error;
   return data ?? [];
 }
 
-export async function addCategory(tenantId: string, name: string): Promise<Category> {
+export async function addCategory(
+  tenantId: string,
+  name:     string,
+  type:     CategoryType
+): Promise<Category> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("product_categories")
-    .insert({ tenant_id: tenantId, name: name.trim() })
+    .insert({ tenant_id: tenantId, name: name.trim(), type })
     .select()
     .single();
 
   if (error) throw error;
   return data;
+}
+
+export async function updateCategoryName(
+  categoryId: string,
+  name:       string
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("product_categories")
+    .update({ name: name.trim() })
+    .eq("category_id", categoryId);
+
+  if (error) throw error;
 }
 
 export async function deleteCategory(categoryId: string): Promise<void> {
@@ -127,26 +144,13 @@ export async function deleteCategory(categoryId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function updateCategoryName(categoryId: string, name: string): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("product_categories")
-    .update({ name: name.trim() })
-    .eq("category_id", categoryId);
-
-  if (error) throw error;
-}
-
 // ── F&B Items ─────────────────────────────────────────────────
 
 export async function fetchFnbItems(tenantId: string): Promise<FnbItem[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("fnb_inventory_items")
-    .select(`
-      *,
-      product_categories ( name )
-    `)
+    .select(`*, product_categories ( name )`)
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
     .order("name");
@@ -159,9 +163,14 @@ export async function fetchFnbItems(tenantId: string): Promise<FnbItem[]> {
   }));
 }
 
-export type FnbItemInput = Omit<FnbItem, "item_id" | "tenant_id" | "is_active" | "created_at" | "updated_at" | "category_name">;
+export type FnbItemInput = Omit<FnbItem,
+  "item_id" | "tenant_id" | "is_active" | "created_at" | "updated_at" | "category_name"
+>;
 
-export async function addFnbItem(tenantId: string, input: FnbItemInput): Promise<FnbItem> {
+export async function addFnbItem(
+  tenantId: string,
+  input:    FnbItemInput
+): Promise<FnbItem> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("fnb_inventory_items")
@@ -173,7 +182,10 @@ export async function addFnbItem(tenantId: string, input: FnbItemInput): Promise
   return data;
 }
 
-export async function updateFnbItem(itemId: string, input: Partial<FnbItemInput>): Promise<void> {
+export async function updateFnbItem(
+  itemId: string,
+  input:  Partial<FnbItemInput>
+): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("fnb_inventory_items")
@@ -183,12 +195,12 @@ export async function updateFnbItem(itemId: string, input: Partial<FnbItemInput>
   if (error) throw error;
 }
 
+// ✅ Hard delete — permanently removes from DB
 export async function deleteFnbItem(itemId: string): Promise<void> {
   const supabase = createClient();
-  // Soft delete
   const { error } = await supabase
     .from("fnb_inventory_items")
-    .update({ is_active: false })
+    .delete()
     .eq("item_id", itemId);
 
   if (error) throw error;
@@ -200,10 +212,7 @@ export async function fetchNfbItems(tenantId: string): Promise<NfbItem[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("nfb_inventory_items")
-    .select(`
-      *,
-      product_categories ( name )
-    `)
+    .select(`*, product_categories ( name )`)
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
     .order("name");
@@ -216,9 +225,14 @@ export async function fetchNfbItems(tenantId: string): Promise<NfbItem[]> {
   }));
 }
 
-export type NfbItemInput = Omit<NfbItem, "item_id" | "tenant_id" | "is_active" | "created_at" | "updated_at" | "category_name">;
+export type NfbItemInput = Omit<NfbItem,
+  "item_id" | "tenant_id" | "is_active" | "created_at" | "updated_at" | "category_name"
+>;
 
-export async function addNfbItem(tenantId: string, input: NfbItemInput): Promise<NfbItem> {
+export async function addNfbItem(
+  tenantId: string,
+  input:    NfbItemInput
+): Promise<NfbItem> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("nfb_inventory_items")
@@ -230,7 +244,10 @@ export async function addNfbItem(tenantId: string, input: NfbItemInput): Promise
   return data;
 }
 
-export async function updateNfbItem(itemId: string, input: Partial<NfbItemInput>): Promise<void> {
+export async function updateNfbItem(
+  itemId: string,
+  input:  Partial<NfbItemInput>
+): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("nfb_inventory_items")
@@ -240,11 +257,12 @@ export async function updateNfbItem(itemId: string, input: Partial<NfbItemInput>
   if (error) throw error;
 }
 
+// ✅ Hard delete — permanently removes from DB
 export async function deleteNfbItem(itemId: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
     .from("nfb_inventory_items")
-    .update({ is_active: false })
+    .delete()
     .eq("item_id", itemId);
 
   if (error) throw error;

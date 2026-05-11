@@ -1,10 +1,19 @@
-// lib/products.ts
-// Supabase data-access layer for Products & Recipes
+// lib/employee/products.ts
+// Supabase data-access layer for Products, Recipes & Sizes
 
 import { createClient } from "@/lib/supabase/client";
 import { getCurrentUserContext } from "@/lib/employee/inventory";
 
 // ── Types ─────────────────────────────────────────────────────
+
+export type ProductSize = {
+  size_id:    string;
+  product_id: string;
+  label:      string;
+  price:      number;
+  is_default: boolean;
+  sort_order: number;
+};
 
 export type Product = {
   product_id:   string;
@@ -21,9 +30,9 @@ export type Product = {
   is_active:    boolean;
   created_at:   string;
   updated_at:   string;
-  // joined:
   category_name?: string;
   recipe?:        RecipeItem[];
+  sizes?:         ProductSize[];
 };
 
 export type RecipeItem = {
@@ -33,17 +42,15 @@ export type RecipeItem = {
   item_id:    string;
   amount:     number;
   unit:       string;
-  // joined:
-  ingredient_name?: string;
 };
 
 export type IngredientOption = {
-  item_id:   string;
-  item_type: "fnb" | "nfb";
-  name:      string;
-  base_unit: string; // for fnb
-  unit_of_measure: string; // for nfb
-  unit: string; // normalised — whichever applies
+  item_id:         string;
+  item_type:       "fnb" | "nfb";
+  name:            string;
+  base_unit:       string;
+  unit_of_measure: string;
+  unit:            string;
 };
 
 export type ProductInput = {
@@ -65,8 +72,31 @@ export type RecipeInput = {
   unit:      string;
 };
 
-// ── Re-export context helper ──────────────────────────────────
+export type SizeInput = {
+  label:      string;
+  price:      string;
+  is_default: boolean;
+};
+
 export { getCurrentUserContext };
+
+// ── Error normaliser ──────────────────────────────────────────
+
+function normaliseError(e: any, sku: string): Error {
+  const msg: string  = e?.message ?? "";
+  const code: string = e?.code    ?? "";
+
+  if (
+    code === "23505" ||
+    msg.includes("uq_product_sku_per_tenant") ||
+    msg.includes("duplicate key value")
+  ) {
+    return new Error(
+      `SKU "${sku.toUpperCase()}" is already used by another product. Please choose a unique SKU code.`
+    );
+  }
+  return new Error(msg || "An unexpected error occurred. Please try again.");
+}
 
 // ── Products CRUD ─────────────────────────────────────────────
 
@@ -78,9 +108,8 @@ export async function fetchProducts(tenantId: string): Promise<Product[]> {
     .select(`
       *,
       product_categories ( name ),
-      product_recipes (
-        recipe_id, item_type, item_id, amount, unit
-      )
+      product_recipes ( recipe_id, item_type, item_id, amount, unit ),
+      product_sizes   ( size_id, label, price, is_default, sort_order )
     `)
     .eq("tenant_id", tenantId)
     .eq("is_active", true)
@@ -94,38 +123,50 @@ export async function fetchProducts(tenantId: string): Promise<Product[]> {
     price:         Number(row.price),
     category_name: row.product_categories?.name ?? "Uncategorized",
     recipe:        row.product_recipes ?? [],
+    sizes:         (row.product_sizes ?? []).sort(
+      (a: ProductSize, b: ProductSize) => a.sort_order - b.sort_order
+    ),
   }));
 }
 
 export async function addProduct(
   tenantId: string,
-  input: ProductInput,
-  recipe: RecipeInput[]
+  input:    ProductInput,
+  recipe:   RecipeInput[],
+  sizes:    SizeInput[]
 ): Promise<Product> {
   const supabase = createClient();
 
-  // 1. Insert product
   const { data: product, error: productError } = await supabase
     .from("products")
     .insert({ ...input, tenant_id: tenantId })
     .select()
     .single();
 
-  if (productError) throw productError;
+  if (productError) throw normaliseError(productError, input.sku);
 
-  // 2. Insert recipe rows (if any)
   if (recipe.length > 0) {
-    const recipeRows = recipe.map((r) => ({
-      ...r,
-      product_id: product.product_id,
-      tenant_id:  tenantId,
-    }));
-
     const { error: recipeError } = await supabase
       .from("product_recipes")
-      .insert(recipeRows);
-
+      .insert(recipe.map((r) => ({ ...r, product_id: product.product_id, tenant_id: tenantId })));
     if (recipeError) throw recipeError;
+  }
+
+  const validSizes = sizes.filter((s) => s.label.trim());
+  if (validSizes.length > 0) {
+    const { error: sizeError } = await supabase
+      .from("product_sizes")
+      .insert(
+        validSizes.map((s, i) => ({
+          product_id: product.product_id,
+          tenant_id:  tenantId,
+          label:      s.label.trim(),
+          price:      Number(s.price) || 0,
+          is_default: s.is_default,
+          sort_order: i,
+        }))
+      );
+    if (sizeError) throw sizeError;
   }
 
   return product;
@@ -135,79 +176,71 @@ export async function updateProduct(
   productId: string,
   tenantId:  string,
   input:     Partial<ProductInput>,
-  recipe:    RecipeInput[]
+  recipe:    RecipeInput[],
+  sizes:     SizeInput[]
 ): Promise<void> {
   const supabase = createClient();
 
-  // 1. Update product fields
   const { error: productError } = await supabase
     .from("products")
     .update(input)
     .eq("product_id", productId);
 
-  if (productError) throw productError;
+  if (productError) throw normaliseError(productError, input.sku ?? "");
 
-  // 2. Replace recipe: delete old rows, insert new ones
-  const { error: deleteError } = await supabase
-    .from("product_recipes")
-    .delete()
-    .eq("product_id", productId);
-
-  if (deleteError) throw deleteError;
-
+  await supabase.from("product_recipes").delete().eq("product_id", productId);
   if (recipe.length > 0) {
-    const recipeRows = recipe.map((r) => ({
-      ...r,
-      product_id: productId,
-      tenant_id:  tenantId,
-    }));
-
     const { error: recipeError } = await supabase
       .from("product_recipes")
-      .insert(recipeRows);
-
+      .insert(recipe.map((r) => ({ ...r, product_id: productId, tenant_id: tenantId })));
     if (recipeError) throw recipeError;
+  }
+
+  await supabase.from("product_sizes").delete().eq("product_id", productId);
+  const validSizes = sizes.filter((s) => s.label.trim());
+  if (validSizes.length > 0) {
+    const { error: sizeError } = await supabase
+      .from("product_sizes")
+      .insert(
+        validSizes.map((s, i) => ({
+          product_id: productId,
+          tenant_id:  tenantId,
+          label:      s.label.trim(),
+          price:      Number(s.price) || 0,
+          is_default: s.is_default,
+          sort_order: i,
+        }))
+      );
+    if (sizeError) throw sizeError;
   }
 }
 
 export async function deleteProduct(productId: string): Promise<void> {
   const supabase = createClient();
-  // Soft delete
   const { error } = await supabase
     .from("products")
     .update({ is_active: false })
     .eq("product_id", productId);
-
   if (error) throw error;
 }
 
-// ── Ingredient Options ────────────────────────────────────────
-// Loads from BOTH fnb and nfb tables and merges them
+// ── Ingredient Options (F&B only) ─────────────────────────────
 
 export async function fetchIngredientOptions(
   tenantId: string
 ): Promise<IngredientOption[]> {
   const supabase = createClient();
 
-  const [fnbRes, nfbRes] = await Promise.all([
-    supabase
-      .from("fnb_inventory_items")
-      .select("item_id, name, base_unit")
-      .eq("tenant_id", tenantId)
-      .eq("is_active", true)
-      .order("name"),
-    supabase
-      .from("nfb_inventory_items")
-      .select("item_id, name, unit_of_measure")
-      .eq("tenant_id", tenantId)
-      .eq("is_active", true)
-      .order("name"),
-  ]);
+  const { data, error } = await supabase
+    .from("fnb_inventory_items")
+    .select("item_id, name, base_unit")
+    .eq("tenant_id", tenantId)
+    .eq("is_active", true)
+    .order("name");
 
-  if (fnbRes.error) throw fnbRes.error;
-  if (nfbRes.error) throw nfbRes.error;
+  if (error) throw error;
 
-  const fnbOptions: IngredientOption[] = (fnbRes.data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: any) => ({
     item_id:         row.item_id,
     item_type:       "fnb" as const,
     name:            row.name,
@@ -215,20 +248,9 @@ export async function fetchIngredientOptions(
     unit_of_measure: row.base_unit,
     unit:            row.base_unit,
   }));
-
-  const nfbOptions: IngredientOption[] = (nfbRes.data ?? []).map((row: any) => ({
-    item_id:         row.item_id,
-    item_type:       "nfb" as const,
-    name:            row.name,
-    base_unit:       row.unit_of_measure,
-    unit_of_measure: row.unit_of_measure,
-    unit:            row.unit_of_measure,
-  }));
-
-  return [...fnbOptions, ...nfbOptions];
 }
 
-// ── Supabase Storage Image Upload ─────────────────────────────
+// ── Supabase Storage ──────────────────────────────────────────
 
 export async function uploadProductImage(
   tenantId:  string,
@@ -236,35 +258,25 @@ export async function uploadProductImage(
   file:      File
 ): Promise<string> {
   const supabase = createClient();
-
   const ext      = file.name.split(".").pop() ?? "jpg";
   const filePath = `${tenantId}/${productId}.${ext}`;
 
-  // Upsert so re-uploads overwrite cleanly
   const { error } = await supabase.storage
     .from("product-images")
     .upload(filePath, file, { upsert: true, contentType: file.type });
 
   if (error) throw error;
 
-  const { data } = supabase.storage
-    .from("product-images")
-    .getPublicUrl(filePath);
-
-  // Bust cache on re-upload by appending a timestamp query param
+  const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
 export async function deleteProductImage(tenantId: string, productId: string): Promise<void> {
   const supabase = createClient();
-
-  // Try common extensions — Storage doesn't tell us the ext so try all
   const exts = ["jpg", "jpeg", "png", "webp", "gif"];
   await Promise.allSettled(
     exts.map((ext) =>
-      supabase.storage
-        .from("product-images")
-        .remove([`${tenantId}/${productId}.${ext}`])
+      supabase.storage.from("product-images").remove([`${tenantId}/${productId}.${ext}`])
     )
   );
 }
