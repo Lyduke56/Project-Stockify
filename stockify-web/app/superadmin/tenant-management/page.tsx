@@ -133,7 +133,6 @@ export default function TenantManagement() {
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           openNotifs={() => setIsNotifsOpen(true)}
-          openProfile={() => setIsProfileOpen(true)}
         />
 
         <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">

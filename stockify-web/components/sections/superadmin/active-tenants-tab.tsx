@@ -58,6 +58,24 @@ const COLUMNS = [
   "Actions",
 ];
 
+// ── Skeleton Loader ───────────────────────────────────────────────────────────
+
+const SkeletonRow = () => (
+  <div className="w-full flex px-4 py-[14px] items-center border-b border-[#385E31]/10">
+    {Array.from({ length: COLUMNS.length }).map((_, i) => (
+      <div key={i} className="flex-1 px-4">
+        <div 
+          className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto" 
+          style={{ 
+            animationDelay: `${i * 100}ms`,
+            width: i === 5 ? "80px" : i === 4 ? "75px" : "80%" 
+          }} 
+        />
+      </div>
+    ))}
+  </div>
+);
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ActiveTenantsTab() {
@@ -71,6 +89,9 @@ export default function ActiveTenantsTab() {
   const [search,         setSearch]         = useState("");
   const [filterStatus,   setFilterStatus]   = useState("All");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+
+  // Pagination limit
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Shared action state
   const [selectedTenant,  setSelectedTenant]  = useState<ActiveTenant | null>(null);
@@ -133,6 +154,7 @@ export default function ActiveTenantsTab() {
       );
     }
     setFiltered(list);
+    setVisibleCount(10); // Reset pagination on search/filter
   }, [search, filterStatus, tenants]);
 
   // ── Action wrapper ──────────────────────────────────────────────────────────
@@ -156,14 +178,7 @@ export default function ActiveTenantsTab() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  /** Called by SendNotificationModal on confirm */
-  const handleSendNotification = async (fields: {
-    title:       string;
-    header:      string;
-    about:       string;
-    body:        string;
-    description: string;
-  }) => {
+  const handleSendNotification = async (fields: { title: string; header: string; about: string; body: string; description: string; }) => {
     if (!selectedTenant) return;
     await withAction(async () => {
       const res    = await fetch("/api/superadmin/notify", {
@@ -179,7 +194,6 @@ export default function ActiveTenantsTab() {
     });
   };
 
-  /** Called by ConfirmActionModal (suspend) */
   const handleSuspend = async (reason?: string) => {
     if (!selectedTenant) return;
     await withAction(async () => {
@@ -200,7 +214,6 @@ export default function ActiveTenantsTab() {
     });
   };
 
-  /** Called by ConfirmActionModal (terminate) */
   const handleTerminate = async (remarks?: string) => {
     if (!selectedTenant) return;
     await withAction(async () => {
@@ -225,24 +238,15 @@ export default function ActiveTenantsTab() {
 
   const formatDate = (iso: string | null) => {
       if (!iso) return "—";
-      // If it's already a full timestamp, use it directly; otherwise treat as date-only
       const date = iso.includes("T") ? new Date(iso) : new Date(iso + "T00:00:00");
       return date.toLocaleDateString("en-PH", {
         month: "2-digit", day: "2-digit", year: "numeric",
       });
     };
 
-  // ── Loading state ───────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <div className="w-full flex justify-center py-16 text-[#385E31] font-bold text-lg">
-        Loading active tenants…
-      </div>
-    );
-  }
-
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  const visibleTenants = filtered.slice(0, visibleCount);
 
   return (
     <>
@@ -305,13 +309,15 @@ export default function ActiveTenantsTab() {
         </div>
 
         {/* Rows */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 10 }).map((_, idx) => <SkeletonRow key={idx} />)
+        ) : filtered.length === 0 ? (
           <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
             No active tenants found.
           </div>
         ) : (
-          filtered.map((row, idx) => {
-            const isLast = idx === filtered.length - 1;
+          visibleTenants.map((row, idx) => {
+            const isLast = idx === visibleTenants.length - 1;
             const isOpen = openDropdownId === row.tenant_id;
             const pill   = getPillStyles(row.subscription_status);
 
@@ -321,14 +327,17 @@ export default function ActiveTenantsTab() {
                 className={`w-full flex px-4 py-[14px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
               >
                 {/* Business Name */}
-                <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
-                  <span
-                    onClick={() => router.push(`/superadmin/tenant-profile/${row.tenant_id}`)}
-                    className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
-                  >
-                    {row.business_name}
-                  </span>
-                </div>
+                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
+                    <span
+                      onClick={() => {
+                        setSelectedTenant(row);
+                        setShowProfileModal(true);
+                      }}
+                      className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
+                    >
+                      {row.business_name}
+                    </span>
+                  </div>
 
                 {/* Owner */}
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
@@ -436,11 +445,24 @@ export default function ActiveTenantsTab() {
         )}
       </div>
 
-      {/* Load More */}
-      <div className="w-full flex justify-end mt-6">
-        <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold font-['Inter'] px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
-          Load More
-        </button>
+      {/* Pagination Controls */}
+      <div className="w-full flex justify-end mt-6 gap-3">
+        {visibleCount > 10 && (
+          <button 
+            onClick={() => setVisibleCount(10)}
+            className="border border-[#385E31] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
+          >
+            Show Less
+          </button>
+        )}
+        {visibleCount < filtered.length && (
+          <button 
+            onClick={() => setVisibleCount(prev => prev + 10)}
+            className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Load More
+          </button>
+        )}
       </div>
 
       {/* ── Modals ── */}

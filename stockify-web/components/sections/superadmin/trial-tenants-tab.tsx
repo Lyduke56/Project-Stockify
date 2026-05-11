@@ -44,6 +44,24 @@ const COLUMNS = [
   "Actions",
 ];
 
+// ── Skeleton Loader ───────────────────────────────────────────────────────────
+
+const SkeletonRow = () => (
+  <div className="w-full flex px-4 py-[14px] items-center border-b border-[#385E31]/10">
+    {Array.from({ length: COLUMNS.length }).map((_, i) => (
+      <div key={i} className="flex-1 px-4">
+        <div 
+          className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto" 
+          style={{ 
+            animationDelay: `${i * 100}ms`,
+            width: i === 5 ? "80px" : i === 4 ? "65px" : "80%" 
+          }} 
+        />
+      </div>
+    ))}
+  </div>
+);
+
 // ── Trial days badge ──────────────────────────────────────────────────────────
 
 function DaysBadge({ days }: { days: number }) {
@@ -146,6 +164,9 @@ export default function TrialTenantsTab() {
 
   const [search,         setSearch]         = useState("");
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  
+  // Pagination limit
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Action state
   const [selectedTenant,  setSelectedTenant]  = useState<TrialTenant | null>(null);
@@ -212,7 +233,7 @@ export default function TrialTenantsTab() {
   // ── Search filter ───────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!search.trim()) { setFiltered(tenants); return; }
+    if (!search.trim()) { setFiltered(tenants); setVisibleCount(10); return; }
     const q = search.toLowerCase();
     setFiltered(
       tenants.filter(
@@ -222,6 +243,7 @@ export default function TrialTenantsTab() {
           t.business_type?.toLowerCase().includes(q),
       )
     );
+    setVisibleCount(10);
   }, [search, tenants]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -265,17 +287,9 @@ export default function TrialTenantsTab() {
     });
   };
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <div className="w-full flex justify-center py-16 text-[#385E31] font-bold text-lg">
-        Loading trial tenants…
-      </div>
-    );
-  }
-
   // ── Render ──────────────────────────────────────────────────────────────────
+
+  const visibleTenants = filtered.slice(0, visibleCount);
 
   return (
     <>
@@ -309,12 +323,15 @@ export default function TrialTenantsTab() {
           <div className="absolute right-4 top-2.5 text-[#385E31]"><SearchIcon /></div>
         </div>
 
-        {/* Trial count pill */}
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#385E31] bg-[#E0EDFF]">
-          <span className="text-[#385E31] text-[12px] font-bold">
-            {filtered.length} tenant{filtered.length !== 1 ? "s" : ""} on free trial
-          </span>
-        </div>
+        {/* Improved Trial count badge */}
+        {!loading && (
+          <div className="flex items-center gap-2 px-5 py-2 rounded-full border border-[#385E31]/40 bg-[#FFFCEB] shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-[#E5AD24] animate-pulse" />
+            <span className="text-[#385E31] text-[12px] font-extrabold tracking-wide uppercase">
+              {filtered.length} tenant{filtered.length !== 1 ? "s" : ""} on free trial
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -332,13 +349,15 @@ export default function TrialTenantsTab() {
         </div>
 
         {/* Rows */}
-        {filtered.length === 0 ? (
+        {loading ? (
+           Array.from({ length: 10 }).map((_, idx) => <SkeletonRow key={idx} />)
+        ) : filtered.length === 0 ? (
           <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
             No tenants currently on a free trial.
           </div>
         ) : (
-          filtered.map((row, idx) => {
-            const isLast = idx === filtered.length - 1;
+          visibleTenants.map((row, idx) => {
+            const isLast = idx === visibleTenants.length - 1;
             const isOpen = openDropdownId === row.tenant_id;
 
             return (
@@ -442,11 +461,24 @@ export default function TrialTenantsTab() {
         )}
       </div>
 
-      {/* Load More */}
-      <div className="w-full flex justify-end mt-6">
-        <button className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold font-['Inter'] px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity">
-          Load More
-        </button>
+      {/* Pagination Controls */}
+      <div className="w-full flex justify-end mt-6 gap-3">
+        {visibleCount > 10 && (
+          <button 
+            onClick={() => setVisibleCount(10)}
+            className="border border-[#385E31] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
+          >
+            Show Less
+          </button>
+        )}
+        {visibleCount < filtered.length && (
+          <button 
+            onClick={() => setVisibleCount(prev => prev + 10)}
+            className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Load More
+          </button>
+        )}
       </div>
       
 

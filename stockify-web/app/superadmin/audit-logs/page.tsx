@@ -247,7 +247,6 @@ export default function AuditLogs() {
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           openNotifs={() => setIsNotifsOpen(true)}
-          openProfile={() => setIsProfileOpen(true)}
         />
 
         {/* Page Header */}
@@ -369,20 +368,6 @@ export default function AuditLogs() {
                 </motion.button>
               )}
             </AnimatePresence>
-          </div>
-
-          {/* ── Results count ── */}
-          <div className="w-full flex justify-between items-center mb-3 px-1">
-            <p className="text-[#385E31]/50 text-[12px] font-medium">
-              {loading
-                ? "Loading…"
-                : `${total.toLocaleString()} ${total === 1 ? "entry" : "entries"}`}
-            </p>
-            {hasActiveFilters && !loading && (
-              <p className="text-[#385E31]/40 text-[11px] font-medium">
-                Filtered results
-              </p>
-            )}
           </div>
 
           {/* ── Table ── */}

@@ -12,12 +12,46 @@ interface PendingTenant {
   business_type: string;
 }
 
+// ── Column headers ────────────────────────────────────────────────────────────
+
+const COLUMNS = [
+  "Business Name",
+  "Owner",
+  "Reg. Date",
+  "Business Type",
+  "Contact Email",
+  "Action",
+];
+
+// ── Skeleton Loader ───────────────────────────────────────────────────────────
+
+const SkeletonRow = () => (
+  <div className="w-full flex px-4 py-[14px] items-center border-b border-[#385E31]/10">
+    {Array.from({ length: COLUMNS.length }).map((_, i) => (
+      <div key={i} className="flex-1 px-4">
+        <div 
+          className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto" 
+          style={{ 
+            animationDelay: `${i * 100}ms`,
+            width: i === 5 ? "80px" : "80%" 
+          }} 
+        />
+      </div>
+    ))}
+  </div>
+);
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function PendingTenantsTab() {
   const [pendingData, setPendingData] = useState<PendingTenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [reviewingId, setReviewingId] = useState<string | null>(null);
+
+  // Pagination limit
+  const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
     fetchPending();
@@ -82,13 +116,7 @@ export default function PendingTenantsTab() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="w-full flex justify-center py-16 text-[#385E31] font-bold text-lg">
-        Loading pending applications...
-      </div>
-    );
-  }
+  const visibleTenants = pendingData.slice(0, visibleCount);
 
   return (
     <>
@@ -101,21 +129,23 @@ export default function PendingTenantsTab() {
       <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
         {/* Table header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Name</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Owner</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Reg. Date</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Business Type</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Contact Email</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">Action</div>
+          {COLUMNS.map((col) => (
+            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">
+              {col}
+            </div>
+          ))}
         </div>
 
-        {pendingData.length === 0 ? (
+        {/* Rows */}
+        {loading ? (
+          Array.from({ length: 10 }).map((_, idx) => <SkeletonRow key={idx} />)
+        ) : pendingData.length === 0 ? (
           <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
             No pending applications.
           </div>
         ) : (
-          pendingData.map((row, idx) => {
-            const isLast = idx === pendingData.length - 1;
+          visibleTenants.map((row, idx) => {
+            const isLast = idx === visibleTenants.length - 1;
 
             return (
               <div
@@ -166,6 +196,26 @@ export default function PendingTenantsTab() {
               </div>
             );
           })
+        )}
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="w-full flex justify-end mt-6 gap-3">
+        {visibleCount > 10 && (
+          <button 
+            onClick={() => setVisibleCount(10)}
+            className="border border-[#385E31] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] hover:bg-[#385E31]/5 transition-colors"
+          >
+            Show Less
+          </button>
+        )}
+        {visibleCount < pendingData.length && (
+          <button 
+            onClick={() => setVisibleCount(prev => prev + 10)}
+            className="bg-[#F7B71D] text-[#385E31] text-[15px] font-bold px-10 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Load More
+          </button>
         )}
       </div>
 

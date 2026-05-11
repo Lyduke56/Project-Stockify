@@ -49,41 +49,80 @@ function formatMonth(billingPeriod: string) {
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
+// ── Simplified Stats Section ──────────────────────────────────────────────────
 
-interface StatCardProps {
-  title:     string;
-  value:     string | number;
-  trendText: string;
-  svgName:   string;
+interface StatsOverviewProps {
+  totalPaidDisplay: string;
+  paidSubtext: string;
+  lateCount: number | string;
+  lateSubtext: string;
+  missedCount: number | string;
+  missedSubtext: string;
 }
 
-function StatCard({ title, value, trendText, svgName }: StatCardProps) {
+function StatsOverview({
+  totalPaidDisplay,
+  paidSubtext,
+  lateCount,
+  lateSubtext,
+  missedCount,
+  missedSubtext,
+}: StatsOverviewProps) {
   return (
-    <div className="bg-[#385E31] rounded-[8px] p-4 flex flex-col shadow-sm border border-[#385E31]">
-      <h3 className="text-[#FFFCEB] text-[14px] font-bold mb-3">{title}</h3>
-      <div className="bg-[#FFFCEB] rounded-[6px] flex flex-col items-center justify-center py-4 flex-1">
-        <div className="flex items-center justify-center gap-3">
-          <img src={`/${svgName}.svg`} alt={title} className="w-10 h-10 object-contain" />
-          <span className="text-[#385E31] text-[2.6rem] font-black leading-none">{value}</span>
-        </div>
-        <p className="text-[#385E31] text-[11px] mt-2 font-medium">{trendText}</p>
+    <div className="flex items-center justify-between bg-white/60 backdrop-blur-sm border border-[#385E31]/10 rounded-[20px] p-6 shadow-sm">
+      {/* Total Paid */}
+      <div className="flex flex-col gap-1 w-1/3 text-center border-r border-[#385E31]/10">
+        <span className="text-[#385E31]/60 text-[10px] font-extrabold uppercase tracking-widest">
+          Total Paid
+        </span>
+        <span className="text-[#385E31] text-4xl font-black my-1">
+          {totalPaidDisplay}
+        </span>
+        <span className="text-[#385E31]/60 text-[11px] font-medium">
+          {paidSubtext}
+        </span>
+      </div>
+
+      {/* Late Payments */}
+      <div className="flex flex-col gap-1 w-1/3 text-center border-r border-[#385E31]/10">
+        <span className="text-[#E5AD24] text-[10px] font-extrabold uppercase tracking-widest">
+          Late Payments
+        </span>
+        <span className="text-[#E5AD24] text-4xl font-black my-1">
+          {lateCount}
+        </span>
+        <span className="text-[#E5AD24]/70 text-[11px] font-medium">
+          {lateSubtext}
+        </span>
+      </div>
+
+      {/* Missed Payments */}
+      <div className="flex flex-col gap-1 w-1/3 text-center">
+        <span className="text-[#E91F22] text-[10px] font-extrabold uppercase tracking-widest">
+          Missed Payments
+        </span>
+        <span className="text-[#E91F22] text-4xl font-black my-1">
+          {missedCount}
+        </span>
+        <span className="text-[#E91F22]/70 text-[11px] font-medium">
+          {missedSubtext}
+        </span>
       </div>
     </div>
   );
 }
 
-// ── Total Revenue Chart ───────────────────────────────────────────────────────
+// ── Revenue Bar Chart ─────────────────────────────────────────────────────────
 
-function TotalRevenueChart({ records }: { records: SubscriptionRow[] }) {
+function RevenueBarChart({ records }: { records: SubscriptionRow[] }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const statusColors: Record<string, string> = {
-    Paid:    "#385E31",
-    Late:    "#E5AD24",
-    Overdue: "#E5AD24",
-    Missed:  "#E91F22",
-    Pending: "#A0A0A0",
+    Paid: "bg-[#385E31]",
+    Late: "bg-[#E5AD24]",
+    Overdue: "bg-[#E5AD24]",
+    Missed: "bg-[#E91F22]",
+    Pending: "bg-[#D4D4D4]",
   };
 
   const sorted = [...records]
@@ -92,94 +131,85 @@ function TotalRevenueChart({ records }: { records: SubscriptionRow[] }) {
 
   if (sorted.length === 0) return null;
 
-  let cumulative = 0;
-  const chartData = sorted.map((r) => {
-    cumulative += r.amount_paid;
-    return {
-      month:   formatMonth(r.billing_period),
-      amount:  cumulative,
-      display: formatCurrency(cumulative),
-      status:  r.payment_status,
-    };
-  });
+  const chartData = sorted.map((r) => ({
+    month: formatMonth(r.billing_period),
+    amount: r.amount_paid,
+    display: formatCurrency(r.amount_paid),
+    status: r.payment_status,
+  }));
 
-  const maxAmount = Math.max(...chartData.map((d) => d.amount), 1);
-  const polylinePoints = chartData
-    .map(
-      (d, i) =>
-        `${(i / Math.max(chartData.length - 1, 1)) * 100},${
-          100 - (d.amount / maxAmount) * 100
-        }`
-    )
-    .join(" ");
+  // Find max amount for bar scaling, default to 1000 if 0 to avoid division by zero
+  const maxAmount = Math.max(...chartData.map((d) => d.amount), 1000);
 
   return (
-    <div className="w-full flex flex-col mt-2">
-      <h2 className="text-[16px] font-extrabold text-[#385E31] mb-3 text-center">
-        Total Revenue
+    <div className="w-full flex flex-col mt-4">
+      <h2 className="text-[15px] font-extrabold text-[#385E31] mb-3 pl-2">
+        Monthly Revenue
       </h2>
-      <div className="relative w-full h-[200px] border border-[#385E31] rounded-[8px] bg-[#FFFCEB] flex shadow-sm">
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0 py-6">
+      
+      <div className="relative w-full h-[220px] bg-white/40 border border-[#385E31]/10 rounded-[16px] p-6 pt-10 shadow-sm flex items-end justify-between gap-2">
+        {/* Y-axis grid lines */}
+        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none py-6 z-0">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="w-full flex items-center">
-              <div className="flex-1 border-b border-[#385E31]/10 ml-2" />
-            </div>
+            <div key={i} className="w-full border-b border-[#385E31]/5" />
           ))}
         </div>
-        <div className="absolute left-4 right-4 top-6 bottom-6 z-10">
-          {chartData.length > 1 && (
-            <svg
-              className="absolute inset-0 w-full h-full overflow-visible"
-              preserveAspectRatio="none"
-              viewBox="0 0 100 100"
+
+        {/* Bars */}
+        {chartData.map((data, index) => {
+          const heightPercent = (data.amount / maxAmount) * 100;
+          const colorClass = statusColors[data.status] ?? statusColors.Pending;
+          
+          return (
+            <div
+              key={index}
+              className="relative flex-1 flex flex-col items-center justify-end h-full group z-10"
+              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseLeave={() => setHoveredIndex(null)}
             >
-              <polyline
-                points={polylinePoints}
-                fill="none"
-                stroke="#E5AD24"
-                strokeWidth="2.5"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-          )}
-          {chartData.map((data, index) => {
-            const xPos = (index / Math.max(chartData.length - 1, 1)) * 100;
-            const yPos = 100 - (data.amount / maxAmount) * 100;
-            const color = statusColors[data.status] ?? statusColors.Pending;
-            return (
-              <div
-                key={index}
-                className="absolute w-3 h-3 cursor-pointer group"
-                style={{ left: `${xPos}%`, top: `${yPos}%`, transform: "translate(-50%,-50%)" }}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              >
-                {hoveredIndex === index && (
-                  <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-[#385E31] text-[#FFFCEB] text-[10px] px-2.5 py-1.5 rounded-[6px] shadow-lg whitespace-nowrap z-30 flex flex-col gap-0.5 border border-[#F7B71D]">
-                    <div className="font-bold text-[11px] text-[#F7B71D]">{data.month}</div>
-                    <div className="font-medium capitalize">{data.status}</div>
-                    <div className="font-medium">Cumulative: {data.display}</div>
-                  </div>
-                )}
-                <div
-                  className="w-full h-full rotate-45 border border-white shadow-sm transition-transform duration-200 group-hover:scale-125"
-                  style={{ backgroundColor: color }}
-                />
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 text-[9px] font-bold text-[#385E31] whitespace-nowrap">
-                  {data.month.split(" ")[0]}
+              {hoveredIndex === index && (
+                <div className="absolute -top-16 bg-[#385E31] text-[#FFFCEB] text-[10px] px-3 py-2 rounded-[8px] shadow-lg whitespace-nowrap z-30 flex flex-col gap-0.5 items-center">
+                  <span className="font-bold text-[#F7B71D]">{data.month}</span>
+                  <span className="font-black text-[12px]">{data.display}</span>
+                  <span className="font-medium text-[9px] uppercase tracking-widest opacity-80 mt-0.5">
+                    {data.status}
+                  </span>
+                  {/* Tooltip Triangle pointer */}
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-[#385E31]" />
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              )}
+              {/* Bar filling */}
+              <div
+                className={`w-full max-w-[36px] rounded-t-[6px] transition-all duration-300 cursor-pointer ${colorClass} group-hover:opacity-80`}
+                style={{ height: `${Math.max(heightPercent, 2)}%` }}
+              />
+              {/* X-axis Label */}
+              <span className="absolute -bottom-6 text-[10px] font-bold text-[#385E31]/60 whitespace-nowrap">
+                {data.month.split(" ")[0]}
+              </span>
+            </div>
+          );
+        })}
       </div>
-      <div className="flex justify-end gap-4 mt-7 text-[11px] font-bold text-[#385E31]">
-        {(["Paid", "Overdue", "Missed"] as const).map((key) => (
-          <div key={key} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-[2px]" style={{ backgroundColor: statusColors[key] }} />
-            <span className="capitalize">{key}</span>
-          </div>
-        ))}
+
+      {/* Legend */}
+      <div className="flex justify-end gap-5 mt-9 text-[11px] font-bold text-[#385E31]/70 pr-2">
+        {(["Paid", "Overdue", "Missed"] as const).map((key) => {
+          const hexMap: Record<string, string> = {
+            Paid: "#385E31",
+            Overdue: "#E5AD24",
+            Missed: "#E91F22",
+          };
+          return (
+            <div key={key} className="flex items-center gap-2">
+              <div
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: hexMap[key] }}
+              />
+              <span className="uppercase tracking-wider text-[9px]">{key}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -189,16 +219,19 @@ function TotalRevenueChart({ records }: { records: SubscriptionRow[] }) {
 
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, { bg: string; text: string }> = {
-    Paid:    { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" },
-    Late:    { bg: "bg-[#FFD980]", text: "text-[#385E31]" },
-    Missed:  { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" },
-    Overdue: { bg: "bg-[#FFD980]", text: "text-[#385E31]" },
-    Pending: { bg: "bg-[#D4D4D4]", text: "text-[#555]"   },
+    Paid: { bg: "bg-[#385E31]/10", text: "text-[#385E31]" },
+    Late: { bg: "bg-[#E5AD24]/10", text: "text-[#E5AD24]" },
+    Missed: { bg: "bg-[#E91F22]/10", text: "text-[#E91F22]" },
+    Overdue: { bg: "bg-[#E5AD24]/10", text: "text-[#E5AD24]" },
+    Pending: { bg: "bg-gray-100", text: "text-gray-500" },
   };
   const { bg, text } = map[status] ?? map.Pending;
+  
   return (
-    <div className={`w-[72px] py-0.5 rounded-[40px] flex justify-center items-center ${bg}`}>
-      <span className={`${text} text-[9px] font-bold`}>{status}</span>
+    <div className={`px-3 py-1 rounded-[40px] flex justify-center items-center w-max mx-auto ${bg}`}>
+      <span className={`${text} text-[10px] font-extrabold uppercase tracking-widest`}>
+        {status}
+      </span>
     </div>
   );
 }
@@ -213,17 +246,17 @@ function SubmissionBadge({
   proofUrl: string | null;
 }) {
   if (!submissionStatus)
-    return <span className="text-[#385E31]/40 italic text-[11px]">—</span>;
+    return <span className="text-[#385E31]/30 font-medium text-[11px]">—</span>;
 
   const colorMap: Record<string, string> = {
-    Pending:  "text-[#E5AD24]",
+    Pending: "text-[#E5AD24]",
     Accepted: "text-[#385E31]",
     Approved: "text-[#385E31]",
     Rejected: "text-[#E91F22]",
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center justify-center gap-1.5">
       <span className={`text-[11px] font-bold ${colorMap[submissionStatus] ?? ""}`}>
         {submissionStatus}
       </span>
@@ -232,12 +265,13 @@ function SubmissionBadge({
           href={proofUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[#E5AD24] hover:text-[#D19D1F] transition-colors"
+          className="text-[#E5AD24] hover:text-[#D19D1F] hover:scale-110 transition-all"
           title="View proof"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="12" height="12"
+            width="14"
+            height="14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -264,28 +298,32 @@ function PaymentLogTable({ records }: { records: SubscriptionRow[] }) {
   const hasMore = visible.length < records.length;
 
   return (
-    <div className="w-full flex flex-col mt-2 mb-2">
-      <h2 className="text-[16px] font-extrabold text-[#385E31] mb-3 text-center">
-        Payment Log
+    <div className="w-full flex flex-col mt-4 mb-2">
+      <h2 className="text-[15px] font-extrabold text-[#385E31] mb-3 pl-2">
+        Payment Records
       </h2>
-      <div className="w-full bg-[#FFFCEB] rounded-[8px] border border-[#385E31] flex flex-col overflow-hidden shadow-sm">
-        <div className="w-full grid grid-cols-[1fr_1fr_1fr_1fr_1fr] bg-[#385E31] px-4 py-2.5">
+      
+      <div className="w-full bg-white/60 backdrop-blur-sm rounded-[16px] border border-[#385E31]/10 flex flex-col overflow-hidden shadow-sm">
+        {/* Table Header */}
+        <div className="w-full grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] bg-[#385E31]/5 px-6 py-4 border-b border-[#385E31]/10">
           {["Billing Period", "Amount", "Paid", "Status", "Submission"].map((h) => (
             <div
               key={h}
-              className="text-[#FFFCEB] text-[12px] font-bold text-center first:text-left"
+              className="text-[#385E31]/70 text-[10px] font-extrabold uppercase tracking-widest text-center first:text-left"
             >
               {h}
             </div>
           ))}
         </div>
 
+        {/* Empty State */}
         {visible.length === 0 && (
-          <div className="px-4 py-6 text-center text-[#385E31]/50 text-[13px] italic">
+          <div className="px-6 py-10 text-center text-[#385E31]/50 text-[13px] font-medium">
             No payment records found.
           </div>
         )}
 
+        {/* Table Rows */}
         {visible.map((row, idx) => {
           let displayStatus = row.payment_status;
           if (
@@ -299,18 +337,18 @@ function PaymentLogTable({ records }: { records: SubscriptionRow[] }) {
           return (
             <div
               key={row.subscription_id}
-              className={`w-full grid grid-cols-[1fr_1fr_1fr_1fr_1fr] px-4 py-2.5 items-center ${
-                idx < visible.length - 1 ? "border-b border-[#385E31]/20" : ""
+              className={`w-full grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr] px-6 py-4 items-center transition-colors hover:bg-[#385E31]/[0.03] ${
+                idx < visible.length - 1 ? "border-b border-[#385E31]/10" : ""
               }`}
             >
-              <div className="text-left text-[#3A6131] text-[11px] font-bold">
+              <div className="text-left text-[#3A6131] text-[12px] font-bold">
                 {formatMonth(row.billing_period)}
               </div>
-              <div className="text-center text-[#3A6131] text-[11px] font-bold">
+              <div className="text-center text-[#3A6131] text-[12px] font-bold">
                 {formatCurrency(row.amount)}
               </div>
-              <div className="text-center text-[#3A6131] text-[11px] font-bold">
-                {row.amount_paid > 0 ? formatCurrency(row.amount_paid) : "—"}
+              <div className="text-center text-[#3A6131] text-[12px] font-bold">
+                {row.amount_paid > 0 ? formatCurrency(row.amount_paid) : <span className="text-[#3A6131]/30">—</span>}
               </div>
               <div className="flex justify-center">
                 <StatusPill status={displayStatus} />
@@ -327,12 +365,12 @@ function PaymentLogTable({ records }: { records: SubscriptionRow[] }) {
       </div>
 
       {hasMore && (
-        <div className="w-full flex justify-end mt-3">
+        <div className="w-full flex justify-end mt-4">
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="bg-[#F7B71D] text-[#385E31] text-[12px] font-bold px-7 py-1.5 rounded-[40px] shadow-sm hover:opacity-90 transition-opacity"
+            className="bg-[#F7B71D] text-[#385E31] text-[12px] font-bold px-7 py-2 rounded-[40px] shadow-sm hover:scale-105 transition-all"
           >
-            Load More
+            Load More Records
           </button>
         </div>
       )}
@@ -374,7 +412,6 @@ export default function PaymentHistoryTab({ tenantId }: PaymentHistoryTabProps) 
   const [error,   setError]   = useState("");
 
   const fetchData = useCallback(async () => {
-    // ── Hard guard: never fire with an empty/undefined tenantId ──────────────
     const id = tenantId?.trim();
     if (!id) {
       setError("No tenant selected.");
@@ -386,7 +423,7 @@ export default function PaymentHistoryTab({ tenantId }: PaymentHistoryTabProps) 
     setError("");
 
     try {
-      const res    = await fetch(
+      const res = await fetch(
         `/api/superadmin/tenant/${encodeURIComponent(id)}/payment-history`
       );
       const result = await res.json();
@@ -418,15 +455,17 @@ export default function PaymentHistoryTab({ tenantId }: PaymentHistoryTabProps) 
       : stats.total_paid_amount.toString()
     : "—";
 
-  const paidSubtext    = stats ? `${stats.paid_count} of ${stats.total_records} months` : "—";
-  const lateSubtext    = stats
+  const paidSubtext = stats ? `${stats.paid_count} of ${stats.total_records} months` : "—";
+  
+  const lateSubtext = stats
     ? stats.avg_days_late > 0
       ? `Avg. ${stats.avg_days_late} days late`
       : "No late payments"
     : "—";
-  const missedSubtext  = stats
+    
+  const missedSubtext = stats
     ? stats.missed_count > 0
-      ? `As of ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
+      ? `As of ${new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" })}`
       : "None recorded"
     : "—";
 
@@ -436,9 +475,9 @@ export default function PaymentHistoryTab({ tenantId }: PaymentHistoryTabProps) 
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium mt-4 flex items-center gap-3">
+      <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-sm font-medium mt-4 flex items-center justify-between shadow-sm">
         <span>{error}</span>
-        <button onClick={fetchData} className="underline font-bold shrink-0">
+        <button onClick={fetchData} className="underline font-bold shrink-0 hover:text-red-800">
           Retry
         </button>
       </div>
@@ -446,33 +485,21 @@ export default function PaymentHistoryTab({ tenantId }: PaymentHistoryTabProps) 
   }
 
   return (
-    <div className="flex flex-col gap-5 py-2">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard
-          title="Total Paid"
-          value={totalPaidDisplay}
-          trendText={paidSubtext}
-          svgName="SA-rev-stat"
-        />
-        <StatCard
-          title="Late Payments"
-          value={stats?.late_count ?? "—"}
-          trendText={lateSubtext}
-          svgName="SA-late-payments"
-        />
-        <StatCard
-          title="Missed Payments"
-          value={stats?.missed_count ?? "—"}
-          trendText={missedSubtext}
-          svgName="SA-missed-payments"
-        />
-      </div>
+    <div className="flex flex-col gap-6 py-2">
+      {/* Beautified Stats Section */}
+      <StatsOverview
+        totalPaidDisplay={totalPaidDisplay}
+        paidSubtext={paidSubtext}
+        lateCount={stats?.late_count ?? "0"}
+        lateSubtext={lateSubtext}
+        missedCount={stats?.missed_count ?? "0"}
+        missedSubtext={missedSubtext}
+      />
 
-      {/* Revenue Chart */}
-      {records.length > 0 && <TotalRevenueChart records={records} />}
+      {/* Bar Chart */}
+      {records.length > 0 && <RevenueBarChart records={records} />}
 
-      {/* Payment Log */}
+      {/* Cleaned-up Data Table */}
       <PaymentLogTable records={records} />
     </div>
   );
