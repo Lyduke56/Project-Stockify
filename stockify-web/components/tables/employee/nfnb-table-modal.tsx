@@ -12,6 +12,7 @@ import {
 import NfbProductModal       from "@/components/modals/employee/product-modals/nfnb-product-modal";
 import ManageCategoriesModal from "@/components/modals/employee/product-modals/manage-categories-modal";
 import DeleteItemModal       from "@/components/modals/employee/ingredients-modals/delete-item-modal";
+import RestockModal          from "@/components/modals/employee/product-modals/restock-modal";
 import { Loader2, RefreshCw } from "lucide-react";
 
 // ── SVG helpers ───────────────────────────────────────────────
@@ -64,6 +65,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
   const [showAdd,        setShowAdd]        = useState(false);
   const [editTarget,     setEditTarget]     = useState<NfbProduct | null>(null);
   const [deleteTarget,   setDeleteTarget]   = useState<NfbProduct | null>(null);
+  const [restockTarget,  setRestockTarget]  = useState<NfbProduct | null>(null);
   const [showCategories, setShowCategories] = useState(false);
 
   // ── Dropdown state ────────────────────────────────────────────
@@ -154,7 +156,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteNfbProduct(deleteTarget.product_id, tenantId);
+    await deleteNfbProduct(deleteTarget.product_id, tenantId, deleteTarget.name);
     setDeleteTarget(null);
     loadProducts();
   };
@@ -364,6 +366,12 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
               Edit Product
             </button>
             <button
+              onClick={() => { setRestockTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
+              className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+            >
+              Restock
+            </button>
+            <button
               onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
               className="px-3 py-1.5 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors"
             >
@@ -396,6 +404,15 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
       )}
       {deleteTarget && (
         <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
+      )}
+      {restockTarget && (
+        <RestockModal
+          type="nfnb"
+          product={restockTarget}
+          tenantId={tenantId}
+          onClose={() => setRestockTarget(null)}
+          onSuccess={loadProducts}
+        />
       )}
       {showCategories && (
         <ManageCategoriesModal

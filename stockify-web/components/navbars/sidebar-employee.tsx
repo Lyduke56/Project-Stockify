@@ -11,7 +11,6 @@ import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
 // ── Permissions ──────────────────────────────────────────────
 
 const MANAGER_ONLY_SECTIONS = new Set<SectionKey>([
-  "analytics",
   "audit-logs",
   "transactions",
 ]);
@@ -70,14 +69,12 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
   const isEmployee = role?.toLowerCase() === "employee";
 
   const allNavItems = [
-    { label: "Dashboard",           iconFileName: "icon-dashboard",          section: "dashboard"           },
-    { label: "Products",            iconFileName: "icon-inventory",          section: "products"            },
-    { label: "Stock Inventory",     iconFileName: "icon-ingredients",        section: "ingredients"         },
-    { label: "Orders",              iconFileName: "icon-orders",             section: "orders"              },
-    { label: "Analytics & Orders",  iconFileName: "icon-chart2",             section: "analytics"           },
-    { label: "Stock Notifications", iconFileName: "icon-stocknotifications", section: "stock-notifications" },
-    { label: "Audit Logs",          iconFileName: "icon-audit-logs",         section: "audit-logs"          },
-    { label: "Transactions",        iconFileName: "icon-transactions",       section: "transactions"        },
+    { label: "Dashboard",       iconFileName: "icon-dashboard",    section: "dashboard"    },
+    { label: "Products",        iconFileName: "icon-inventory",    section: "products"     },
+    { label: "Stock Inventory", iconFileName: "icon-ingredients",  section: "ingredients"  },
+    { label: "Orders",          iconFileName: "icon-orders",       section: "orders"       },
+    { label: "Audit Logs",      iconFileName: "icon-audit-logs",   section: "audit-logs"  },
+    { label: "Transactions",    iconFileName: "icon-transactions", section: "transactions" },
   ];
 
   const navItems = allNavItems.filter((item) => {

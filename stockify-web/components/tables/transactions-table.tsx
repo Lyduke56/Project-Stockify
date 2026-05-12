@@ -147,7 +147,9 @@ export default function TransactionsTable() {
                     </span>
                   </div>
                   <div className="text-center">
-                    <span className="text-[11px] font-bold bg-[#3A6131]/8 text-[#3A6131] px-2.5 py-1 rounded-full">{txn.payment_method}</span>
+                    <span className="text-[11px] font-bold bg-[#3A6131]/8 text-[#3A6131] px-2.5 py-1 rounded-full">
+                      {txn.payment_method === "QR Code" ? "QR Code" : txn.payment_method === "Cash-on-Delivery" ? "Cash on Delivery" : txn.payment_method}
+                    </span>
                   </div>
                   <div className="text-center text-[#F7B71D] text-[13px] font-black">
                     ₱{txn.total_amount.toFixed(2)}

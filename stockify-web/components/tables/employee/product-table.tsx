@@ -15,6 +15,7 @@ import {
 import ProductModal from "@/components/modals/employee/product-modals/product-modal";
 import ManageCategoriesModal from "@/components/modals/employee/product-modals/manage-categories-modal";
 import DeleteItemModal from "@/components/modals/employee/ingredients-modals/delete-item-modal";
+import RestockModal from "@/components/modals/employee/product-modals/restock-modal";
 import { Loader2, RefreshCw } from "lucide-react";
 
 const SearchIcon = () => (
@@ -31,9 +32,9 @@ const ChevronDown = () => (
 
 const COLUMNS = [
   { label: "NAME",      className: "flex-[1.5] justify-start text-left pl-4" },
-  { label: "IMG",       className: "w-[60px] justify-center flex-none" },
   { label: "SKU",       className: "flex-1 justify-center" },
   { label: "CATEGORY",  className: "flex-1 justify-center" },
+  { label: "QTY",       className: "flex-[0.8] justify-center" },
   { label: "UNIT COST", className: "flex-1 justify-center" },
   { label: "PRICE",     className: "flex-1 justify-center" },
   { label: "MAX YIELD", className: "flex-1 justify-center" },
@@ -53,6 +54,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
   const [showAdd,        setShowAdd]        = useState(false);
   const [editTarget,     setEditTarget]     = useState<Product | null>(null);
   const [deleteTarget,   setDeleteTarget]   = useState<Product | null>(null);
+  const [restockTarget,  setRestockTarget]  = useState<Product | null>(null);
   const [showCategories, setShowCategories] = useState(false);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
@@ -104,7 +106,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await deleteProduct(deleteTarget.product_id);
+    await deleteProduct(deleteTarget.product_id, tenantId, deleteTarget.name);
     setDeleteTarget(null);
     loadProducts();
   };
@@ -156,39 +158,43 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
           displayed.map((row, idx) => {
             const isLast = idx === displayed.length - 1;
             const isOpen = openDropdownId === row.product_id;
-            const defaultSize = row.sizes?.find((s) => s.is_default);
-            const displayPrice = defaultSize ? Number(defaultSize.price) : Number(row.price);
+            const hasSizes = row.sizes && row.sizes.length > 0;
+
+            // ── Total QTY: sum of all sizes' max_yield, or single product max_yield
+            const totalQty = hasSizes
+              ? (row.sizes ?? []).reduce((sum, s) => sum + (Number(s.max_yield) || 0), 0)
+              : Number(row.max_yield) || 0;
 
             return (
               <div key={row.product_id} className={`w-full flex px-2 py-[10px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}>
                 {/* Name + sizes hint */}
                 <div className={`flex flex-col justify-center ${COLUMNS[0].className}`}>
                   <span className="text-[#3A6131] text-[13px] font-bold">{row.name}</span>
-                  {row.sizes && row.sizes.length > 0 && (
-                    <span className="text-[10px] text-[#3A6131]/50 font-semibold mt-0.5">{row.sizes.map((s) => s.label).join(" · ")}</span>
-                  )}
-                </div>
-                {/* Image */}
-                <div className={`flex items-center ${COLUMNS[1].className}`}>
-                  {row.image_url ? (
-                    <img src={row.image_url} alt={row.name} className="w-8 h-8 object-cover rounded border border-[#385E31]" />
-                  ) : (
-                    <div className="w-8 h-8 border border-[#385E31] rounded bg-white flex items-center justify-center"><span className="text-[#385E31]/50 text-[9px] font-bold">IMG</span></div>
+                  {hasSizes && (
+                    <span className="text-[10px] text-[#3A6131]/50 font-semibold mt-0.5">{row.sizes!.map((s) => s.label).join(" · ")}</span>
                   )}
                 </div>
                 {/* SKU */}
-                <div className={`flex text-[#3A6131] text-[12px] font-bold font-mono items-center ${COLUMNS[2].className}`}>{row.sku}</div>
+                <div className={`flex text-[#3A6131] text-[12px] font-bold font-mono items-center ${COLUMNS[1].className}`}>{row.sku}</div>
                 {/* Category */}
-                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[3].className}`}>{row.category_name ?? "—"}</div>
+                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[2].className}`}>{row.category_name ?? "—"}</div>
+                {/* QTY */}
+                <div className={`flex flex-col items-center justify-center ${COLUMNS[3].className}`}>
+                  <span className={`text-[13px] font-black ${
+                    totalQty <= 5 ? "text-red-500" : totalQty <= 15 ? "text-amber-500" : "text-[#3A6131]"
+                  }`}>{totalQty}</span>
+                  {hasSizes && (
+                    <span className="text-[9px] text-[#3A6131]/40 font-semibold">{row.sizes!.length} sizes</span>
+                  )}
+                </div>
                 {/* Unit Cost */}
                 <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[4].className}`}>
                   {(() => {
                      const sizes = row.sizes || [];
                      if (sizes.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
                      const costs = sizes.map(s => Number(s.unit_cost) || 0);
-                     if (costs.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
                      const min = Math.min(...costs); const max = Math.max(...costs);
-                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
+                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} – ₱${max.toFixed(2)}`;
                   })()}
                 </div>
                 {/* Price */}
@@ -198,13 +204,12 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                      const sizes = row.sizes || [];
                      if (sizes.length === 0) return `₱${Number(row.price).toFixed(2)}`;
                      const prices = sizes.map(s => Number(s.price) || 0);
-                     if (prices.length === 0) return `₱${Number(row.price).toFixed(2)}`;
                      const min = Math.min(...prices); const max = Math.max(...prices);
-                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
+                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} – ₱${max.toFixed(2)}`;
                   })()}
                   </span>
-                  {row.sizes && row.sizes.length > 0 && (
-                    <span className="text-[10px] text-[#3A6131]/40 font-semibold mt-0.5">{row.sizes.length} variants</span>
+                  {hasSizes && (
+                    <span className="text-[10px] text-[#3A6131]/40 font-semibold mt-0.5">{row.sizes!.length} variants</span>
                   )}
                 </div>
                 {/* Max Yield */}
@@ -223,6 +228,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                   {isOpen && (
                     <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
                       <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Edit Product</button>
+                      <button onClick={() => { setRestockTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Restock</button>
                       <button onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors">Delete Product</button>
                     </div>
                   )}
@@ -243,6 +249,15 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
       {showAdd && <ProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} />}
       {editTarget && <ProductModal mode="edit" tenantId={tenantId} productId={editTarget.product_id} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />}
       {deleteTarget && <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
+      {restockTarget && (
+        <RestockModal
+          type="fnb"
+          product={restockTarget}
+          tenantId={tenantId}
+          onClose={() => setRestockTarget(null)}
+          onSuccess={loadProducts}
+        />
+      )}
       {showCategories && <ManageCategoriesModal tenantId={tenantId} type="fnb_product" placeholder="e.g. Cold Beverage" onClose={() => { setShowCategories(false); loadProducts(); }} />}
     </div>
   );

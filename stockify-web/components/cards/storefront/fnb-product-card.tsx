@@ -28,9 +28,16 @@ export interface FnbProduct {
 interface FnbProductCardProps {
   product: FnbProduct;
   onOpenModal: (product: FnbProduct) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (productId: string) => void;
 }
 
-export const FnbProductCard = ({ product, onOpenModal }: FnbProductCardProps) => {
+export const FnbProductCard = ({ 
+  product, 
+  onOpenModal,
+  isFavorite = false,
+  onToggleFavorite
+}: FnbProductCardProps) => {
   const hasSizes    = product.sizes.length > 0;
   const isAvailable = hasSizes
     ? product.sizes.some((s) => s.max_yield > 0)
@@ -117,8 +124,13 @@ export const FnbProductCard = ({ product, onOpenModal }: FnbProductCardProps) =>
           >
             <Plus size={16} /> {hasSizes ? "Choose Size" : "Add to Cart"}
           </button>
-          <button className="w-11 h-11 border border-[#385E31]/30 rounded-[8px] flex items-center justify-center text-[#385E31] hover:bg-[#385E31]/5 transition-colors">
-            <Heart size={18} />
+          <button 
+            onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(product.product_id); }}
+            className={`w-11 h-11 border border-[#385E31]/30 rounded-[8px] flex items-center justify-center transition-colors ${
+              isFavorite ? "bg-red-50 text-red-500 border-red-200" : "text-[#385E31] hover:bg-[#385E31]/5"
+            }`}
+          >
+            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
           </button>
         </div>
       </div>
