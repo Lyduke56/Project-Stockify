@@ -5,13 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, X, Loader2, AlertCircle, CheckCircle2,
   Package, Clock, Truck, Ban, RefreshCw,
+  User, MapPin, Phone, Mail,
 } from "lucide-react";
 import {
   fetchOrders,
   fetchOrderItems,
   updateFulfillmentStatus,
   processAndCompleteOrder,
-  cancelOrder,
   type Order,
   type OrderItem,
   type FulfillmentStatus,
@@ -29,55 +29,129 @@ const TAB_META: Record<FulfillmentStatus, { bg: string; text: string; badge: str
   Cancelled: { bg: "bg-red-500", text: "text-white", badge: "bg-red-50 text-red-600", icon: <Ban size={12} /> },
 };
 
-// ─── Cancel Confirmation Dialog ────────────────────────────────────────────────
+// ─── Cancel Order Modal (full-screen) ─────────────────────────────────────────
 
-function CancelDialog({
+function CancelOrderModal({
+  order,
   onConfirm,
   onClose,
   busy,
 }: {
+  order: Order;
   onConfirm: (reason: string) => void;
   onClose: () => void;
   busy: boolean;
 }) {
   const [reason, setReason] = useState("");
+
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="mt-3 bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col gap-3"
-    >
-      <p className="text-red-700 font-bold text-[13px]">Reason for cancellation</p>
-      <textarea
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder="Describe why this order is being cancelled…"
-        rows={3}
-        className="w-full rounded-xl border border-red-200 bg-white px-3 py-2 text-[13px] text-[#3A6131] resize-none outline-none focus:border-red-400 transition-colors placeholder:text-gray-400"
+    <AnimatePresence>
+      {/* Backdrop */}
+      <motion.div
+        key="cancel-backdrop"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200]"
+        onClick={onClose}
       />
-      <div className="flex gap-2">
-        <button
-          onClick={() => onConfirm(reason)}
-          disabled={busy}
-          className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-black text-[13px] hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          {busy ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
-          Confirm Cancel
-        </button>
-        <button
-          onClick={onClose}
-          disabled={busy}
-          className="px-4 py-2.5 rounded-xl border border-red-200 text-red-500 font-bold text-[13px] hover:bg-red-100 transition-colors"
-        >
-          Back
-        </button>
-      </div>
-    </motion.div>
+      {/* Modal */}
+      <motion.div
+        key="cancel-modal"
+        initial={{ opacity: 0, scale: 0.94, y: 24 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 24 }}
+        transition={{ type: "spring", stiffness: 340, damping: 28 }}
+        className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none"
+      >
+        <div className="bg-white rounded-[24px] w-full max-w-[460px] shadow-2xl pointer-events-auto overflow-hidden">
+          {/* Header */}
+          <div className="bg-red-500 px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
+                <Ban size={18} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-white font-black text-[16px]">Cancel Order</h2>
+                <p className="text-white/70 text-[11px] font-medium">
+                  #{order.order_id.slice(0, 8).toUpperCase()}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-5 flex flex-col gap-4">
+            {/* Warning notice */}
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+              <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-red-700 text-[13px] font-medium leading-snug">
+                This will permanently cancel the order and notify the customer via email.
+              </p>
+            </div>
+
+            {/* Order summary chip */}
+            <div className="flex items-center justify-between bg-[#fafafa] border border-[#e5e5e5] rounded-xl px-4 py-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-0.5">Customer</p>
+                <p className="text-[#333] font-bold text-[13px]">{order.customer_name}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black uppercase tracking-wider text-gray-400 mb-0.5">Total</p>
+                <p className="text-red-500 font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Reason textarea */}
+            <div>
+              <label className="text-[11px] font-black uppercase tracking-wider text-gray-500 mb-2 block">
+                Reason for Cancellation <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Describe why this order is being cancelled. This will be included in the email sent to the customer…"
+                rows={4}
+                className="w-full rounded-xl border border-[#e5e5e5] focus:border-red-400 bg-white px-4 py-3 text-[13px] text-[#333] resize-none outline-none transition-colors placeholder:text-gray-300"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={onClose}
+                disabled={busy}
+                className="flex-1 py-3 rounded-xl border border-[#e5e5e5] text-gray-500 font-bold text-[13px] hover:bg-gray-50 transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => onConfirm(reason)}
+                disabled={busy || !reason.trim()}
+                className="flex-1 bg-red-500 text-white py-3 rounded-xl font-black text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-opacity"
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
+                {busy ? "Cancelling…" : "Confirm Cancellation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
 // ─── Order Detail Modal ────────────────────────────────────────────────────────
+
+interface CustomerProfile {
+  email: string | null;
+  contact_number: string | null;
+  address: string | null;
+}
 
 function OrderDetailModal({
   order,
@@ -94,16 +168,28 @@ function OrderDetailModal({
   const [showCancel, setShowCancel] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [tenantId, setTenantId] = useState("");
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
 
   useEffect(() => {
     fetchOrderItems(order.order_id).then((data) => { setItems(data); setLoading(false); });
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
-      const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", data.user.id).single();
+      const { data: u } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", data.user.id)
+        .single();
       if (u) setTenantId(u.tenant_id ?? "");
     });
-  }, [order.order_id]);
+    // Fetch the customer's profile
+    supabase
+      .from("users")
+      .select("email, contact_number, address")
+      .eq("user_id", order.customer_id)
+      .single()
+      .then(({ data }) => setCustomerProfile(data ?? null));
+  }, [order.order_id, order.customer_id]);
 
   const act = async (fn: () => Promise<{ error: string | null }>, successMsg: string) => {
     setBusy(true);
@@ -118,9 +204,23 @@ function OrderDetailModal({
     }
   };
 
-  const handleCancel = (reason: string) => {
-    act(() => cancelOrder(order.order_id, reason), "Order cancelled.");
+  const handleCancel = async (reason: string) => {
+    setBusy(true);
+    setFeedback(null);
+    const res = await fetch("/api/orders/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderId: order.order_id, reason }),
+    });
+    const json = await res.json();
+    setBusy(false);
     setShowCancel(false);
+    if (json.error) {
+      setFeedback({ type: "error", msg: json.error });
+    } else {
+      setFeedback({ type: "success", msg: "Order cancelled. Email sent to customer." });
+      setTimeout(() => { onStatusChange(); onClose(); }, 1400);
+    }
   };
 
   const meta = TAB_META[order.fulfillment_status];
@@ -173,6 +273,44 @@ function OrderDetailModal({
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Total</p>
               <p className="text-[#F7B71D] font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
             </div>
+          </div>
+
+          {/* Customer Profile */}
+          <div className="px-6 py-3 border-b border-[#3A6131]/10 bg-[#3A6131]/2">
+            <div className="flex items-center gap-2 mb-2">
+              <User size={11} className="text-[#3A6131]/40" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40">Customer Details</p>
+            </div>
+            {customerProfile ? (
+              <div className="flex flex-col gap-1.5">
+                {customerProfile.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail size={11} className="text-[#3A6131]/40 shrink-0" />
+                    <span className="text-[#3A6131] text-[12px] font-medium">{customerProfile.email}</span>
+                  </div>
+                )}
+                {customerProfile.contact_number && (
+                  <div className="flex items-center gap-2">
+                    <Phone size={11} className="text-[#3A6131]/40 shrink-0" />
+                    <span className="text-[#3A6131] text-[12px] font-medium">{customerProfile.contact_number}</span>
+                  </div>
+                )}
+                {customerProfile.address && (
+                  <div className="flex items-start gap-2">
+                    <MapPin size={11} className="text-[#3A6131]/40 shrink-0 mt-0.5" />
+                    <span className="text-[#3A6131] text-[12px] font-medium leading-snug">{customerProfile.address}</span>
+                  </div>
+                )}
+                {!customerProfile.email && !customerProfile.contact_number && !customerProfile.address && (
+                  <p className="text-[#3A6131]/30 text-[12px] font-medium italic">No contact details on file.</p>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-[#3A6131]/30">
+                <Loader2 size={12} className="animate-spin" />
+                <span className="text-[11px]">Loading customer info…</span>
+              </div>
+            )}
           </div>
 
           {/* Items */}
@@ -235,52 +373,43 @@ function OrderDetailModal({
                 >
                   {busy ? <Loader2 size={16} className="animate-spin" /> : <Package size={16} />} Start Processing
                 </button>
-                <button onClick={() => setShowCancel(!showCancel)} disabled={busy}
+                <button onClick={() => setShowCancel(true)} disabled={busy}
                   className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                   <Ban size={14} /> Cancel Order
                 </button>
-                <AnimatePresence>
-                  {showCancel && <CancelDialog onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
-                </AnimatePresence>
               </>
             )}
 
             {order.fulfillment_status === "Processing" && (
               <>
                 <button
-                  onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Dispatched"), "Order dispatched!")}
+                  onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Dispatched"), "Order dispatched & stock deducted!")}
                   disabled={busy}
                   className="w-full bg-purple-500 text-white py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />} Mark as Dispatched
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />} Mark as Dispatched & Deduct Stock
                 </button>
-                <button onClick={() => setShowCancel(!showCancel)} disabled={busy}
+                <button onClick={() => setShowCancel(true)} disabled={busy}
                   className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                   <Ban size={14} /> Cancel Order
                 </button>
-                <AnimatePresence>
-                  {showCancel && <CancelDialog onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
-                </AnimatePresence>
               </>
             )}
 
             {order.fulfillment_status === "Dispatched" && (
               <>
                 <button
-                  onClick={() => act(() => processAndCompleteOrder(order.order_id, tenantId), "Order received & stock deducted!")}
+                  onClick={() => act(() => processAndCompleteOrder(order.order_id, tenantId), "Order received & transaction completed!")}
                   disabled={busy}
                   className="w-full bg-[#385E31] text-[#F7B71D] py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                  {busy ? "Processing…" : "Mark as Received & Deduct Stock"}
+                  {busy ? "Processing…" : "Mark as Received & Complete Transaction"}
                 </button>
-                <button onClick={() => setShowCancel(!showCancel)} disabled={busy}
+                <button onClick={() => setShowCancel(true)} disabled={busy}
                   className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                   <Ban size={14} /> Cancel Order
                 </button>
-                <AnimatePresence>
-                  {showCancel && <CancelDialog onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
-                </AnimatePresence>
               </>
             )}
 
@@ -290,6 +419,16 @@ function OrderDetailModal({
               </p>
             )}
           </div>
+
+          {/* Cancel Order Modal (portal-style, rendered inside AnimatePresence) */}
+          {showCancel && (
+            <CancelOrderModal
+              order={order}
+              onConfirm={handleCancel}
+              onClose={() => setShowCancel(false)}
+              busy={busy}
+            />
+          )}
         </div>
       </motion.div>
     </AnimatePresence>
@@ -490,7 +629,7 @@ export default function OrdersTable() {
                   {/* PAYMENT METHOD */}
                   <div className="flex-1 flex justify-center">
                     <span className="text-[12px] font-bold bg-[#3A6131]/8 text-[#3A6131] px-2.5 py-1 rounded-full">
-                      {order.payment_method}
+                      {order.payment_method === "QR Code" ? "QR Code" : order.payment_method === "Cash-on-Delivery" ? "Cash on Delivery" : order.payment_method}
                     </span>
                   </div>
 

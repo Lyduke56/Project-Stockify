@@ -5,15 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useParams } from "next/navigation";
 import {
   ShoppingBag,
-  ShoppingCart,
   Search,
   SlidersHorizontal,
   Package,
   ShieldCheck,
   Truck,
   MapPin,
-  Heart,
-  User,
   ChevronRight,
 } from "lucide-react";
 
@@ -22,7 +19,8 @@ import { NfnbProductCard } from "@/components/cards/storefront/nfnb-product-card
 import { ProductModal } from "@/components/modals/storefront/nfnb/nfnb-product-modal";
 import { CheckoutModal } from "@/components/modals/customer/checkout-modal";
 import type { NfnbProduct } from "@/components/cards/storefront/nfnb-product-card";
-import { useCart } from "@/lib/customer/cart-context";
+import { CustomerHeader } from "@/components/headers/customer-header";
+import { toggleFavorite, fetchFavorites } from "@/lib/customer/customer-actions";
 
 // --- DB Hooks ---
 import { createClient } from "@/lib/supabase/client";
@@ -79,6 +77,7 @@ export default function NfnbStorefront() {
   const [tenant, setTenant] = useState<StorefrontTenant | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<NfnbProduct[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,12 +85,9 @@ export default function NfnbStorefront() {
   const [activeCategory, setActiveCategory] = useState("All Products");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<NfnbProduct | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-
-  const { cartCount } = useCart();
 
   // ─── Fetch Data ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -110,14 +106,16 @@ export default function NfnbStorefront() {
         const tenantData = await getStorefrontTenant(user.id);
         if (!tenantData) throw new Error("Could not load store information.");
 
-        const [cats, prods] = await Promise.all([
+        const [cats, prods, favs] = await Promise.all([
           getProductCategories(tenantData.tenant_id),
           getNfnbProducts(tenantData.tenant_id),
+          fetchFavorites()
         ]);
 
         setTenant(tenantData);
         setCategories(cats);
         setProducts(prods);
+        setFavorites(favs);
       } catch (err: any) {
         setError(err.message ?? "Something went wrong.");
       } finally {
@@ -128,13 +126,6 @@ export default function NfnbStorefront() {
     load();
   }, [businessName, router]);
 
-  // ─── Scroll + Slide ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   useEffect(() => {
     const timer = setInterval(
       () => setCurrentSlide((prev) => (prev + 1) % banners.length),
@@ -142,6 +133,20 @@ export default function NfnbStorefront() {
     );
     return () => clearInterval(timer);
   }, []);
+
+  const handleToggleFavorite = async (productId: string) => {
+    const { favorited, error } = await toggleFavorite(productId);
+    if (!error) {
+      setFavorites(prev => 
+        favorited ? [...prev, productId] : prev.filter(id => id !== productId)
+      );
+    }
+  };
+
+  const handleOpenProduct = (product: NfnbProduct) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
 
   // ─── Derived Data ────────────────────────────────────────────────────────────
   const categoryTabs = ["All Products", ...categories.map((c) => c.name)];
@@ -154,11 +159,6 @@ export default function NfnbStorefront() {
       (p.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
-
-  const handleOpenProduct = (product: NfnbProduct) => {
-    setSelectedProduct(product);
-    setIsModalOpen(true);
-  };
 
   // ─── Error State ─────────────────────────────────────────────────────────────
   if (error) {
@@ -210,83 +210,12 @@ export default function NfnbStorefront() {
         </motion.div>
       </div>
 
-      {/* ── Sticky Header ── */}
-      <header
-        className={`w-full sticky top-0 z-40 transition-all duration-300 ${
-          isScrolled ? "bg-[#385E31] shadow-lg" : "bg-[#385E31]"
-        }`}
-      >
-        <div className="w-full max-w-[1470px] mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-4">
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center gap-3 cursor-pointer min-w-max"
-          >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#F7B71D]/10 rounded-xl flex items-center justify-center text-[#F7B71D] overflow-hidden">
-              {tenant?.logo_url ? (
-                <img
-                  src={tenant.logo_url}
-                  alt={tenant.business_name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <ShoppingBag size={28} strokeWidth={2.5} />
-              )}
-            </div>
-            <div className="hidden sm:flex flex-col">
-              <h1 className="text-[#F7B71D] text-[18px] sm:text-[20px] font-extrabold tracking-wide uppercase leading-tight">
-                {tenant?.business_name ?? businessName?.replace(/-/g, " ")}
-              </h1>
-              <p className="text-[#F7B71D]/80 text-[11px] font-medium flex items-center gap-1">
-                <MapPin size={10} /> Manila, PH
-              </p>
-            </div>
-          </motion.div>
-
-          <div className="flex-1 max-w-2xl hidden md:flex items-center relative group">
-            <Search
-              className="absolute left-4 text-[#FFFCEB]/50 group-focus-within:text-[#F7B71D] transition-colors"
-              size={18}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for apparel, bags, accessories..."
-              className="w-full bg-[#2A4725]/50 border border-[#FFFCEB]/10 rounded-[12px] pl-11 pr-4 py-2.5 text-[14px] text-[#FFFCEB] placeholder:text-[#FFFCEB]/50 focus:outline-none focus:border-[#F7B71D]/50 focus:bg-[#2A4725] transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[#F7B71D] hover:bg-[#F7B71D]/10"
-            >
-              <Heart size={22} />
-            </motion.button>
-            <motion.button
-              onClick={() => setIsCheckoutOpen(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[#F7B71D] hover:bg-[#F7B71D]/10 relative"
-            >
-              <ShoppingCart size={22} />
-              {cartCount > 0 && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-[#F7B71D] text-[#385E31] text-[10px] font-bold flex items-center justify-center rounded-full">
-                  {cartCount}
-                </span>
-              )}
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-10 h-10 border-2 border-[#F7B71D]/50 hover:border-[#F7B71D] rounded-[10px] flex items-center justify-center text-[#F7B71D] bg-[#2A4725]/30 ml-2"
-            >
-              <User size={18} />
-            </motion.button>
-          </div>
-        </div>
-      </header>
+      <CustomerHeader 
+        businessName={businessName}
+        tenantLogo={tenant?.logo_url ?? undefined}
+        tenantName={tenant?.business_name}
+        onSearch={setSearchQuery}
+      />
 
       {/* ── Main Content ── */}
       <main className="flex-1 w-full max-w-[1300px] mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-8">
@@ -409,6 +338,8 @@ export default function NfnbStorefront() {
                     <NfnbProductCard
                       product={product}
                       onOpenModal={handleOpenProduct}
+                      isFavorite={favorites.includes(product.product_id)}
+                      onToggleFavorite={handleToggleFavorite}
                     />
                   </motion.div>
                 ))}

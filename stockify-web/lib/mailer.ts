@@ -564,3 +564,102 @@ export async function sendBillingReminderEmail(params: {
 </body></html>`,
   });
 }
+
+// ─── Order Cancellation Notification ─────────────────────────────────────────
+
+export async function sendOrderCancellationEmail(params: {
+  to: string;
+  customerName: string;
+  orderId: string;
+  orderDate: string;
+  totalAmount: number;
+  paymentMethod: string;
+  cancelReason: string;
+  items: { name: string; qty: number; unitPrice: number }[];
+}) {
+  const { to, customerName, orderId, orderDate, totalAmount, paymentMethod, cancelReason, items } = params;
+
+  const itemRows = items
+    .map(
+      (i) =>
+        `<tr>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#333;font-size:13px;">${escHtml(i.name)}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#555;font-size:13px;text-align:center;">×${i.qty}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;color:#385E31;font-size:13px;font-weight:700;text-align:right;">₱${(i.unitPrice * i.qty).toFixed(2)}</td>
+        </tr>`
+    )
+    .join("");
+
+  await sendEmail({
+    to,
+    subject: `❌ Order Cancelled — #${orderId.slice(0, 8).toUpperCase()}`,
+    html: `
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<style>
+  body{font-family:Inter,Arial,sans-serif;background:#f5f5f5;margin:0;padding:0;}
+  .wrap{max-width:600px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);}
+  .hbar{background:#C0392B;padding:24px 32px;}
+  .hbar h1{color:#fff;margin:0;font-size:22px;font-weight:700;}
+  .hbar p{color:#ffcdd2;margin:4px 0 0;font-size:13px;}
+  .body{padding:32px;}
+  .badge{background:#ffebee;border:1.5px solid #C0392B;border-radius:8px;padding:14px 18px;margin:20px 0;color:#C0392B;font-size:13px;font-weight:600;}
+  .info-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:13px;}
+  .info-label{color:#888;font-weight:600;}
+  .info-val{color:#333;font-weight:700;}
+  .reason-box{background:#fff8f8;border-left:4px solid #C0392B;border-radius:4px;padding:14px 18px;margin:20px 0;color:#555;font-size:13px;line-height:1.7;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;}
+  .total-row td{padding-top:10px;font-size:15px;font-weight:900;color:#C0392B;}
+  .foot{background:#f0f0f0;padding:16px 32px;text-align:center;color:#bbb;font-size:11px;}
+</style></head><body>
+<div class="wrap">
+  <div class="hbar"><h1>Stockify</h1><p>Order Cancellation Notice</p></div>
+  <div class="body">
+    <h2 style="color:#C0392B;margin:0 0 6px;font-size:20px;">❌ Your Order Has Been Cancelled</h2>
+    <p style="color:#333;font-size:15px;margin:0 0 16px;">Hi <strong>${escHtml(customerName)}</strong>,</p>
+    <p style="color:#555;font-size:14px;line-height:1.7;margin:0 0 20px;">
+      We regret to inform you that your order <strong>#${escHtml(orderId.slice(0, 8).toUpperCase())}</strong> placed on <strong>${escHtml(orderDate)}</strong> has been <strong>cancelled</strong>.
+    </p>
+
+    <div class="badge">
+      <strong>Order Details</strong>
+    </div>
+
+    <div style="background:#fafafa;border-radius:8px;padding:14px 18px;margin:12px 0;">
+      <div class="info-row">
+        <span class="info-label">Order ID</span>
+        <span class="info-val">#${escHtml(orderId.slice(0, 8).toUpperCase())}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date Placed</span>
+        <span class="info-val">${escHtml(orderDate)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Payment Method</span>
+        <span class="info-val">${escHtml(paymentMethod)}</span>
+      </div>
+    </div>
+
+    <p style="color:#555;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:20px 0 8px;">Items</p>
+    <table>
+      ${itemRows}
+      <tr class="total-row">
+        <td colspan="2">Total</td>
+        <td style="text-align:right;">₱${totalAmount.toFixed(2)}</td>
+      </tr>
+    </table>
+
+    <div class="reason-box">
+      <strong style="display:block;margin-bottom:6px;color:#C0392B;">Reason for Cancellation</strong>
+      ${escHtml(cancelReason || "No reason provided.").replace(/\n/g, "<br/>")}
+    </div>
+
+    <p style="color:#555;font-size:14px;line-height:1.7;">
+      If you have any questions or concerns, please don't hesitate to reach out to our support team.
+    </p>
+    <p style="color:#385E31;font-weight:700;font-size:14px;">The Stockify Team</p>
+  </div>
+  <div class="foot">© ${new Date().getFullYear()} Stockify · This is an automated order notification.</div>
+</div>
+</body></html>`,
+  });
+}

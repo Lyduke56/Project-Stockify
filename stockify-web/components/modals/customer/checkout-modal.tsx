@@ -4,11 +4,21 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ShoppingBag, Minus, Plus, Trash2, CheckCircle, Loader2,
-  CreditCard, Banknote, Smartphone, Lock
+  Banknote, Smartphone, Lock, User, MapPin, Phone, Mail
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/lib/customer/cart-context";
 import { placeOrder, type PaymentMethod } from "@/lib/employee/order-actions";
+
+interface UserProfile {
+  first_name: string | null;
+  last_name: string | null;
+  middle_name: string | null;
+  email: string | null;
+  contact_number: string | null;
+  address: string | null;
+  display_name: string | null;
+}
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -20,6 +30,7 @@ interface CheckoutModalProps {
 export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: CheckoutModalProps) {
   const { cartItems, removeFromCart, updateQuantity, clearCart, cartTotal } = useCart();
   const [userId, setUserId] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("Cash-on-Delivery");
   const [placing, setPlacing] = useState(false);
@@ -32,16 +43,34 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
     setStep("cart");
     setError(null);
     setSuccess(false);
+    setUserProfile(null);
 
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id ?? null);
+    supabase.auth.getUser().then(async ({ data }) => {
+      const uid = data.user?.id ?? null;
+      setUserId(uid);
+
+      if (uid) {
+        const { data: profile } = await supabase
+          .from("users")
+          .select("first_name, last_name, middle_name, email, contact_number, address, display_name")
+          .eq("user_id", uid)
+          .single();
+        setUserProfile(profile ?? null);
+      }
+
       setAuthLoading(false);
     });
   }, [isOpen]);
 
+  const getFullName = (p: UserProfile) => {
+    const parts = [p.first_name, p.middle_name ? p.middle_name[0] + "." : null, p.last_name].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : p.display_name ?? "—";
+  };
+
   const handlePlaceOrder = async () => {
     if (!userId) return;
+    console.log("[CheckoutModal] handlePlaceOrder called. paymentMethod:", paymentMethod);
     setPlacing(true);
     setError(null);
 
@@ -74,7 +103,7 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
 
   const paymentMethods: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
     { id: "Cash-on-Delivery", label: "Cash on Delivery", icon: <Banknote size={18} /> },
-    { id: "QR code",          label: "QR Code Payment", icon: <Smartphone size={18} /> },
+    { id: "QR Code",          label: "QR Code Payment", icon: <Smartphone size={18} /> },
   ];
 
   return (
@@ -290,6 +319,82 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
                         <span className="text-[#3A6131] font-black text-[14px]">Total</span>
                         <span className="text-[#F7B71D] font-black text-[18px]">₱{cartTotal.toFixed(2)}</span>
                       </div>
+                    </div>
+
+                    {/* Delivery / Customer Information */}
+                    <div className="bg-white rounded-2xl border border-[#3A6131]/10 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-6 h-6 bg-[#3A6131]/10 rounded-lg flex items-center justify-center">
+                          <User size={13} className="text-[#3A6131]" />
+                        </div>
+                        <p className="text-[#3A6131]/50 text-[11px] font-black uppercase tracking-wider">Customer Information</p>
+                      </div>
+
+                      {userProfile ? (
+                        <div className="flex flex-col gap-2.5">
+                          {/* Full Name */}
+                          <div className="flex items-start gap-3">
+                            <div className="w-7 h-7 bg-[#3A6131]/6 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                              <User size={12} className="text-[#3A6131]/60" />
+                            </div>
+                            <div>
+                              <p className="text-[#3A6131]/40 text-[10px] font-bold uppercase tracking-wider">Full Name</p>
+                              <p className="text-[#3A6131] text-[13px] font-semibold leading-snug">{getFullName(userProfile)}</p>
+                            </div>
+                          </div>
+
+                          {/* Email */}
+                          {userProfile.email && (
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-[#3A6131]/6 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                                <Mail size={12} className="text-[#3A6131]/60" />
+                              </div>
+                              <div>
+                                <p className="text-[#3A6131]/40 text-[10px] font-bold uppercase tracking-wider">Email</p>
+                                <p className="text-[#3A6131] text-[13px] font-semibold leading-snug break-all">{userProfile.email}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Contact Number */}
+                          {userProfile.contact_number && (
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-[#3A6131]/6 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                                <Phone size={12} className="text-[#3A6131]/60" />
+                              </div>
+                              <div>
+                                <p className="text-[#3A6131]/40 text-[10px] font-bold uppercase tracking-wider">Contact Number</p>
+                                <p className="text-[#3A6131] text-[13px] font-semibold leading-snug">{userProfile.contact_number}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Address */}
+                          {userProfile.address && (
+                            <div className="flex items-start gap-3">
+                              <div className="w-7 h-7 bg-[#3A6131]/6 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                                <MapPin size={12} className="text-[#3A6131]/60" />
+                              </div>
+                              <div>
+                                <p className="text-[#3A6131]/40 text-[10px] font-bold uppercase tracking-wider">Address</p>
+                                <p className="text-[#3A6131] text-[13px] font-semibold leading-snug">{userProfile.address}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Warn if some fields are missing */}
+                          {(!userProfile.contact_number || !userProfile.address) && (
+                            <p className="text-amber-600/70 text-[11px] font-medium mt-1 leading-snug">
+                              ⚠ Some details are missing. Please update your profile so we can reach you.
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-[#3A6131]/40">
+                          <Loader2 size={14} className="animate-spin" />
+                          <span className="text-[12px] font-medium">Loading your information…</span>
+                        </div>
+                      )}
                     </div>
 
                     {error && (

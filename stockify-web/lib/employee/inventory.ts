@@ -1,5 +1,6 @@
 
 import { createClient } from "@/lib/supabase/client";
+import { recalculateYieldsForIngredient } from "@/lib/shared/inventory-utils";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -187,12 +188,27 @@ export async function updateFnbItem(
   input:  Partial<FnbItemInput>
 ): Promise<void> {
   const supabase = createClient();
+  
+  // Get tenant_id first to use in recalculation
+  const { data: item } = await supabase
+    .from("fnb_inventory_items")
+    .select("tenant_id")
+    .eq("item_id", itemId)
+    .single();
+
   const { error } = await supabase
     .from("fnb_inventory_items")
     .update(input)
     .eq("item_id", itemId);
 
   if (error) throw error;
+
+  // Trigger recalculation if stock was updated
+  if (item && (input.stock !== undefined || input.conversion !== undefined)) {
+    recalculateYieldsForIngredient(itemId, item.tenant_id).catch(err => {
+      console.error("[updateFnbItem] Yield recalculation failed:", err);
+    });
+  }
 }
 
 // ✅ Hard delete — permanently removes from DB

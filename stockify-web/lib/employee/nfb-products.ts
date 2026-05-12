@@ -4,6 +4,24 @@
 // Stock is managed directly via nfb_products.quantity.
 
 import { createClient } from "@/lib/supabase/client";
+import { logAuditEvent } from "@/lib/employee/order-actions";
+
+// ─── Audit helper ─────────────────────────────────────────────────
+async function getAuditCtx() {
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data: u } = await supabase
+      .from("users")
+      .select("first_name, last_name, display_name")
+      .eq("user_id", user.id)
+      .single();
+    const userName = u?.first_name && u?.last_name
+      ? `${u.first_name} ${u.last_name}` : u?.display_name ?? user.email ?? "Unknown";
+    return { userId: user.id, userName };
+  } catch { return null; }
+}
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -181,6 +199,21 @@ export async function addNfbProduct(
     }
   }
 
+  // Fire-and-forget audit log
+  getAuditCtx().then((ctx) => {
+    if (!ctx) return;
+    logAuditEvent({
+      tenantId,
+      userId:     ctx.userId,
+      userName:   ctx.userName,
+      action:     "CREATE",
+      entityType: "product",
+      entityId:   product.product_id,
+      entityName: product.name,
+      details:    { sku: product.sku, variants: variants.length },
+    });
+  });
+
   return product;
 }
 
@@ -238,10 +271,24 @@ export async function updateNfbProduct(
       if (optError) throw optError;
     }
   }
+  // Fire-and-forget audit log
+  getAuditCtx().then((ctx) => {
+    if (!ctx) return;
+    logAuditEvent({
+      tenantId,
+      userId:     ctx.userId,
+      userName:   ctx.userName,
+      action:     "UPDATE",
+      entityType: "product",
+      entityId:   productId,
+      entityName: input.name ?? productId,
+      details:    { sku: input.sku, variants: variants.length },
+    });
+  });
 }
 
 // Hard delete — permanently removes product, its variant types/options (via cascade), and its image
-export async function deleteNfbProduct(productId: string, tenantId?: string): Promise<void> {
+export async function deleteNfbProduct(productId: string, tenantId?: string, productName?: string): Promise<void> {
   const supabase = createClient();
 
   // Delete image from storage if one exists
@@ -261,6 +308,22 @@ export async function deleteNfbProduct(productId: string, tenantId?: string): Pr
     .eq("product_id", productId);
 
   if (error) throw error;
+
+  // Fire-and-forget audit log
+  if (tenantId) {
+    getAuditCtx().then((ctx) => {
+      if (!ctx) return;
+      logAuditEvent({
+        tenantId,
+        userId:     ctx.userId,
+        userName:   ctx.userName,
+        action:     "DELETE",
+        entityType: "product",
+        entityId:   productId,
+        entityName: productName ?? productId,
+      });
+    });
+  }
 }
 
 

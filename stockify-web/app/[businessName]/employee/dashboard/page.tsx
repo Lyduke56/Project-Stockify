@@ -6,11 +6,9 @@ import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
 
 import DashboardSection from "@/components/sections/employee/dashboard-home-employee";
-import AnalyticsReportsSection from "@/components/sections/employee/analytics";
 import AuditLogsSection from "@/components/sections/employee/audit-logs";
 import ProductsSection from "@/components/sections/employee/products";
 import OrdersSection from "@/components/sections/employee/orders";
-import StockNotificationsSection from "@/components/sections/employee/stock-notifications";
 import TransactionsSection from "@/components/sections/employee/transactions";  
 import SettingsSection from "@/components/sections/employee/store-settings";
 import IngredientsSection from "@/components/sections/employee/ingredients";
@@ -19,24 +17,22 @@ import IngredientsSection from "@/components/sections/employee/ingredients";
 // This file is the "source of truth" for this type.
 export type SectionKey =
   | "dashboard"
-  | "analytics"
   | "audit-logs"
   | "products"
   | "ingredients"
   | "orders"
-  | "stock-notifications"
   | "transactions"
+  | "analytics"
   | "store-settings";
 
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
-  "dashboard": <DashboardSection />,
-  "analytics": <AnalyticsReportsSection />,
-  "audit-logs": <AuditLogsSection />,
-  "products": <ProductsSection />,
-  "ingredients": <IngredientsSection />,
-  "orders": <OrdersSection />,
-  "stock-notifications": <StockNotificationsSection />,
-  "transactions": <TransactionsSection />,
+  "dashboard":     <DashboardSection />,
+  "audit-logs":    <AuditLogsSection />,
+  "products":      <ProductsSection />,
+  "ingredients":   <IngredientsSection />,
+  "orders":        <OrdersSection />,
+  "transactions":  <TransactionsSection />,
+  "analytics":     <div />, // Analytics is a separate page
   "store-settings": <SettingsSection />
 };
 
