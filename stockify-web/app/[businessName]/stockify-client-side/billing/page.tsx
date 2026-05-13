@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { motion, Variants } from "framer-motion"; // <-- Added imports
 
 import SidebarClient      from "@/components/navbars/sidebar-client";
 import NavbarClient       from "@/components/navbars/navbar-client";
@@ -19,6 +20,30 @@ import type {
   PaymentSubmission,
   PaymentSettings,
 } from "@/types/billing";
+
+// ── Animations ────────────────────────────────────────────────────────────────
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1, // Delay between each section appearing
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut",
+    },
+  },
+};
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -190,13 +215,16 @@ export default function ClientBillingPage() {
 
   if (sessionReady && sessionError) {
     return (
-      <div className="min-h-screen bg-white flex overflow-x-hidden">
+      <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden font-['Inter']">
         <SidebarClient active="billing" />
-        <main className="ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
-          <div className="mx-auto w-full max-w-6xl space-y-6">
+        <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto w-full max-w-6xl space-y-8">
             <NavbarClient />
-            <div className="w-full px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-medium">
-              ⚠ Session error: {sessionError}. Try refreshing the page.
+            <div className="w-full flex items-center gap-3 px-5 py-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm font-medium shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-red-600">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span><strong>Session error:</strong> {sessionError}. Please try refreshing the page.</span>
             </div>
           </div>
         </main>
@@ -207,36 +235,43 @@ export default function ClientBillingPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white flex overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden font-['Inter']">
       <SidebarClient active="billing" />
 
-      <main className="ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
-        <div className="mx-auto w-full max-w-6xl space-y-6">
+      <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <motion.div 
+          className="mx-auto w-full max-w-6xl space-y-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
 
-          <NavbarClient />
+          <motion.div variants={itemVariants}>
+            <NavbarClient />
+          </motion.div>
 
+          {/* Flash Success Message */}
           {successMsg && (
-            <div className="w-full px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs font-medium">
-              ✓ {successMsg}
-            </div>
+            <motion.div variants={itemVariants} className="w-full flex items-center gap-3 px-5 py-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-600">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              {successMsg}
+            </motion.div>
           )}
 
           {/* ── Page Title ── */}
-          <section className="w-full h-12 inline-flex flex-col justify-start items-start gap-[3.23px]">
-            <div className="self-stretch h-7 relative">
-              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800 text-2xl font-bold font-['Inter'] leading-7">
-                Billing & Subscription
-              </div>
-            </div>
-            <div className="self-stretch h-5 relative">
-              <div className="left-5 top-[-1.62px] absolute justify-start text-lime-800/70 text-xs font-normal font-['Inter'] leading-5">
-                Manage your subscription, payment methods, and billing history
-              </div>
-            </div>
-          </section>
+          <motion.header variants={itemVariants} className="flex flex-col gap-1">
+            <h1 className="text-lime-900 text-3xl font-extrabold leading-tight tracking-tight pl-2 mt-4">
+              Billing & Subscription
+            </h1>
+            <p className="text-lime-800/70 text-sm font-medium pl-2">
+              Manage your subscription, payment methods, and billing history
+            </p>
+          </motion.header>
 
           {/* ── Subscription Status & Payment Method ── */}
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <motion.section variants={itemVariants} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <SubscriptionStatusCard
               isLoading={isLoading}
               subStatus={tenant?.subscription_status ?? "—"}
@@ -254,40 +289,46 @@ export default function ClientBillingPage() {
               submissions={submissions}
               onUpload={() => setShowUpload(true)}
             />
-          </section>
+          </motion.section>
 
           {/* ── Submission History ── */}
-          {!isLoading && <SubmissionHistory submissions={submissions} />}
+          <motion.div variants={itemVariants}>
+            {!isLoading && <SubmissionHistory submissions={submissions} />}
+          </motion.div>
 
           {/* ── Billing History Table ── */}
-          <BillingHistoryTable
-            isLoading={isLoading}
-            records={records}
-            tenant={tenant}
-            submissions={submissions}
-          />
+          <motion.div variants={itemVariants}>
+            <BillingHistoryTable
+              isLoading={isLoading}
+              records={records}
+              tenant={tenant}
+              submissions={submissions}
+            />
+          </motion.div>
 
           {/* ── Help Section ── */}
-          <section className="w-full h-10 relative flex items-start gap-2.5">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="#1d4ed8" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"
-              className="mt-0.5 shrink-0">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <div className="flex flex-col gap-[3.23px]">
-              <span className="text-blue-900 text-xs font-medium font-['Inter'] leading-5">
+          <motion.section variants={itemVariants} className="w-full mt-4 p-5 bg-blue-50/60 border border-blue-100 rounded-2xl flex items-start gap-3.5 shadow-sm">
+            <div className="mt-0.5 shrink-0 bg-blue-100 p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-blue-900 text-sm font-bold tracking-wide">
                 Need help with billing?
               </span>
-              <span className="text-blue-700 text-xs font-normal font-['Inter'] leading-4">
+              <span className="text-blue-800/80 text-sm font-medium">
                 Contact our support team at{" "}
-                <a href="mailto:billing@stockify.com" className="underline">billing@stockify.com</a>.
+                <a href="mailto:billing@stockify.com" className="text-blue-600 hover:text-blue-800 hover:underline transition-colors font-semibold">
+                  billing@stockify.com
+                </a>.
               </span>
             </div>
-          </section>
+          </motion.section>
 
-        </div>
+        </motion.div>
       </main>
 
       <ProofUploadModal

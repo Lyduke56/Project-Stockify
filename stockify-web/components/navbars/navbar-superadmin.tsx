@@ -22,7 +22,7 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
   };
 
   return (
-    // 3. Wrap everything in a React Fragment (<>...</>) so we can render the modal alongside the nav
+    
     <>
       <nav className="relative w-full h-[60px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
 
