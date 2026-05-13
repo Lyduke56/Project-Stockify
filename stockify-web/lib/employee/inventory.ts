@@ -153,7 +153,6 @@ export async function fetchFnbItems(tenantId: string): Promise<FnbItem[]> {
     .from("fnb_inventory_items")
     .select(`*, product_categories ( name )`)
     .eq("tenant_id", tenantId)
-    .eq("is_active", true)
     .order("name");
 
   if (error) throw error;
@@ -172,7 +171,25 @@ export async function addFnbItem(
   tenantId: string,
   input:    FnbItemInput
 ): Promise<FnbItem> {
-  const supabase = createClient();
+    const supabase = createClient();
+
+  // Unique check
+  const { data: existing } = await supabase
+    .from("fnb_inventory_items")
+    .select("name, sku")
+    .eq("tenant_id", tenantId)
+    .or(`name.ilike."${input.name.trim()}",sku.ilike."${input.sku.trim()}"`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+      throw new Error(`Item with name "${input.name}" already exists.`);
+    }
+    if (existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+      throw new Error(`Item with SKU "${input.sku}" already exists.`);
+    }
+  }
+
   const { data, error } = await supabase
     .from("fnb_inventory_items")
     .insert({ ...input, tenant_id: tenantId })
@@ -187,7 +204,37 @@ export async function updateFnbItem(
   itemId: string,
   input:  Partial<FnbItemInput>
 ): Promise<void> {
-  const supabase = createClient();
+    const supabase = createClient();
+  
+  // Unique check
+  if (input.name || input.sku) {
+    let filters = [];
+    if (input.name) filters.push(`name.ilike."${input.name.trim()}"`);
+    if (input.sku)  filters.push(`sku.ilike."${input.sku.trim()}"`);
+
+    // We need tenantId to check uniqueness across items of the same tenant
+    const { data: currentItem } = await supabase.from("fnb_inventory_items").select("tenant_id").eq("item_id", itemId).single();
+
+    if (currentItem) {
+      const { data: existing } = await supabase
+        .from("fnb_inventory_items")
+        .select("name, sku")
+        .eq("tenant_id", currentItem.tenant_id)
+        .neq("item_id", itemId)
+        .or(filters.join(","))
+        .maybeSingle();
+
+      if (existing) {
+        if (input.name && existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+          throw new Error(`Item with name "${input.name}" already exists.`);
+        }
+        if (input.sku && existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+          throw new Error(`Item with SKU "${input.sku}" already exists.`);
+        }
+      }
+    }
+  }
+
   
   // Get tenant_id first to use in recalculation
   const { data: item } = await supabase
@@ -214,6 +261,15 @@ export async function updateFnbItem(
 // ✅ Hard delete — permanently removes from DB
 export async function deleteFnbItem(itemId: string): Promise<void> {
   const supabase = createClient();
+
+  // Get tenant_id and find affected products before deletion
+  const { data: item } = await supabase.from("fnb_inventory_items").select("tenant_id").eq("item_id", itemId).single();
+  
+  if (item) {
+    // We need to trigger this to find which products were using it
+    await recalculateYieldsForIngredient(itemId, item.tenant_id);
+  }
+
   const { error } = await supabase
     .from("fnb_inventory_items")
     .delete()
@@ -230,7 +286,6 @@ export async function fetchNfbItems(tenantId: string): Promise<NfbItem[]> {
     .from("nfb_inventory_items")
     .select(`*, product_categories ( name )`)
     .eq("tenant_id", tenantId)
-    .eq("is_active", true)
     .order("name");
 
   if (error) throw error;
@@ -249,7 +304,25 @@ export async function addNfbItem(
   tenantId: string,
   input:    NfbItemInput
 ): Promise<NfbItem> {
-  const supabase = createClient();
+    const supabase = createClient();
+
+  // Unique check
+  const { data: existing } = await supabase
+    .from("nfb_inventory_items")
+    .select("name, sku")
+    .eq("tenant_id", tenantId)
+    .or(`name.ilike."${input.name.trim()}",sku.ilike."${input.sku.trim()}"`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+      throw new Error(`Item with name "${input.name}" already exists.`);
+    }
+    if (existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+      throw new Error(`Item with SKU "${input.sku}" already exists.`);
+    }
+  }
+
   const { data, error } = await supabase
     .from("nfb_inventory_items")
     .insert({ ...input, tenant_id: tenantId })
@@ -264,7 +337,36 @@ export async function updateNfbItem(
   itemId: string,
   input:  Partial<NfbItemInput>
 ): Promise<void> {
-  const supabase = createClient();
+    const supabase = createClient();
+
+  // Unique check
+  if (input.name || input.sku) {
+    let filters = [];
+    if (input.name) filters.push(`name.ilike."${input.name.trim()}"`);
+    if (input.sku)  filters.push(`sku.ilike."${input.sku.trim()}"`);
+
+    const { data: currentItem } = await supabase.from("nfb_inventory_items").select("tenant_id").eq("item_id", itemId).single();
+
+    if (currentItem) {
+      const { data: existing } = await supabase
+        .from("nfb_inventory_items")
+        .select("name, sku")
+        .eq("tenant_id", currentItem.tenant_id)
+        .neq("item_id", itemId)
+        .or(filters.join(","))
+        .maybeSingle();
+
+      if (existing) {
+        if (input.name && existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+          throw new Error(`Item with name "${input.name}" already exists.`);
+        }
+        if (input.sku && existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+          throw new Error(`Item with SKU "${input.sku}" already exists.`);
+        }
+      }
+    }
+  }
+
   const { error } = await supabase
     .from("nfb_inventory_items")
     .update(input)

@@ -194,7 +194,7 @@ export default function CustomerProfilePage() {
               <ActionButton
                 icon={<Heart size={20} />}
                 label="Favorites"
-                onClick={() => router.push(`/${businessName}/customer/food-and-beverage/storefront`)}
+                onClick={() => router.push(`/${businessName}/customer/food-and-beverage/storefront?favorites=true`)}
               />
               <ActionButton
                 icon={<Bell size={20} />}

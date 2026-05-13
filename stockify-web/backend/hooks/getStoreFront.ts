@@ -89,14 +89,20 @@ export const getStorefrontTenant = async (
 // ─── Categories ────────────────────────────────────────────────────────────────
 
 export const getProductCategories = async (
-  tenantId: string
+  tenantId: string,
+  type?: string
 ): Promise<ProductCategory[]> => {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("product_categories")
     .select("category_id, name")
-    .eq("tenant_id", tenantId)
-    .order("name");
+    .eq("tenant_id", tenantId);
+
+  if (type) {
+    query = query.eq("type", type);
+  }
+
+  const { data, error } = await query.order("name");
 
   if (error || !data) return [];
   return data;
@@ -173,8 +179,8 @@ const mapNfnbProducts = (data: any[], hasImage: boolean): NfnbProduct[] =>
           })),
       }));
 
-    const allOptPrices = variants.flatMap((vt) => vt.options.map((o) => o.price));
-    const basePrice = allOptPrices.length > 0 ? Math.min(...allOptPrices) : Number(p.price);
+    const allOptPrices = variants.flatMap((vt) => vt.options.map((o) => o.price)).filter(p => p > 0);
+    const basePrice = allOptPrices.length > 0 ? Math.min(...allOptPrices) : (Number(p.price) || 0);
 
     return {
       product_id:      p.product_id,

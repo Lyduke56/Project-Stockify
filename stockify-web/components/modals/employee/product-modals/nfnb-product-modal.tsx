@@ -30,6 +30,7 @@ export interface NfbProductModalProps {
       unit_of_measure: string;
       unit_cost:       number;
       price:           number;
+      reorder_threshold: number;
       visible:         boolean;
     },
     variants: VariantTypeInput[]
@@ -55,10 +56,18 @@ interface VariantOptionInputExtended {
   price:           string;
   unit_cost:       string;
   stock:           string;
+  reorder_threshold: string;
   unit_of_measure: string;
 }
 
-const EMPTY_OPTION = (): VariantOptionInputExtended => ({ label: "", price: "", unit_cost: "", stock: "", unit_of_measure: "pcs" });
+const EMPTY_OPTION = (): VariantOptionInputExtended => ({ 
+  label: "", 
+  price: "", 
+  unit_cost: "", 
+  stock: "", 
+  reorder_threshold: "0",
+  unit_of_measure: "pcs" 
+});
 
 
 
@@ -119,10 +128,11 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
     sku:             initial?.sku             ?? "",
     description:     initial?.description     ?? "",
     category_id:     initial?.category_id     ?? "",
-    quantity:        String(initial?.quantity  ?? ""),
+    quantity:        initial?.quantity != null ? String(initial.quantity) : "",
     unit_of_measure: initial?.unit_of_measure ?? "pcs",
-    unit_cost:       String(initial?.unit_cost ?? ""),
-    price:           String(initial?.price     ?? ""),
+    unit_cost:       initial?.unit_cost != null ? String(initial.unit_cost) : "",
+    price:           initial?.price != null ? String(initial.price) : "",
+    reorder_threshold: initial?.reorder_threshold != null ? String(initial.reorder_threshold) : "0",
     visible:         initial?.visible         ?? true,
   });
 
@@ -130,27 +140,32 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
     initial?.variants?.map((vt) => ({
       name: vt.name,
       options: vt.options?.map((o) => ({
-        label:           o.label,
-        price:           String(o.price),
-        unit_cost:       String(o.unit_cost ?? ""),
-        stock:           String(o.stock),
-        unit_of_measure: (o as any).unit_of_measure ?? "pcs",
+        label:           o.label ?? "",
+        price:           o.price != null ? String(o.price) : "",
+        unit_cost:       o.unit_cost != null ? String(o.unit_cost) : "",
+        stock:           o.stock != null ? String(o.stock) : "",
+        reorder_threshold: o.reorder_threshold != null ? String(o.reorder_threshold) : "0",
+        unit_of_measure: o.unit_of_measure ?? "pcs",
       })) ?? [],
     })) ?? []
   );
 
-  const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
+  const set = (key: string, val: string | number | boolean | null) => setForm((f) => ({ ...f, [key]: val }));
 
   useEffect(() => {
     fetchCategories(tenantId, "nfb_product")
       .then((data) => {
         setCategories(data);
-        if (mode === "add" && data.length > 0 && !form.category_id)
-          setForm((f) => ({ ...f, category_id: data[0].category_id }));
+        if (mode === "add" && data.length > 0) {
+          setForm((f) => {
+            if (!f.category_id) return { ...f, category_id: data[0].category_id };
+            return f;
+          });
+        }
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoadingCats(false));
-  }, []);
+  }, [tenantId, mode]);
 
   // ── Variant helpers ───────────────────────────────────────────
 
@@ -178,10 +193,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
   // ── Save ──────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.sku.trim()) {
-      setError("Product name and SKU are required.");
-      return;
-    }
+    if (!form.name.trim()) { setError("Product name is required."); return; }
+    if (!form.sku.trim()) { setError("SKU is required."); return; }
+    if (productType === "single" && !form.price) { setError("Price is required for single products."); return; }
 
     const validVariants: VariantTypeInput[] = productType === "with_variants"
       ? variants
@@ -190,11 +204,12 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
             options: vt.options
               .filter((o) => o.label.trim())
               .map((o) => ({
-                label:      o.label,
-                price:      o.price,
-                unit_cost:  o.unit_cost,
-                stock:      o.stock,
-                sku_suffix: "",          // kept for API compatibility
+                label:           o.label,
+                price:           o.price,
+                unit_cost:       o.unit_cost,
+                stock:           o.stock,
+                reorder_threshold: o.reorder_threshold,
+                unit_of_measure: o.unit_of_measure,
               })),
           }))
           .filter((vt) => vt.name.trim() && vt.options.length > 0)
@@ -231,7 +246,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
       if (imageFile) {
         setImageUploading(true);
         // We need a productId to name the file – for new products, use a temp UUID
-        const productId = (initial as any)?.product_id ?? crypto.randomUUID();
+        const productId = initial?.product_id ?? crypto.randomUUID();
         imageUrl = await uploadNfbProductImage(tenantId, productId, imageFile);
         setImageUploading(false);
       }
@@ -247,12 +262,13 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
           unit_of_measure: form.unit_of_measure,
           unit_cost:       finalUnitCost,
           price:           finalPrice,
+          reorder_threshold: Number(form.reorder_threshold) || 0,
           visible:         form.visible,
         },
         validVariants
       );
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "An unknown error occurred.");
       setImageUploading(false);
       setSaving(false);
     }
@@ -425,8 +441,15 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
+                        
+                        if (file.size > 5 * 1024 * 1024) {
+                          setError("Image size exceeds the 5MB limit. Please choose a smaller file.");
+                          return;
+                        }
+
                         setImageFile(file);
                         setImagePreview(URL.createObjectURL(file));
+                        setError(null);
                       }}
                     />
                   </div>
@@ -683,46 +706,18 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     </p>
                   </div>
 
-                  {/* Summary Ranges (Shown for both) */}
-                  <div className="flex gap-4">
-                    <div className="flex-1 bg-[#3A6131]/5 p-4 rounded-2xl border border-[#3A6131]/10">
-                      <div className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-1">Unit Cost (Internal)</div>
-                      <div className="text-lg font-black text-[#3A6131]">
-                        {(() => {
-                           if (!hasVariants) return `₱${Number(form.unit_cost || 0).toFixed(2)}`;
-                           const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
-                           if (validOpts.length === 0) return "₱0.00";
-                           const costs = validOpts.map(o => Number(o.unit_cost || 0));
-                           const min = Math.min(...costs); const max = Math.max(...costs);
-                           return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex-1 bg-[#F7B71D] p-4 rounded-2xl shadow-lg shadow-[#F7B71D]/20">
-                      <div className="text-[10px] font-black uppercase text-[#385E31]/60 tracking-wider mb-1">Base Selling Price</div>
-                      <div className="text-lg font-black text-[#385E31]">
-                        {(() => {
-                           if (!hasVariants) return `₱${Number(form.price || 0).toFixed(2)}`;
-                           const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
-                           if (validOpts.length === 0) return "₱0.00";
-                           const prices = validOpts.map(o => Number(o.price || 0));
-                           const min = Math.min(...prices); const max = Math.max(...prices);
-                           return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── PATH A: No variants — inputs for single item ── */}
+                  {/* ── Dynamic Pricing Cards ── */}
+                  {/* ── PATH A: Single Product Metrics Dashboard ── */}
                   {!hasVariants && (
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white p-5 rounded-[20px] border border-[#3A6131]/10">
-                        <label className={labelStyle}>Unit Cost (Internal)</label>
-                        <div className="flex items-center text-xl font-black text-[#3A6131]">
-                          <span className="mr-2 opacity-30">₱</span>
+                      {/* Top Row: Financials */}
+                      <div className="bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/15">
+                        <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Unit Cost (Internal)</label>
+                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                          <span className="mr-2 opacity-30 text-xl">₱</span>
                           <input
                             type="number"
-                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl"
                             value={form.unit_cost}
                             onChange={(e) => set("unit_cost", e.target.value)}
                             placeholder="0.00"
@@ -730,23 +725,93 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                         </div>
                       </div>
 
-                      <div className="bg-white p-5 rounded-[20px] border border-[#3A6131]/10">
-                        <label className={`${labelStyle}`}>Selling Price</label>
-                        <div className="flex items-center text-xl font-black text-[#385E31]">
-                          <span className="mr-2 opacity-30">₱</span>
+                      <div className="p-5 rounded-[24px] border transition-all bg-[#F7B71D] border-[#F7B71D] shadow-lg shadow-[#F7B71D]/20">
+                        <label className="text-[10px] font-black uppercase tracking-wider mb-2 block text-[#385E31]/60">Base Selling Price</label>
+                        <div className="flex items-center text-2xl font-black text-[#385E31]">
+                          <span className="mr-2 opacity-30 text-xl">₱</span>
                           <input
                             type="number"
-                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black placeholder:text-[#385E31]/30"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl placeholder:text-[#385E31]/30"
                             value={form.price}
                             onChange={(e) => set("price", e.target.value)}
                             placeholder="0.00"
                           />
                         </div>
                       </div>
+
+                      {/* Bottom Row: Inventory Health */}
+                      <div className="bg-white p-5 rounded-[24px] border border-[#3A6131]/20 shadow-sm transition-all hover:border-[#3A6131]/40">
+                        <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Current Stock</label>
+                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                          <input
+                            type="number"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl"
+                            value={form.quantity}
+                            onChange={(e) => set("quantity", e.target.value)}
+                            placeholder="0"
+                          />
+                          <span className="text-xs opacity-40 ml-2 font-bold">{form.unit_of_measure}</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-[24px] border border-[#3A6131]/20 shadow-sm transition-all hover:border-[#3A6131]/40">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider">Low Stock Alert</label>
+                          <PackageCheck size={12} className="text-[#F7B71D]" />
+                        </div>
+                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                          <input
+                            type="number"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl"
+                            value={form.reorder_threshold}
+                            onChange={(e) => set("reorder_threshold", e.target.value)}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* ── PATH B: Has variants — unit cost + base price per option ── */}
+                  {/* ── PATH B: Has variants summary metrics ── */}
+                  {hasVariants && (
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex-1 bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/15">
+                        <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Avg Unit Cost (Internal)</label>
+                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                          <span className="mr-2 opacity-30 text-xl">₱</span>
+                          <span className="text-2xl">
+                            {(() => {
+                              const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
+                              if (validOpts.length === 0) return "0.00";
+                              const costs = validOpts.map(o => Number(o.unit_cost || 0));
+                              const min = Math.min(...costs); const max = Math.max(...costs);
+                              return min === max ? min.toFixed(2) : `${min.toFixed(2)} - ${max.toFixed(2)}`;
+                            })()}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#3A6131]/40 mt-1 font-bold">Cost range across variants</p>
+                      </div>
+
+                      <div className="flex-1 p-5 rounded-[24px] border bg-[#F7B71D] border-[#F7B71D] shadow-lg shadow-[#F7B71D]/20">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#385E31]/60 mb-2 block">Price Range (Storefront)</label>
+                        <div className="flex items-center text-2xl font-black text-[#385E31]">
+                          <span className="mr-2 opacity-30 text-xl">₱</span>
+                          <span className="text-2xl">
+                            {(() => {
+                              const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
+                              if (validOpts.length === 0) return "0.00";
+                              const prices = validOpts.map(o => Number(o.price || 0));
+                              const min = Math.min(...prices); const max = Math.max(...prices);
+                              return min === max ? min.toFixed(2) : `${min.toFixed(2)} - ${max.toFixed(2)}`;
+                            })()}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-[#385E31]/40 mt-1 font-bold">Visible on customer end</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Option rows for variants ── */}
                   {hasVariants && (
                     <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full">
                       {variants.map((vt, ti) => {
@@ -754,55 +819,54 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                         if (!vt.name.trim() || visibleOpts.length === 0) return null;
                         return (
                           <div key={ti} className="bg-white rounded-2xl border border-[#3A6131]/10 overflow-hidden shadow-sm">
-                            {/* Variant type header */}
                             <div className="flex items-center px-4 py-3 bg-[#3A6131]/5 border-b border-[#3A6131]/10">
                               <span className="text-[13px] font-black text-[#3A6131]">{vt.name}</span>
                             </div>
 
-                            {/* Column labels */}
                             <div className="flex gap-2 px-4 pt-2 pb-1">
                               <span className="flex-1 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40">Option</span>
-                              <span className="w-16 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Stock</span>
-                              <span className="w-28 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Unit Cost (₱)</span>
-                              <span className="w-28 text-[10px] font-black uppercase tracking-wider text-[#F7B71D] text-center">Base Price (₱)</span>
+                              <span className="w-14 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Stock</span>
+                              <span className="w-14 text-[10px] font-black uppercase tracking-wider text-[#F7B71D] text-center">Alert</span>
+                              <span className="w-24 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Cost (₱)</span>
+                              <span className="w-24 text-[10px] font-black uppercase tracking-wider text-[#F7B71D] text-center">Price (₱)</span>
                             </div>
 
-                            {/* Option rows */}
                             <div className="space-y-1 px-4 pb-4">
                               {vt.options.map((opt, oi) => {
                                 if (!opt.label.trim()) return null;
                                 return (
                                   <div key={oi} className="flex gap-2 items-center">
-                                    {/* Label — read-only */}
                                     <div className="flex-1 bg-[#3A6131]/5 rounded-xl px-3 py-2 text-[12px] font-bold text-[#3A6131]">
                                       {opt.label}
                                     </div>
-                                    {/* Stock — read-only display */}
-                                    <div className="w-16 bg-[#3A6131]/5 rounded-xl px-3 py-2 text-[12px] font-black text-[#3A6131] text-center">
-                                      {opt.stock || "0"}
-                                    </div>
-                                    {/* Unit Cost — editable (cost) */}
-                                    <div className="w-28 flex items-center bg-[#3A6131]/5 border border-[#3A6131]/15 rounded-xl px-3 py-2">
-                                      <span className="text-[11px] font-black text-[#3A6131]/40 mr-1">₱</span>
-                                      <input
-                                        type="number"
-                                        className="w-full bg-transparent text-[12px] font-black text-[#3A6131] text-center focus:outline-none"
-                                        placeholder="0.00"
-                                        value={opt.unit_cost}
-                                        onChange={(e) => updateVariantOption(ti, oi, "unit_cost", e.target.value)}
-                                      />
-                                    </div>
-                                    {/* Base Selling Price — editable */}
-                                    <div className="w-28 flex items-center bg-[#F7B71D]/15 border border-[#F7B71D]/50 rounded-xl px-3 py-2">
-                                      <span className="text-[11px] font-black text-[#3A6131]/40 mr-1">₱</span>
-                                      <input
-                                        type="number"
-                                        className="w-full bg-transparent text-[12px] font-black text-[#3A6131] text-center focus:outline-none"
-                                        placeholder="0.00"
-                                        value={opt.price}
-                                        onChange={(e) => updateVariantOption(ti, oi, "price", e.target.value)}
-                                      />
-                                    </div>
+                                    <input
+                                      type="number"
+                                      className="w-14 bg-[#3A6131]/5 border border-[#3A6131]/10 rounded-xl px-2 py-1.5 text-[12px] font-black text-[#3A6131] text-center focus:outline-none"
+                                      value={opt.stock}
+                                      onChange={(e) => updateVariantOption(ti, oi, "stock", e.target.value)}
+                                      placeholder="0"
+                                    />
+                                    <input
+                                      type="number"
+                                      className="w-14 bg-white border border-[#F7B71D]/30 rounded-xl px-2 py-1.5 text-[12px] font-black text-[#F7B71D] text-center focus:outline-none"
+                                      value={opt.reorder_threshold}
+                                      onChange={(e) => updateVariantOption(ti, oi, "reorder_threshold", e.target.value)}
+                                      placeholder="0"
+                                    />
+                                    <input
+                                      type="number"
+                                      className="w-24 bg-[#3A6131]/5 border border-[#3A6131]/10 rounded-xl px-2 py-1.5 text-[12px] font-bold text-[#3A6131] text-center focus:outline-none"
+                                      value={opt.unit_cost}
+                                      onChange={(e) => updateVariantOption(ti, oi, "unit_cost", e.target.value)}
+                                      placeholder="0.00"
+                                    />
+                                    <input
+                                      type="number"
+                                      className="w-24 bg-[#F7B71D]/5 border border-[#F7B71D]/30 rounded-xl px-2 py-1.5 text-[12px] font-black text-[#7a5c00] text-center focus:outline-none"
+                                      value={opt.price}
+                                      onChange={(e) => updateVariantOption(ti, oi, "price", e.target.value)}
+                                      placeholder="0.00"
+                                    />
                                   </div>
                                 );
                               })}

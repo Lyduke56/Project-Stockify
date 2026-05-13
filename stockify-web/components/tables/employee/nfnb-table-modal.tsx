@@ -40,7 +40,7 @@ const COLUMNS = [
   { label: "QTY",       className: "flex-[0.8] min-w-[70px]  justify-center text-center"  },
   { label: "UNIT COST", className: "flex-[1]   min-w-[90px]  justify-center text-center"  },
   { label: "PRICE",     className: "flex-[1]   min-w-[90px]  justify-center text-center"  },
-  { label: "VARIANTS",  className: "flex-[1.2] min-w-[100px] justify-center text-center"  },
+  { label: "STATUS",    className: "flex-[1.2] min-w-[110px] justify-center text-center"  },
   { label: "VISIBLE",   className: "w-[70px]   min-w-[70px]  justify-center flex-none text-center" },
   { label: "ACTIONS",   className: "flex-[1]   min-w-[80px]  justify-center text-center"  },
 ];
@@ -68,9 +68,12 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
   const [restockTarget,  setRestockTarget]  = useState<NfbProduct | null>(null);
   const [showCategories, setShowCategories] = useState(false);
 
-  // ── Dropdown state ────────────────────────────────────────────
+  // ── UI popover states ──────────────────────────────────────────
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPos,    setDropdownPos]    = useState<DropdownPos | null>(null);
+  
+  const [variantPopId,   setVariantPopId]   = useState<string | null>(null);
+  const [variantPopPos,  setVariantPopPos]  = useState<DropdownPos | null>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -82,18 +85,24 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
-  // Close dropdown on outside click
+  // Close popovers on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
-      // ignore clicks inside the table or on the fixed dropdown itself
-      const dropdown = document.getElementById("nfb-action-dropdown");
+      
+      const actionDropdown = document.getElementById("nfb-action-dropdown");
+      const variantPop     = document.getElementById("nfb-variant-popover");
+      
       if (
         (tableRef.current && tableRef.current.contains(target)) ||
-        (dropdown && dropdown.contains(target))
+        (actionDropdown && actionDropdown.contains(target)) ||
+        (variantPop && variantPop.contains(target))
       ) return;
+      
       setOpenDropdownId(null);
       setDropdownPos(null);
+      setVariantPopId(null);
+      setVariantPopPos(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -115,6 +124,22 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
       right: window.innerWidth - rect.right,
     });
     setOpenDropdownId(productId);
+    setVariantPopId(null); // close other popovers
+  };
+
+  const handleVariantClick = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
+    if (variantPopId === productId) {
+      setVariantPopId(null);
+      setVariantPopPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setVariantPopPos({
+      top:   rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    setVariantPopId(productId);
+    setOpenDropdownId(null); // close other popovers
   };
 
   // ── Filtering ─────────────────────────────────────────────────
@@ -262,7 +287,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
                   displayPrice = `₱${minPrice.toFixed(2)} - ₱${maxPrice.toFixed(2)}`;
                 }
 
-                const unitCosts = allOptions.map((opt) => Number((opt as any).unit_cost) || 0);
+                const unitCosts = allOptions.map((opt) => Number(opt.unit_cost) || 0);
                 const minUnitCost = Math.min(...unitCosts);
                 const maxUnitCost = Math.max(...unitCosts);
                 if (minUnitCost === maxUnitCost) {
@@ -314,14 +339,37 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
                   {displayPrice}
                 </div>
 
-                {/* Variants summary */}
-                <div className={`flex items-center ${COLUMNS[6].className}`}>
-                  {variantSummary ? (
-                    <span className="text-[10px] font-semibold text-[#3A6131]/60 bg-[#3A6131]/5 px-2 py-0.5 rounded-full truncate max-w-[90px]">
-                      {variantSummary}
-                    </span>
+                {/* Status Column */}
+                <div className={`flex items-center justify-center ${COLUMNS[6].className}`}>
+                  {hasVariants ? (
+                    <button
+                      onClick={(e) => handleVariantClick(e, row.product_id)}
+                      className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all flex items-center gap-1.5 ${
+                        variantPopId === row.product_id 
+                          ? "bg-[#3A6131] text-white border-[#3A6131]" 
+                          : "bg-[#3A6131]/5 text-[#3A6131] border-[#3A6131]/15 hover:bg-[#3A6131]/10"
+                      }`}
+                    >
+                      <RefreshCw size={10} className={variantPopId === row.product_id ? "animate-spin" : ""} />
+                      View Variants
+                    </button>
                   ) : (
-                    <span className="text-[11px] text-[#3A6131]/30">—</span>
+                    (() => {
+                      const threshold = row.reorder_threshold ?? 0;
+                      const currentStock = Number(displayQuantity) || 0;
+                      const isLow = currentStock <= threshold && threshold > 0;
+                      
+                      return (
+                        <div className={`px-2.5 py-0.5 rounded-[40px] text-[10px] font-bold flex items-center gap-1.5 ${
+                          isLow 
+                            ? "bg-amber-50 text-amber-600 border border-amber-100" 
+                            : "bg-[#385E31] text-[#FFFCEB]"
+                        }`}>
+                          {!isLow && <span className="w-1 h-1 rounded-full bg-green-400" />}
+                          {isLow ? "Low Stock" : "Good"}
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
 
@@ -349,7 +397,50 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
         )}
       </div>
 
-      {/* ── Fixed dropdown — renders outside overflow container ── */}
+      {/* ── Fixed variant popover ── */}
+      {variantPopId && variantPopPos && (() => {
+        const row = products.find((p) => p.product_id === variantPopId);
+        if (!row || !row.variants) return null;
+        const threshold = row.reorder_threshold ?? 0;
+        
+        return (
+          <div
+            id="nfb-variant-popover"
+            style={{ position: "fixed", top: variantPopPos.top, right: variantPopPos.right, zIndex: 9999 }}
+            className="w-[280px] bg-white border border-[#3A6131]/20 shadow-2xl rounded-[16px] py-3 overflow-hidden flex flex-col"
+          >
+            <div className="px-4 pb-2 border-b border-[#3A6131]/10 mb-2">
+              <h4 className="text-[11px] font-black text-[#3A6131] uppercase tracking-wider">{row.name} Variants</h4>
+            </div>
+            <div className="max-h-[300px] overflow-y-auto px-2 space-y-1">
+              {row.variants.flatMap(vt => vt.options).map((opt, i) => {
+                const stock = Number(opt.stock) || 0;
+                const variantThreshold = Number(opt.reorder_threshold) || 0;
+                const isLow = stock <= variantThreshold && variantThreshold > 0;
+                return (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-[#3A6131]/5 transition-colors">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-bold text-[#3A6131]">{opt.label}</span>
+                      <span className="text-[10px] text-[#3A6131]/50 font-medium">Qty: {stock} {row.unit_of_measure}</span>
+                    </div>
+                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+                      isLow ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
+                    }`}>
+                      {isLow ? "Low" : "Good"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 px-4 pt-2 border-t border-[#3A6131]/5 flex justify-between items-center bg-[#3A6131]/5 py-2">
+              <span className="text-[10px] font-bold text-[#3A6131]/40 italic">Threshold: {threshold}</span>
+              <button onClick={() => setVariantPopId(null)} className="text-[10px] font-black text-[#3A6131] hover:underline">Close</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Fixed action dropdown ── */}
       {openDropdownId && dropdownPos && (() => {
         const row = products.find((p) => p.product_id === openDropdownId);
         if (!row) return null;

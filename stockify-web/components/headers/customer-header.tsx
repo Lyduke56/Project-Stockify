@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import {
   ShoppingBag,
   ShoppingCart,
@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useCart } from "@/lib/customer/cart-context";
 import { createClient } from "@/lib/supabase/client";
+import { confirmOrderReceipt, reportOrderUnreceived } from "@/lib/employee/order-actions";
+import { AlertCircle, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 
 interface Notification {
   id: string;
@@ -25,6 +27,8 @@ interface Notification {
   message: string;
   created_at: string;
   is_read: boolean;
+  order_id?: string;
+  notification_type?: string;
 }
 
 interface CustomerHeaderProps {
@@ -35,22 +39,28 @@ interface CustomerHeaderProps {
   showSearch?: boolean;
 }
 
-export function CustomerHeader({ 
-  businessName, 
-  tenantLogo, 
+export function CustomerHeader({
+  businessName,
+  tenantLogo,
   tenantName,
   onSearch,
   showSearch = true
 }: CustomerHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const { cartCount } = useCart();
+
+  // Determine the current business category path (fnb or nfnb)
+  const isNfnb = pathname.includes("non-food-and-beverage");
+  const categoryPath = isNfnb ? "non-food-and-beverage" : "food-and-beverage";
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [reportingOrder, setReportingOrder] = useState<{ id: string, order_id: string } | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -74,7 +84,7 @@ export function CustomerHeader({
 
       if (!error && data) {
         setNotifications(data);
-        setUnreadCount(data.filter(n => !n.is_read).length);
+        setUnreadCount(data.filter((n: any) => !n.is_read).length);
       }
     } catch (e) {
       console.log("Notification table not found or error:", e);
@@ -82,21 +92,133 @@ export function CustomerHeader({
   };
 
   useEffect(() => {
-    fetchNotifications();
-    // Poll every 30 seconds for new notifications
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    let channel: any;
+    let isMounted = true;
+
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !isMounted) return;
+
+      // Initial fetch
+      fetchNotifications();
+
+      // Subscribe to real-time changes
+      const channelName = `notifs_${user.id}`;
+      console.log(`[Realtime] Subscribing to customer_notifications for user ${user.id}`);
+
+      // Pre-emptively remove existing channel with same name to avoid "already subscribed" errors
+      await supabase.removeChannel(supabase.channel(channelName));
+
+      if (!isMounted) return;
+
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'customer_notifications',
+          },
+          (payload: any) => {
+            console.log('[Realtime] New row detected:', payload);
+            if (isMounted && payload.new.customer_id === user.id) {
+              const newNotif = payload.new as Notification;
+              setNotifications((prev: Notification[]) => [newNotif, ...prev].slice(0, 10));
+              setUnreadCount((prev: number) => prev + 1);
+            }
+          }
+        )
+        .subscribe((status: any) => {
+          console.log(`[Realtime] Subscription status for user ${user.id}:`, status);
+        });
+    };
+
+    init();
+
+    const pollInterval = setInterval(fetchNotifications, 30000); // Poll every 30s as backup
+
+    return () => {
+      isMounted = false;
+      if (channel) {
+        console.log('[Realtime] Unsubscribing...');
+        supabase.removeChannel(channel);
+      }
+      clearInterval(pollInterval);
+    };
   }, []);
+
+  const updateNotificationDB = async (id: string, type: string, title: string, message: string) => {
+    try {
+      const { error } = await supabase
+        .from("customer_notifications")
+        .update({
+          is_read: true,
+          notification_type: type,
+          title: title,
+          message: message
+        })
+        .eq("id", id);
+      if (error) console.error("[updateNotificationDB] Error:", error);
+    } catch (e) {
+      console.error("[updateNotificationDB] Exception:", e);
+    }
+  };
 
   const markAsRead = async (id: string) => {
     const { error } = await supabase
       .from("customer_notifications")
       .update({ is_read: true })
       .eq("id", id);
-    
+
     if (!error) {
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setNotifications((prev: Notification[]) => prev.map((n: Notification) => n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount((prev: number) => Math.max(0, prev - 1));
+    }
+  };
+
+  const handleConfirmReceived = async (notifId: string, orderId: string) => {
+    const { error } = await confirmOrderReceipt(orderId);
+    if (!error) {
+      const newTitle = "Order Received";
+      const newMessage = `Order #${orderId.slice(0, 8).toUpperCase()} - Received`;
+      await updateNotificationDB(notifId, 'ORDER_RECEIVED', newTitle, newMessage);
+      setNotifications((prev: Notification[]) => prev.map((n: Notification) =>
+        n.id === notifId ? {
+          ...n,
+          notification_type: 'ORDER_RECEIVED',
+          is_read: true,
+          title: newTitle,
+          message: newMessage
+        } : n
+      ));
+      router.refresh();
+    } else {
+      console.error("Confirm Receipt Error:", error);
+      alert("Failed to confirm receipt: " + (typeof error === 'string' ? error : JSON.stringify(error)));
+    }
+  };
+
+  const handleReportUnreceived = async (notifId: string, orderId: string, reason: string) => {
+    const { error } = await reportOrderUnreceived(orderId, reason);
+    if (!error) {
+      const newTitle = "Issue Reported";
+      const newMessage = `Order #${orderId.slice(0, 8).toUpperCase()} - Reported`;
+      await updateNotificationDB(notifId, 'ORDER_REPORTED', newTitle, newMessage);
+      setNotifications((prev: Notification[]) => prev.map((n: Notification) =>
+        n.id === notifId ? {
+          ...n,
+          notification_type: 'ORDER_REPORTED',
+          is_read: true,
+          title: newTitle,
+          message: newMessage
+        } : n
+      ));
+      setReportingOrder(null);
+      router.refresh();
+    } else {
+      console.error("Report Issue Error:", error);
+      alert("Failed to report issue: " + (typeof error === 'string' ? error : JSON.stringify(error)));
     }
   };
 
@@ -107,14 +229,13 @@ export function CustomerHeader({
 
   return (
     <header
-      className={`w-full sticky top-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-[#385E31] shadow-lg" : "bg-[#385E31]"
-      }`}
+      className={`w-full sticky top-0 z-50 transition-all duration-300 ${isScrolled ? "bg-[#385E31] shadow-lg" : "bg-[#385E31]"
+        }`}
     >
       <div className="w-full max-w-[1470px] mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-4">
         {/* Logo Section */}
         <motion.div
-          onClick={() => router.push(`/${businessName}/customer/food-and-beverage/storefront`)}
+          onClick={() => router.push(`/${businessName}/customer/${categoryPath}/storefront`)}
           whileHover={{ scale: 1.02 }}
           className="flex items-center gap-3 cursor-pointer min-w-max"
         >
@@ -186,15 +307,34 @@ export function CustomerHeader({
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {notifications.length > 0 ? (
-                        notifications.map((n) => (
-                          <div 
+                        notifications.map((n: Notification) => (
+                          <div
                             key={n.id}
-                            onClick={() => { markAsRead(n.id); setShowNotifications(false); router.push(`/${businessName}/customer/orders`); }}
-                            className={`p-4 border-b border-[#385E31]/5 hover:bg-[#F7B71D]/5 cursor-pointer transition-colors relative ${!n.is_read ? 'bg-[#F7B71D]/5' : ''}`}
+                            className={`p-4 border-b border-[#385E31]/5 hover:bg-[#F7B71D]/5 transition-colors relative ${!n.is_read ? 'bg-[#F7B71D]/5' : ''}`}
                           >
                             {!n.is_read && <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#F7B71D] rounded-full" />}
-                            <p className="text-[14px] font-bold text-[#385E31] mb-1">{n.title}</p>
-                            <p className="text-[12px] text-[#385E31]/70 line-clamp-2">{n.message}</p>
+                            <div onClick={() => { markAsRead(n.id); setShowNotifications(false); router.push(`/${businessName}/customer/orders`); }} className="cursor-pointer">
+                              <p className="text-[14px] font-bold text-[#385E31] mb-1">{n.title}</p>
+                              <p className="text-[12px] text-[#385E31]/70 line-clamp-2">{n.message}</p>
+                            </div>
+
+                            {(n.notification_type === 'ORDER_DISPATCHED' || n.notification_type === 'DELIVERY_IN_PROGRESS') && n.order_id && (
+                              <div className="flex gap-2 mt-3">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleConfirmReceived(n.id, n.order_id!); }}
+                                  className="flex-1 bg-[#385E31] text-[#F7B71D] py-2 rounded-lg text-[11px] font-black hover:opacity-90 transition-opacity"
+                                >
+                                  I HAVE RECEIVED IT
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setReportingOrder({ id: n.id, order_id: n.order_id! }); setShowNotifications(false); }}
+                                  className="flex-1 border border-[#385E31]/20 text-[#385E31] py-2 rounded-lg text-[11px] font-bold hover:bg-[#385E31]/5 transition-colors"
+                                >
+                                  REPORT ISSUE
+                                </button>
+                              </div>
+                            )}
+
                             <p className="text-[10px] text-[#8C9B85] mt-2 font-medium">
                               {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
@@ -207,7 +347,7 @@ export function CustomerHeader({
                         </div>
                       )}
                     </div>
-                    <button 
+                    <button
                       onClick={() => { setShowNotifications(false); router.push(`/${businessName}/customer/orders`); }}
                       className="w-full p-3 text-center text-[12px] font-bold text-[#385E31] bg-[#F7B71D]/10 hover:bg-[#F7B71D]/20 transition-colors"
                     >
@@ -221,7 +361,7 @@ export function CustomerHeader({
 
           {/* Cart */}
           <motion.button
-            onClick={() => router.push(`/${businessName}/customer/food-and-beverage/storefront?checkout=true`)}
+            onClick={() => router.push(`/${businessName}/customer/${categoryPath}/storefront?checkout=true`)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[#F7B71D] hover:bg-[#F7B71D]/10 relative"
@@ -256,23 +396,26 @@ export function CustomerHeader({
                     className="absolute right-0 mt-3 w-56 bg-[#FFFCEB] border border-[#385E31]/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
                   >
                     <div className="p-2">
-                      <MenuButton 
-                        icon={<User size={16} />} 
-                        label="My Profile" 
-                        onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/profile`); }} 
+                      <MenuButton
+                        icon={<User size={16} />}
+                        label="My Profile"
+                        onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/profile`); }}
                       />
-                      <MenuButton 
-                        icon={<Package size={16} />} 
-                        label="Order History" 
-                        onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/orders`); }} 
+                      <MenuButton
+                        icon={<Package size={16} />}
+                        label="Order History"
+                        onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/orders`); }}
                       />
-                      <MenuButton 
-                        icon={<Heart size={16} />} 
-                        label="My Favorites" 
-                        onClick={() => { setShowUserMenu(false); }} 
+                      <MenuButton
+                        icon={<Heart size={16} />}
+                        label="My Favorites"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          router.push(`/${businessName}/customer/${categoryPath}/storefront?favorites=true`);
+                        }}
                       />
                       <div className="h-px bg-[#385E31]/5 my-2" />
-                      <button 
+                      <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                       >
@@ -286,18 +429,89 @@ export function CustomerHeader({
           </div>
         </div>
       </div>
+
+      <ReportIssueModal
+        isOpen={!!reportingOrder}
+        onClose={() => setReportingOrder(null)}
+        onConfirm={(reason) => reportingOrder && handleReportUnreceived(reportingOrder.id, reportingOrder.order_id, reason)}
+      />
     </header>
   );
 }
 
 function MenuButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] font-bold text-[#385E31] hover:bg-[#F7B71D]/10 rounded-xl transition-colors"
     >
       <span className="text-[#F7B71D]">{icon}</span>
       {label}
     </button>
+  );
+}
+
+function ReportIssueModal({ isOpen, onClose, onConfirm }: { isOpen: boolean, onClose: () => void, onConfirm: (reason: string) => void }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) return;
+    setBusy(true);
+    await onConfirm(reason);
+    setBusy(false);
+    setReason("");
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200]"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-0 flex items-center justify-center p-4 z-[201] pointer-events-none"
+          >
+            <div className="bg-[#FFFCEB] w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl pointer-events-auto p-6 flex flex-col gap-5">
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertTriangle size={24} />
+                <h3 className="text-xl font-black">Report Unreceived Order</h3>
+              </div>
+              <p className="text-[14px] text-[#3A6131]/70 leading-relaxed">
+                Please describe the issue. Our team will investigate why your order hasn't arrived and get back to you shortly.
+              </p>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Ex: The status says delivered but I haven't received anything at my door..."
+                className="w-full h-32 bg-white border border-[#3A6131]/10 rounded-2xl p-4 text-[14px] text-[#3A6131] outline-none focus:border-red-500 transition-colors resize-none"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-3.5 rounded-2xl font-bold text-[14px] text-[#3A6131]/60 hover:bg-[#3A6131]/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={busy || !reason.trim()}
+                  className="flex-1 bg-red-600 text-white py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {busy ? <Loader2 size={18} className="animate-spin" /> : <AlertCircle size={18} />}
+                  Submit Report
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

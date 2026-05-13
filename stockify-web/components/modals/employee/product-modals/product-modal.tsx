@@ -71,8 +71,7 @@ export interface ProductModalProps {
       visible:     boolean;
     },
     recipe:    RecipeInput[],
-    sizes:     SizeInput[],
-    imageFile: File | null
+    sizes:     SizeInput[]
   ) => Promise<void>;
   onClose: () => void;
 }
@@ -183,10 +182,18 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
 
   const handleImageFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
+    
+    // 5MB limit check
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size exceeds the 5MB limit. Please choose a smaller file.");
+      return;
+    }
+
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = (e) => setImagePreview(e.target?.result as string);
     reader.readAsDataURL(file);
+    setError(null); // Clear any previous size errors
   };
 
   const addRecipeRow = () => setRecipe((p) => [...p, { item_id: "", item_type: "fnb", amount: "", unit: "", size_label: sizes.length > 0 ? activeSizeTab : null }]);
@@ -255,15 +262,41 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
       finalUnitCost = costs.length > 0 ? Math.min(...costs) : 0;
       
       const yields = validSizes.map(s => Number(s.max_yield) || 0);
-      finalMaxYield = yields.length > 0 ? Math.max(...yields) : 0;
+      finalMaxYield = yields.reduce((sum, y) => sum + y, 0);
     } else {
       finalUnitCost = getRecipeCostForSize(null);
     }
 
     try {
-      setSaving(true); setError(null);
-      await onSave({ category_id: form.category_id || null, name: form.name.trim(), sku: form.sku.trim().toUpperCase(), description: form.description.trim() || null, image_url: imagePreview && !imageFile ? imagePreview : null, unit_cost: finalUnitCost, price: finalPrice, max_yield: finalMaxYield, visible: form.visible }, validRecipe, validSizes, imageFile);
-    } catch (e: any) { setError(e.message); setSaving(false); }
+      setSaving(true);
+      setError(null);
+
+      let imageUrl = imagePreview && !imageFile ? imagePreview : (initial?.image_url ?? null);
+      if (imageFile) {
+        // Upload image first
+        const idForImage = productId || crypto.randomUUID();
+        imageUrl = await uploadProductImage(tenantId, idForImage, imageFile);
+      }
+
+      await onSave(
+        {
+          category_id: form.category_id || null,
+          name: form.name.trim(),
+          sku: form.sku.trim().toUpperCase(),
+          description: form.description.trim() || null,
+          image_url: imageUrl,
+          unit_cost: finalUnitCost,
+          price: finalPrice,
+          max_yield: finalMaxYield,
+          visible: form.visible
+        },
+        validRecipe,
+        validSizes
+      );
+    } catch (e: any) {
+      setError(e.message);
+      setSaving(false);
+    }
   };
 
   return (
@@ -445,11 +478,11 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                 <motion.div key="s4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                   <div className="mb-6"><span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 04</span><h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Pricing & Metrics</h3><p className="text-[11px] text-[#3A6131]/50 mt-1">Configure pricing and track yields for your product.</p></div>
                   
-                  {/* Summary Ranges */}
-                  <div className="flex gap-4">
-                    <div className="flex-1 bg-[#3A6131]/5 p-4 rounded-2xl border border-[#3A6131]/10">
-                      <div className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-1">Unit Cost (Internal)</div>
-                      <div className="text-lg font-black text-[#3A6131]">
+                  {/* ── Dynamic Metrics Cards ── */}
+                  <div className="flex gap-4 shrink-0">
+                    <div className="flex-1 bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/10">
+                      <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Unit Cost (Internal)</label>
+                      <div className="text-2xl font-black text-[#3A6131]">
                         {(() => {
                            if (productType === "single" || sizes.length === 0) return `₱${getRecipeCostForSize(null).toFixed(2)}`;
                            const costs = sizes.map(s => getRecipeCostForSize(s.label));
@@ -458,47 +491,63 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                            return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
                         })()}
                       </div>
+                      <p className="text-[10px] text-[#3A6131]/40 mt-1 font-bold">Auto-calculated from recipe</p>
                     </div>
-                    <div className="flex-1 bg-[#F7B71D] p-4 rounded-2xl shadow-lg shadow-[#F7B71D]/20">
-                      <div className="text-[10px] font-black uppercase text-[#385E31]/60 tracking-wider mb-1">Base Selling Price</div>
-                      <div className="text-lg font-black text-[#385E31]">
-                        {(() => {
-                           if (productType === "single" || sizes.length === 0) return `₱${Number(form.price || 0).toFixed(2)}`;
-                           const prices = sizes.map(s => Number(s.price || 0));
-                           if (prices.length === 0) return "₱0.00";
-                           const min = Math.min(...prices); const max = Math.max(...prices);
-                           return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
-                        })()}
+
+                    <div className={`flex-1 p-5 rounded-[24px] border transition-all ${productType === "single" ? "bg-[#F7B71D] border-[#F7B71D] shadow-lg shadow-[#F7B71D]/20" : "bg-[#F7B71D]/10 border-[#F7B71D]/30"}`}>
+                      <label className={`text-[10px] font-black uppercase tracking-wider mb-2 block ${productType === "single" ? "text-[#385E31]/60" : "text-[#7a5c00]"}`}>Base Selling Price</label>
+                      <div className={`flex items-center text-2xl font-black ${productType === "single" ? "text-[#385E31]" : "text-[#7a5c00]"}`}>
+                        <span className="mr-2 opacity-30 text-xl">₱</span>
+                        {productType === "single" ? (
+                          <input
+                            type="number"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl placeholder:text-[#385E31]/30"
+                            value={form.price}
+                            onChange={(e) => set("price", e.target.value)}
+                            placeholder="0.00"
+                          />
+                        ) : (
+                          <span className="text-2xl">
+                            {(() => {
+                               const prices = sizes.map(s => Number(s.price || 0));
+                               if (prices.length === 0) return "0.00";
+                               const min = Math.min(...prices); const max = Math.max(...prices);
+                               return min === max ? min.toFixed(2) : `${min.toFixed(2)} - ${max.toFixed(2)}`;
+                            })()}
+                          </span>
+                        )}
                       </div>
+                      {productType === "single" && <p className="text-[10px] text-[#385E31]/40 mt-1 font-bold">Customer selling price</p>}
                     </div>
+
+                    {productType === "single" && (
+                      <div className="flex-1 bg-white p-5 rounded-[24px] border border-[#3A6131]/20 shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider">Target Yield</label>
+                          <span className="text-[9px] font-black text-[#3A6131]/40 uppercase bg-[#3A6131]/5 px-1.5 py-0.5 rounded-md">
+                            Max: {getYieldForSize(null)}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl text-[#3A6131]"
+                          value={form.max_yield}
+                          onChange={(e) => set("max_yield", e.target.value)}
+                          placeholder="0"
+                        />
+                        {Number(form.max_yield) > getYieldForSize(null) && getYieldForSize(null) > 0 && (
+                          <p className="text-[9px] font-bold text-red-500 mt-1 leading-tight">Exceeds inventory capacity!</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 pb-10">
                     {productType === "single" || sizes.length === 0 ? (
-                      <div className="bg-white p-5 rounded-[24px] border border-[#3A6131]/10">
-                        <div className="grid grid-cols-2 gap-6">
-                           <div>
-                             <label className={labelStyle}>Base Selling Price</label>
-                             <div className="flex items-center text-xl font-black text-[#3A6131] border-b border-[#3A6131]/10 pb-1">
-                               <span className="mr-2 opacity-50">₱</span>
-                               <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="0.00" />
-                             </div>
-                           </div>
-                           <div>
-                             <div className="flex justify-between items-center mb-2">
-                               <label className={`${labelStyle} !mb-0`}>Max Yield (Servings)</label>
-                               <span className="text-[10px] font-black text-[#3A6131]/40 uppercase tracking-wider">
-                                 Possible: {getYieldForSize(null)}
-                               </span>
-                             </div>
-                             <div className="flex items-center text-xl font-black text-[#3A6131] border-b border-[#3A6131]/10 pb-1">
-                               <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full" value={form.max_yield} onChange={(e) => set("max_yield", e.target.value)} placeholder="0" />
-                             </div>
-                             {Number(form.max_yield) > getYieldForSize(null) && getYieldForSize(null) > 0 && (
-                               <p className="text-[10px] font-bold text-red-500 mt-1">Warning: Exceeds possible stock yield.</p>
-                             )}
-                           </div>
-                        </div>
+                      <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30">
+                        <PackageCheck size={40} strokeWidth={1} className="mb-2" />
+                        <p className="text-sm font-medium">Single size product</p>
+                        <p className="text-xs">Adjust price and yield in the cards above</p>
                       </div>
                     ) : (
                       sizes.map((s, idx) => (

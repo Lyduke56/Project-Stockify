@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
   X, ShoppingBag, Minus, Plus, Trash2, CheckCircle, Loader2,
   Banknote, Smartphone, Lock, User, MapPin, Phone, Mail
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "@/lib/customer/cart-context";
-import { placeOrder, type PaymentMethod } from "@/lib/employee/order-actions";
+import { placeOrder, uploadProofOfPayment, type PaymentMethod } from "@/lib/employee/order-actions";
+import { fetchTenantSettings, type TenantSettings } from "@/lib/admin/settings-actions";
 
 interface UserProfile {
   first_name: string | null;
@@ -28,6 +30,7 @@ interface CheckoutModalProps {
 }
 
 export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: CheckoutModalProps) {
+  const router = useRouter();
   const { cartItems, removeFromCart, updateQuantity, clearCart, cartTotal } = useCart();
   const [userId, setUserId] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -37,6 +40,8 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"cart" | "payment" | "success">("cart");
+  const [settings, setSettings] = useState<TenantSettings | null>(null);
+  const [popFile, setPopFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -61,7 +66,9 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
 
       setAuthLoading(false);
     });
-  }, [isOpen]);
+
+    fetchTenantSettings(tenantId).then(setSettings);
+  }, [isOpen, tenantId]);
 
   const getFullName = (p: UserProfile) => {
     const parts = [p.first_name, p.middle_name ? p.middle_name[0] + "." : null, p.last_name].filter(Boolean);
@@ -70,6 +77,11 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
 
   const handlePlaceOrder = async () => {
     if (!userId) return;
+    if (paymentMethod === "QR Code" && !popFile) {
+      setError("Please upload your proof of payment for GCash.");
+      return;
+    }
+
     console.log("[CheckoutModal] handlePlaceOrder called. paymentMethod:", paymentMethod);
     setPlacing(true);
     setError(null);
@@ -89,13 +101,21 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
       })),
     });
 
-    setPlacing(false);
-
     if (result.error) {
+      setPlacing(false);
       setError(result.error);
       return;
     }
 
+    if (paymentMethod === "QR Code" && popFile && result.order_id) {
+      const { error: uploadError } = await uploadProofOfPayment(result.order_id, popFile);
+      if (uploadError) {
+        console.error("POP upload failed:", uploadError);
+        // We still placed the order, but POP is missing. Maybe notify user?
+      }
+    }
+
+    setPlacing(false);
     clearCart();
     setStep("success");
     onSuccess?.(result.order_id!);
@@ -172,12 +192,15 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
                       You need to be logged in to place an order. Your cart items will be saved.
                     </p>
                   </div>
-                  <a
-                    href="../../login"
+                  <button
+                    onClick={() => {
+                      const businessName = window.location.pathname.split("/")[1];
+                      router.push(`/${businessName}/login`);
+                    }}
                     className="bg-[#3A6131] text-[#FFFCEB] px-10 py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity shadow-md"
                   >
                     Sign In to Continue
-                  </a>
+                  </button>
                 </div>
 
               ) : step === "success" ? (
@@ -279,7 +302,13 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
                   <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
                     <p className="text-[#3A6131]/60 text-[13px] font-medium">Choose your payment method</p>
                     <div className="flex flex-col gap-3">
-                      {paymentMethods.map((pm) => (
+                      {paymentMethods
+                        .filter(pm => {
+                          if (pm.id === "Cash-on-Delivery") return settings?.cod_enabled !== false;
+                          if (pm.id === "QR Code") return settings?.qr_enabled !== false;
+                          return true;
+                        })
+                        .map((pm) => (
                         <button
                           key={pm.id}
                           onClick={() => setPaymentMethod(pm.id)}
@@ -303,6 +332,26 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
                         </button>
                       ))}
                     </div>
+
+                    {/* GCash QR & Upload */}
+                    {paymentMethod === "QR Code" && settings?.gcash_qr_url && (
+                      <div className="flex flex-col gap-4 p-5 bg-blue-50 rounded-[24px] border border-blue-100 items-center text-center">
+                        <p className="text-blue-800 text-[13px] font-bold">Scan QR to Pay via GCash</p>
+                        <div className="w-48 h-48 bg-white p-2 rounded-2xl shadow-sm">
+                          <img src={settings.gcash_qr_url} alt="GCash QR" className="w-full h-full object-contain" />
+                        </div>
+                        <div className="w-full h-px bg-blue-200" />
+                        <div className="w-full text-left">
+                          <p className="text-blue-800 text-[11px] font-black uppercase tracking-wider mb-2">Upload Proof of Payment</p>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={(e) => setPopFile(e.target.files?.[0] || null)}
+                            className="text-xs text-blue-900 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Order Summary */}
                     <div className="bg-white rounded-2xl border border-[#3A6131]/10 p-4 mt-2">

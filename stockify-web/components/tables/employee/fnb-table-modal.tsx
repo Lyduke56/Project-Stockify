@@ -11,6 +11,7 @@ import {
 import FnbItemModal from "@/components/modals/employee/ingredients-modals/fnb-item-modal";
 import ManageMaterialCategoriesModal from "@/components/modals/employee/ingredients-modals/manage-categories-modal";
 import DeleteItemModal from "@/components/modals/employee/ingredients-modals/delete-item-modal";
+import RestockIngredientModal from "@/components/modals/employee/ingredients-modals/restock-ingredient-modal";
 import { Loader2, RefreshCw } from "lucide-react";
 
 // ── SVG helpers ───────────────────────────────────────────────
@@ -59,6 +60,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
   const [editTarget, setEditTarget] = useState<FnbItem | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FnbItem | null>(null);
   const [showCategories, setShowCategories] = useState(false);
+  const [restockTarget,  setRestockTarget]  = useState<FnbItem | null>(null);
 
   // ── Dropdown state ────────────────────────────────────────
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
@@ -322,6 +324,16 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
           </button>
           <button
             onClick={() => {
+              setRestockTarget(openRow);
+              setOpenDropdownId(null);
+              setDropdownPos(null);
+            }}
+            className="px-3 py-2 hover:bg-[#E5AD24] text-left transition-colors"
+          >
+            Restock
+          </button>
+          <button
+            onClick={() => {
               setDeleteTarget(openRow);
               setOpenDropdownId(null);
               setDropdownPos(null);
@@ -359,6 +371,14 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
       )}
       {showCategories && (
         <ManageMaterialCategoriesModal tenantId={tenantId} type="fnb_ingredient" placeholder="e.g. Powder" onClose={() => { setShowCategories(false); loadItems(); }} />
+      )}
+      {restockTarget && (
+        <RestockIngredientModal 
+          item={restockTarget} 
+          tenantId={tenantId} 
+          onClose={() => setRestockTarget(null)} 
+          onSuccess={loadItems} 
+        />
       )}
     </div>
   );
