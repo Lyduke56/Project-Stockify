@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ShoppingBag,
   Search,
@@ -12,6 +12,7 @@ import {
   Truck,
   MapPin,
   ChevronRight,
+  Phone,
 } from "lucide-react";
 
 // --- Component Imports ---
@@ -30,6 +31,7 @@ import {
   getFnbProducts,
 } from "@/backend/hooks/getStoreFront";
 import type { StorefrontTenant, ProductCategory } from "@/backend/hooks/getStoreFront";
+import { fetchTenantSettings, type TenantSettings } from "@/lib/admin/settings-actions";
 
 // --- Static Banners ---
 const banners = [
@@ -75,6 +77,7 @@ export default function FnbStorefront() {
 
   // ─── Data State ─────────────────────────────────────────────────────────────
   const [tenant, setTenant] = useState<StorefrontTenant | null>(null);
+  const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<FnbProduct[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -106,13 +109,15 @@ export default function FnbStorefront() {
         const tenantData = await getStorefrontTenant(user.id);
         if (!tenantData) throw new Error("Could not load store information.");
 
-        const [cats, prods, favs] = await Promise.all([
-          getProductCategories(tenantData.tenant_id),
+        const [cats, prods, favs, sett] = await Promise.all([
+          getProductCategories(tenantData.tenant_id, "fnb_product"),
           getFnbProducts(tenantData.tenant_id),
-          fetchFavorites()
+          fetchFavorites(),
+          fetchTenantSettings(tenantData.tenant_id)
         ]);
 
         setTenant(tenantData);
+        setSettings(sett);
         setCategories(cats);
         setProducts(prods);
         setFavorites(favs);
@@ -134,6 +139,95 @@ export default function FnbStorefront() {
     return () => clearInterval(timer);
   }, []);
 
+  // ─── Realtime Updates ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!tenant) return;
+    const supabase = createClient();
+
+    // 1. Listen for Main Product yield changes
+    const productChannel = supabase
+      .channel('fnb_products_realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'products',
+        filter: `tenant_id=eq.${tenant.tenant_id}`
+      }, (payload) => {
+        setProducts(prev => {
+          const updated = prev.map(p => 
+            p.product_id === payload.new.product_id 
+              ? { ...p, max_yield: payload.new.max_yield } 
+              : p
+          );
+          // Sync open modal
+          if (selectedProduct?.product_id === payload.new.product_id) {
+            setSelectedProduct(prevModal => prevModal ? { ...prevModal, max_yield: payload.new.max_yield } : null);
+          }
+          return updated;
+        });
+      })
+      .subscribe();
+
+    // 2. Listen for Size-specific yield changes
+    const sizeChannel = supabase
+      .channel('fnb_sizes_realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'product_sizes',
+        filter: `tenant_id=eq.${tenant.tenant_id}`
+      }, (payload) => {
+        setProducts(prev => {
+          const updated = prev.map(p => ({
+            ...p,
+            sizes: p.sizes.map(s => 
+              s.size_id === payload.new.size_id 
+                ? { ...s, max_yield: payload.new.max_yield } 
+                : s
+            )
+          }));
+          
+          // Sync open modal
+          if (selectedProduct) {
+            const hasSize = selectedProduct.sizes.some(s => s.size_id === payload.new.size_id);
+            if (hasSize) {
+              setSelectedProduct(prev => prev ? {
+                ...prev,
+                sizes: prev.sizes.map(s => 
+                  s.size_id === payload.new.size_id 
+                    ? { ...s, max_yield: payload.new.max_yield } 
+                    : s
+                )
+              } : null);
+            }
+          }
+          return updated;
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productChannel);
+      supabase.removeChannel(sizeChannel);
+    };
+  }, [tenant]);
+
+  const searchParams = useSearchParams();
+
+  // Listen for ?checkout=true or ?favorites=true in the URL
+  useEffect(() => {
+    if (searchParams.get("checkout") === "true") {
+      setIsCheckoutOpen(true);
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+    if (searchParams.get("favorites") === "true") {
+      setActiveCategory("My Favorites");
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [searchParams]);
+
   const handleToggleFavorite = async (productId: string) => {
     const { favorited, error } = await toggleFavorite(productId);
     if (!error) {
@@ -149,14 +243,20 @@ export default function FnbStorefront() {
   };
 
   // ─── Derived Data ────────────────────────────────────────────────────────────
-  const categoryTabs = ["All Products", ...categories.map((c) => c.name)];
+  const categoryTabs = ["All Products", "My Favorites", ...categories.map((c) => c.name)];
 
   const filteredProducts = products.filter((p) => {
+    const pCatName = p.category_name || "Uncategorized";
+    const activeCat = activeCategory || "All Products";
+
     const matchesCategory =
-      activeCategory === "All Products" || p.category_name === activeCategory;
+      activeCat === "All Products" || 
+      (activeCat === "My Favorites" ? favorites.includes(p.product_id) : pCatName === activeCat);
+    
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+    
     return matchesCategory && matchesSearch;
   });
 
@@ -184,8 +284,8 @@ export default function FnbStorefront() {
           className="flex items-center gap-2 text-[#F7B71D] text-[11px] sm:text-[12px] font-medium"
         >
           <Clock size={14} />
-          <span className="hidden sm:inline">Open: 10:00 AM - 9:00 PM</span>
-          <span className="sm:hidden">10AM - 9PM</span>
+          <span className="hidden sm:inline">Open: {settings?.operating_hours || "10:00 AM - 9:00 PM"}</span>
+          <span className="sm:hidden">{settings?.operating_hours || "10AM - 9PM"}</span>
         </motion.div>
         <div className="w-px h-4 bg-[#F7B71D]/30" />
         <motion.div
@@ -194,8 +294,8 @@ export default function FnbStorefront() {
           transition={{ delay: 0.2 }}
           className="flex items-center gap-2 text-[#F7B71D] text-[11px] sm:text-[12px] font-medium"
         >
-          <Star size={14} fill="#F7B71D" />
-          <span>4.8 Rating</span>
+          <Phone size={14} />
+          <span>{settings?.contact_number || "+63 900 000 0000"}</span>
         </motion.div>
         <div className="w-px h-4 bg-[#F7B71D]/30" />
         <motion.div
@@ -315,16 +415,12 @@ export default function FnbStorefront() {
               </div>
             ) : filteredProducts.length > 0 ? (
               <motion.div
+                key={`grid-${activeCategory}`}
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pb-12"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: { opacity: 0 },
-                  visible: {
-                    opacity: 1,
-                    transition: { staggerChildren: 0.05 },
-                  },
-                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
               >
                 {filteredProducts.map((product) => (
                   <motion.div
@@ -346,8 +442,10 @@ export default function FnbStorefront() {
               </motion.div>
             ) : (
               <motion.div
+                key="empty-state"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="w-full flex flex-col items-center justify-center py-20 text-[#3A6131]/50"
               >
                 <Search size={48} className="mb-4 opacity-20" />

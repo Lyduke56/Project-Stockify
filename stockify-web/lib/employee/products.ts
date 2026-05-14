@@ -139,7 +139,7 @@ export async function fetchProducts(tenantId: string): Promise<Product[]> {
       product_sizes   ( size_id, label, price, is_default, sort_order, max_yield, unit_cost )
     `)
     .eq("tenant_id", tenantId)
-    .eq("is_active", true)
+    
     .order("name");
 
   if (error) throw error;
@@ -163,6 +163,23 @@ export async function addProduct(
   sizes:    SizeInput[]
 ): Promise<Product> {
   const supabase = createClient();
+
+  // Check for unique name/sku
+  const { data: existing } = await supabase
+    .from("products")
+    .select("name, sku")
+    .eq("tenant_id", tenantId)
+    .or(`name.ilike."${input.name.trim()}",sku.ilike."${input.sku.trim()}"`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+      throw new Error(`Product with name "${input.name}" already exists.`);
+    }
+    if (existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+      throw new Error(`Product with SKU "${input.sku}" already exists.`);
+    }
+  }
 
   const { data: product, error: productError } = await supabase
     .from("products")
@@ -206,9 +223,11 @@ export async function addProduct(
 
   // Recalculate yield for F&B products
   if (recipe.length > 0) {
-    recalculateMaxYield(product.product_id, tenantId).catch(err => {
+    try {
+      await recalculateMaxYield(product.product_id, tenantId);
+    } catch (err) {
       console.error("[addProduct] Yield recalculation failed:", err);
-    });
+    }
   }
 
   // Fire-and-forget audit log
@@ -237,6 +256,30 @@ export async function updateProduct(
   sizes:     SizeInput[]
 ): Promise<void> {
   const supabase = createClient();
+
+  // Check for unique name/sku if they are being updated
+  if (input.name || input.sku) {
+    let orFilters = [];
+    if (input.name) orFilters.push(`name.ilike."${input.name.trim()}"`);
+    if (input.sku)  orFilters.push(`sku.ilike."${input.sku.trim()}"`);
+
+    const { data: existing } = await supabase
+      .from("products")
+      .select("name, sku")
+      .eq("tenant_id", tenantId)
+      .neq("product_id", productId)
+      .or(orFilters.join(","))
+      .maybeSingle();
+
+    if (existing) {
+      if (input.name && existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+        throw new Error(`Product with name "${input.name}" already exists.`);
+      }
+      if (input.sku && existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+        throw new Error(`Product with SKU "${input.sku}" already exists.`);
+      }
+    }
+  }
 
   const { error: productError } = await supabase
     .from("products")
@@ -275,9 +318,11 @@ export async function updateProduct(
 
   // Recalculate yield for F&B products
   if (recipe.length > 0) {
-    recalculateMaxYield(productId, tenantId).catch(err => {
+    try {
+      await recalculateMaxYield(productId, tenantId);
+    } catch (err) {
       console.error("[updateProduct] Yield recalculation failed:", err);
-    });
+    }
   }
 
   // Fire-and-forget audit log
@@ -303,6 +348,13 @@ export async function deleteProduct(productId: string, tenantId?: string, produc
     .delete()
     .eq("product_id", productId);
   if (error) throw error;
+
+  // Delete image from storage if tenantId is provided
+  if (tenantId) {
+    await deleteProductImage(tenantId, productId).catch(err => {
+      console.error("[deleteProduct] Image deletion failed:", err);
+    });
+  }
 
   // Fire-and-forget audit log
   if (tenantId) {
@@ -364,6 +416,9 @@ export async function uploadProductImage(
   productId: string,
   file:      File
 ): Promise<string> {
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("File size exceeds 5MB limit.");
+  }
   const supabase = createClient();
   const ext      = file.name.split(".").pop() ?? "jpg";
   const filePath = `${tenantId}/${productId}.${ext}`;

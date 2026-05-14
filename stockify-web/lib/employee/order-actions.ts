@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { recalculateMaxYield, validateInventoryForOrder, recalculateNfbProductQuantity } from "@/lib/shared/inventory-utils";
 
 // ─── Shared audit context helper ──────────────────────────────────────────────
 // Returns userId + userName for the current session. Fire-and-forget safe.
@@ -22,7 +23,7 @@ async function getAuditContext(): Promise<{ userId: string; userName: string } |
   } catch { return null; }
 }
 
-export type FulfillmentStatus = "Pending" | "Processing" | "Dispatched" | "Received" | "Cancelled";
+export type FulfillmentStatus = "Pending" | "Processing" | "Dispatched" | "Received" | "Cancelled" | "Reported";
 export type PaymentMethod    = "QR Code" | "Cash-on-Delivery";
 export type PaymentStatus    = "Pending" | "Confirmed";
 
@@ -48,6 +49,14 @@ export interface Order {
   cancel_reason:      string | null;
   created_at:         string;
   items?:             OrderItem[];
+  // New columns
+  proof_of_payment_url?: string | null;
+  delivery_proof_url?:   string | null;
+  deliverer_name?:       string | null;
+  delivery_id?:          string | null;
+  customer_confirmed_received?: boolean;
+  received_at?:          string | null;
+  stock_deducted?:       boolean;
 }
 
 export interface Transaction {
@@ -83,6 +92,8 @@ export async function fetchOrders(tenantId: string): Promise<Order[]> {
     .select(`
       order_id, tenant_id, customer_id, fulfillment_status,
       payment_method, payment_status, total_amount, cancel_reason, created_at,
+      proof_of_payment_url, delivery_proof_url, deliverer_name, delivery_id,
+      customer_confirmed_received, received_at, stock_deducted,
       users!orders_customer_id_fkey ( first_name, last_name, display_name )
     `)
     .eq("tenant_id", tenantId)
@@ -93,7 +104,7 @@ export async function fetchOrders(tenantId: string): Promise<Order[]> {
     return [];
   }
 
-  return data.map((o) => {
+  return data.map((o: any) => {
     const u = o.users as any;
     const customerName =
       u?.first_name && u?.last_name
@@ -111,8 +122,55 @@ export async function fetchOrders(tenantId: string): Promise<Order[]> {
       total_amount:       Number(o.total_amount),
       cancel_reason:      o.cancel_reason ?? null,
       created_at:         o.created_at,
+      proof_of_payment_url: o.proof_of_payment_url,
+      delivery_proof_url:   o.delivery_proof_url,
+      deliverer_name:       o.deliverer_name,
+      delivery_id:          o.delivery_id,
+      customer_confirmed_received: o.customer_confirmed_received,
+      received_at:          o.received_at,
     };
   });
+}
+
+export async function fetchOrderById(orderId: string): Promise<Order | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`
+      order_id, tenant_id, customer_id, fulfillment_status,
+      payment_method, payment_status, total_amount, cancel_reason, created_at,
+      proof_of_payment_url, delivery_proof_url, deliverer_name, delivery_id,
+      customer_confirmed_received, received_at, stock_deducted,
+      users!orders_customer_id_fkey ( first_name, last_name, display_name )
+    `)
+    .eq("order_id", orderId)
+    .single();
+
+  if (error || !data) { console.error("fetchOrderById error:", error); return null; }
+
+  const u = data.users as any;
+  const customerName = u?.first_name && u?.last_name
+    ? `${u.first_name} ${u.last_name}`
+    : u?.display_name ?? "Unknown Customer";
+
+  return {
+    order_id:             data.order_id,
+    tenant_id:            data.tenant_id,
+    customer_id:          data.customer_id,
+    customer_name:        customerName,
+    fulfillment_status:   data.fulfillment_status,
+    payment_method:       data.payment_method,
+    payment_status:       data.payment_status,
+    total_amount:         Number(data.total_amount),
+    cancel_reason:        data.cancel_reason,
+    created_at:           data.created_at,
+    proof_of_payment_url: data.proof_of_payment_url,
+    delivery_proof_url:   data.delivery_proof_url,
+    deliverer_name:       data.deliverer_name,
+    delivery_id:          data.delivery_id,
+    customer_confirmed_received: data.customer_confirmed_received,
+    received_at:          data.received_at,
+  };
 }
 
 // ─── Fetch Order Items (resilient) ────────────────────────────────────────────
@@ -126,7 +184,7 @@ export async function fetchOrderItems(orderId: string): Promise<OrderItem[]> {
     .eq("order_id", orderId);
 
   if (!error && data) {
-    return data.map((i) => ({
+    return data.map((i: any) => ({
       order_item_id: i.order_item_id,
       item_id:       i.item_id,
       item_type:     i.item_type  ?? "unknown",
@@ -146,7 +204,7 @@ export async function fetchOrderItems(orderId: string): Promise<OrderItem[]> {
 
   if (fbErr || !fallback) { console.error("fetchOrderItems fallback error:", fbErr); return []; }
 
-  return fallback.map((i) => ({
+  return fallback.map((i: any) => ({
     order_item_id: i.order_item_id,
     item_id:       i.item_id,
     item_type:     "unknown",
@@ -161,44 +219,77 @@ export async function fetchOrderItems(orderId: string): Promise<OrderItem[]> {
 
 export async function updateFulfillmentStatus(
   orderId: string,
-  status: FulfillmentStatus
+  status: FulfillmentStatus,
+  extraData?: {
+    deliverer_name?: string | null;
+    delivery_id?: string | null;
+    delivery_proof_url?: string | null;
+    cancel_reason?: string | null;
+    remarks?: string | null;
+  }
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
 
   // Fetch current order state
   const { data: ord, error: fetchErr } = await supabase
     .from("orders")
-    .select("tenant_id, customer_id, fulfillment_status, users!orders_customer_id_fkey(display_name, first_name, last_name)")
+    .select("tenant_id, customer_id, fulfillment_status, stock_deducted, users!orders_customer_id_fkey(display_name, first_name, last_name)")
     .eq("order_id", orderId)
     .single();
 
   if (fetchErr || !ord) return { error: fetchErr?.message ?? "Order not found." };
 
-  // 1. If moving to "Dispatched" from "Pending" or "Processing", deduct stock
-  // This ensures stock is deducted only once when it leaves the store.
-  if (status === "Dispatched" && (ord.fulfillment_status === "Pending" || ord.fulfillment_status === "Processing")) {
+  // 1. If moving to "Dispatched" and stock hasn't been deducted yet
+  if (status === "Dispatched" && !ord.stock_deducted) {
     const { error: deductErr } = await deductOrderStock(orderId, ord.tenant_id);
     if (deductErr) return { error: deductErr };
+    
+    // Mark as deducted in the same update
+    await supabase.from("orders").update({ stock_deducted: true }).eq("order_id", orderId);
   }
 
   const { error } = await supabase
     .from("orders")
-    .update({ fulfillment_status: status })
+    .update({ 
+      fulfillment_status: status,
+      ...extraData
+    })
     .eq("order_id", orderId);
 
-  // Send notification to customer
-  if (!error) {
-    supabase.from("customer_notifications").insert({
-      customer_id: ord.customer_id,
-      tenant_id:   ord.tenant_id,
-      title:       `Order Update: ${status}`,
-      message:     `Your order #${orderId.slice(0, 8).toUpperCase()} is now ${status.toLowerCase()}.`,
-    }).then(); // Fire-and-forget
+  if (status === "Received" && !error) {
+    // Trigger full completion logic (transaction record, etc)
+    const { error: completionError } = await processAndCompleteOrder(orderId, extraData?.remarks ?? "");
+    if (completionError) return { error: completionError };
   }
 
-  // Fire-and-forget audit log
+  // Fire-and-forget audit log & notifications
   if (!error) {
-    getAuditContext().then((ctx) => {
+    // 1. Create Customer Notification
+    let notifTitle = "";
+    let notifMsg = "";
+    if (status === "Processing") {
+      notifTitle = "Order Processing";
+      notifMsg = `Your order #${orderId.slice(0, 8).toUpperCase()} is now being prepared!`;
+    } else if (status === "Dispatched") {
+      notifTitle = "Order Dispatched";
+      notifMsg = `Your order #${orderId.slice(0, 8).toUpperCase()} has been dispatched. ${extraData?.deliverer_name ? `Rider: ${extraData.deliverer_name}` : ""}`;
+    }
+
+    if (notifTitle) {
+      supabase.from("customer_notifications").insert({
+        customer_id: ord.customer_id,
+        tenant_id:   ord.tenant_id,
+        order_id:    orderId,
+        title:       notifTitle,
+        message:     notifMsg,
+        notification_type: `ORDER_${status.toUpperCase()}`
+      }).then(({ error: nErr }: { error: any }) => {
+        if (nErr) console.error("[updateFulfillmentStatus] Notif error:", nErr);
+      });
+    }
+
+    // 2. Audit Log
+    getAuditContext().then((ctx: { userId: string; userName: string } | null) => {
       if (!ctx) return;
       const u = ord.users as any;
       const customerName = u?.first_name && u?.last_name
@@ -229,16 +320,18 @@ export async function cancelOrder(
 
   const { data: ord, error: fetchErr } = await supabase
     .from("orders")
-    .select("tenant_id, customer_id, fulfillment_status, users!orders_customer_id_fkey(display_name, first_name, last_name)")
+    .select("tenant_id, customer_id, fulfillment_status, stock_deducted, users!orders_customer_id_fkey(display_name, first_name, last_name)")
     .eq("order_id", orderId)
     .single();
 
   if (fetchErr || !ord) return { error: fetchErr?.message ?? "Order not found." };
 
-  // If cancelling an order that was already Dispatched or Received, restore stock
-  if (ord.fulfillment_status === "Dispatched" || ord.fulfillment_status === "Received") {
+  // If cancelling an order that was already Dispatched, Received, or Reported, restore stock
+  if (ord.fulfillment_status === "Dispatched" || ord.fulfillment_status === "Received" || ord.fulfillment_status === "Reported") {
     console.log(`[cancelOrder] Restoring stock for ${ord.fulfillment_status} order:`, orderId);
     await restoreOrderStock(orderId, ord.tenant_id);
+    // Reset flag
+    await supabase.from("orders").update({ stock_deducted: false }).eq("order_id", orderId);
   }
 
   const { error } = await supabase
@@ -248,14 +341,17 @@ export async function cancelOrder(
 
   if (!error && ord) {
     // Notify customer about cancellation
-    supabase.from("customer_notifications").insert({
+    const { error: notifError } = await supabase.from("customer_notifications").insert({
       customer_id: ord.customer_id,
       tenant_id:   ord.tenant_id,
       title:       "Order Cancelled",
       message:     `Your order #${orderId.slice(0, 8).toUpperCase()} has been cancelled. ${reason ? `Reason: ${reason}` : ""}`,
-    }).then();
+    });
+    if (notifError) {
+      console.error("[cancelOrder] Notification failed:", notifError);
+    }
 
-    getAuditContext().then((ctx) => {
+    getAuditContext().then((ctx: any) => {
       if (!ctx) return;
       const u = ord.users as any;
       const customerName = u?.first_name && u?.last_name
@@ -268,7 +364,7 @@ export async function cancelOrder(
         entityType: "order",
         entityId:   orderId,
         entityName: `Order #${orderId.slice(0, 8).toUpperCase()} (${customerName})`,
-        details:    { reason: reason?.trim() || null },
+        details:    { reason: reason || "No reason provided" },
       });
     });
   }
@@ -288,31 +384,17 @@ export async function deductOrderStock(orderId: string, tenantId: string) {
     let type = item.item_type;
     const qty = item.quantity;
 
-    // Guess type if unknown
+    // Guess type if unknown (For F&B system, we only care about recipes and direct inventory)
     if (type === "unknown") {
-      const { data: nfbP } = await supabase.from("nfb_products").select("product_id").eq("product_id", item.item_id).single();
-      if (nfbP) type = "nfb_single";
+      const { data: fnbR } = await supabase.from("product_recipes").select("product_id").eq("product_id", item.item_id).limit(1).single();
+      if (fnbR) type = "fnb_single";
       else {
-        const { data: opt } = await supabase.from("nfb_variant_options").select("option_id").eq("option_id", item.item_id).single();
-        if (opt) type = "nfb_variant";
-        else {
-          const { data: fnbR } = await supabase.from("product_recipes").select("product_id").eq("product_id", item.item_id).limit(1).single();
-          if (fnbR) type = "fnb_single";
-          else {
-            const { data: fnbI } = await supabase.from("fnb_inventory_items").select("item_id").eq("item_id", item.item_id).single();
-            if (fnbI) type = "fnb_inventory";
-          }
-        }
+        const { data: fnbI } = await supabase.from("fnb_inventory_items").select("item_id").eq("item_id", item.item_id).single();
+        if (fnbI) type = "fnb_inventory";
       }
     }
 
-    if (type === "nfb_single") {
-      const { data: prod } = await supabase.from("nfb_products").select("name, quantity").eq("product_id", item.item_id).single();
-      if (!prod || prod.quantity < qty) return { error: `Insufficient stock for ${prod?.name || "Product"}` };
-    } else if (type === "nfb_variant") {
-      const { data: opt } = await supabase.from("nfb_variant_options").select("label, stock").eq("option_id", item.item_id).single();
-      if (!opt || opt.stock < qty) return { error: `Insufficient stock for variant ${opt?.label || "Variant"}` };
-    } else if (type === "fnb_inventory") {
+    if (type === "fnb_inventory") {
       const { data: inv } = await supabase.from("fnb_inventory_items").select("name, stock").eq("item_id", item.item_id).single();
       if (!inv || inv.stock < qty) return { error: `Insufficient stock for ${inv?.name || "Ingredient"}` };
     } else if (type === "fnb_single" || type === "fnb_size") {
@@ -345,34 +427,14 @@ export async function deductOrderStock(orderId: string, tenantId: string) {
     let type = item.item_type;
     const qty = item.quantity;
 
-    // RESILIENCE: If type is unknown, try to guess it by checking all possible tables
+    // RESILIENCE: If type is unknown, try to guess it (F&B Only)
     if (type === "unknown") {
-      console.warn(`[deductOrderStock] Item type unknown for ${item.item_id}. Guessing...`);
-      
-      // 1. Check NF&B Products
-      const { data: nfbP } = await supabase.from("nfb_products").select("product_id").eq("product_id", item.item_id).single();
-      if (nfbP) { type = "nfb_single"; }
+      const { data: fnbR } = await supabase.from("product_recipes").select("product_id").eq("product_id", item.item_id).limit(1).single();
+      if (fnbR) { type = "fnb_single"; }
       else {
-        // 2. Check NF&B Variants
-        const { data: opt } = await supabase.from("nfb_variant_options").select("option_id").eq("option_id", item.item_id).single();
-        if (opt) { type = "nfb_variant"; }
-        else {
-          // 3. Check F&B Recipes
-          const { data: fnbR } = await supabase.from("product_recipes").select("product_id").eq("product_id", item.item_id).limit(1).single();
-          if (fnbR) { type = "fnb_single"; }
-          else {
-            // 4. Check F&B Inventory Items directly
-            const { data: fnbI } = await supabase.from("fnb_inventory_items").select("item_id").eq("item_id", item.item_id).single();
-            if (fnbI) { type = "fnb_inventory"; }
-            else {
-              // 5. Check generic products table
-              const { data: genP } = await supabase.from("products").select("product_id").eq("product_id", item.item_id).single();
-              if (genP) { type = "fnb_single"; }
-            }
-          }
-        }
+        const { data: fnbI } = await supabase.from("fnb_inventory_items").select("item_id").eq("item_id", item.item_id).single();
+        if (fnbI) { type = "fnb_inventory"; }
       }
-      console.log(`[deductOrderStock] Guessed type for ${item.item_id}: ${type}`);
     }
 
     if (type === "unknown") {
@@ -382,11 +444,18 @@ export async function deductOrderStock(orderId: string, tenantId: string) {
 
     // --- DEDUCTION LOGIC ---
     if (type === "nfb_single") {
-      const { data: prod } = await supabase.from("nfb_products").select("quantity").eq("product_id", item.item_id).single();
+      const { data: prod } = await supabase.from("nfb_products").select("quantity").eq("product_id", item.item_id).eq("tenant_id", tenantId).single();
       if (prod) {
         console.log(`[deductOrderStock] Deducting ${qty} from nfb_products: ${item.item_id}`);
-        const { error } = await supabase.from("nfb_products").update({ quantity: prod.quantity - qty }).eq("product_id", item.item_id);
-        if (error) console.error("[deductOrderStock] nfb_products update error:", error);
+        await supabase.from("nfb_products").update({ quantity: Math.max(0, prod.quantity - qty) }).eq("product_id", item.item_id);
+      }
+    } else if (type === "nfb_variant") {
+      const { data: opt } = await supabase.from("nfb_variant_options").select("product_id, stock").eq("option_id", item.item_id).single();
+      if (opt) {
+        console.log(`[deductOrderStock] Deducting ${qty} from nfb_variant_options: ${item.item_id}`);
+        await supabase.from("nfb_variant_options").update({ stock: Math.max(0, opt.stock - qty) }).eq("option_id", item.item_id);
+        // Sync parent product total quantity
+        await recalculateNfbProductQuantity(opt.product_id, tenantId);
       }
     } else if (type === "fnb_inventory") {
       const { data: inv } = await supabase.from("fnb_inventory_items").select("stock").eq("item_id", item.item_id).single();
@@ -394,16 +463,6 @@ export async function deductOrderStock(orderId: string, tenantId: string) {
         console.log(`[deductOrderStock] Deducting ${qty} from fnb_inventory_items (direct): ${item.item_id}`);
         const { error } = await supabase.from("fnb_inventory_items").update({ stock: inv.stock - qty }).eq("item_id", item.item_id);
         if (error) console.error("[deductOrderStock] fnb_inventory_items direct update error:", error);
-      }
-    } else if (type === "nfb_variant") {
-      const { data: opt, error: fetchErr } = await supabase.from("nfb_variant_options").select("stock").eq("option_id", item.item_id).single();
-      if (opt) {
-        console.log(`[deductOrderStock] Deducting ${qty} from nfb_variant_options: ${item.item_id} (Current: ${opt.stock})`);
-        const { error: updErr } = await supabase.from("nfb_variant_options").update({ stock: opt.stock - qty }).eq("option_id", item.item_id);
-        if (updErr) console.error(`[deductOrderStock] Update FAILED for nfb_variant_options:`, updErr);
-        else console.log(`[deductOrderStock] Update SUCCESS for nfb_variant_options`);
-      } else {
-        console.error(`[deductOrderStock] Could not find nfb_variant: ${item.item_id}`, fetchErr);
       }
     } else if (type === "fnb_single" || type === "fnb_size") {
       let productId = item.item_id;
@@ -444,19 +503,25 @@ export async function deductOrderStock(orderId: string, tenantId: string) {
   }
 
   // After all deductions, recalculate max_yield for any F&B products involved
-  const fnbProductIds = Array.from(new Set(
-    items.filter(i => i.item_type === "fnb_single" || i.item_type === "fnb_size" || i.item_type === "unknown")
-         .map(i => i.item_id)
-  ));
+  const fnbItemIds = items.filter((i: any) => i.item_type === "fnb_single" || i.item_type === "fnb_size");
+  const affectedProductIds = new Set<string>();
 
-  for (const pid of fnbProductIds) {
+  for (const item of fnbItemIds) {
+    if (item.item_type === "fnb_single") {
+      affectedProductIds.add(item.item_id);
+    } else {
+      const { data: sz } = await supabase.from("product_sizes").select("product_id").eq("size_id", item.item_id).single();
+      if (sz) affectedProductIds.add(sz.product_id);
+    }
+  }
+
+  for (const pid of Array.from(affectedProductIds)) {
     await recalculateMaxYield(pid, tenantId);
   }
 
   return { error: null };
 }
 
-import { recalculateMaxYield } from "@/lib/shared/inventory-utils";
 
 export async function restoreOrderStock(
   orderId: string,
@@ -476,9 +541,10 @@ export async function restoreOrderStock(
         await supabase.from("nfb_products").update({ quantity: prod.quantity + qty }).eq("product_id", item.item_id);
       }
     } else if (item.item_type === "nfb_variant") {
-      const { data: opt } = await supabase.from("nfb_variant_options").select("stock").eq("option_id", item.item_id).single();
+      const { data: opt } = await supabase.from("nfb_variant_options").select("product_id, stock").eq("option_id", item.item_id).single();
       if (opt) {
         await supabase.from("nfb_variant_options").update({ stock: opt.stock + qty }).eq("option_id", item.item_id);
+        await recalculateNfbProductQuantity(opt.product_id, tenantId);
       }
     } else if (item.item_type === "fnb_single" || item.item_type === "fnb_size") {
       let productId = item.item_id;
@@ -513,16 +579,34 @@ export async function restoreOrderStock(
 
 export async function processAndCompleteOrder(
   orderId: string,
-  tenantId: string
+  remarks: string = ""
 ): Promise<{ error: string | null }> {
   const supabase = createClient();
+
+  // 1. DUPLICATE GUARD: Check if transaction already exists
+  const { data: existing } = await supabase
+    .from("transactions")
+    .select("transaction_id")
+    .eq("order_id", orderId)
+    .maybeSingle();
+
+  if (existing) {
+    console.log("[processAndCompleteOrder] Transaction already exists for order:", orderId, ". Skipping duplicate save.");
+    return { error: null };
+  }
+
   const items = await fetchOrderItems(orderId);
-  if (items.length === 0) return { error: "No items found for this order." };
 
   // Mark order as Received + Confirmed
+  const updatePayload: any = { 
+    fulfillment_status: "Received", 
+    payment_status: "Confirmed" 
+  };
+  if (remarks) updatePayload.cancel_reason = remarks; // Use for resolution remarks
+
   const { data: orderData, error: statusError } = await supabase
     .from("orders")
-    .update({ fulfillment_status: "Received", payment_status: "Confirmed" })
+    .update(updatePayload)
     .eq("order_id", orderId)
     .select("order_id, tenant_id, customer_id, total_amount, payment_method, users!orders_customer_id_fkey(first_name, last_name, display_name)")
     .single();
@@ -530,37 +614,49 @@ export async function processAndCompleteOrder(
   if (statusError) return { error: statusError.message };
 
   // Insert transaction record
-  if (orderData) {
-    const u = orderData.users as any;
-    const customerName = u?.first_name && u?.last_name
-      ? `${u.first_name} ${u.last_name}`
-      : u?.display_name ?? "Customer";
-
-    await supabase.from("transactions").insert({
-      order_id:       orderData.order_id,
-      tenant_id:      orderData.tenant_id,
-      customer_id:    orderData.customer_id,
-      customer_name:  customerName,
-      total_amount:   Number(orderData.total_amount),
-      payment_method: orderData.payment_method,
-      item_count:     items.length,
-    });
-
-    // Audit log — fire-and-forget
-    getAuditContext().then((ctx) => {
-      if (!ctx) return;
-      logAuditEvent({
-        tenantId:   orderData.tenant_id,
-        userId:     ctx.userId,
-        userName:   ctx.userName,
-        action:     "COMPLETE",
-        entityType: "order",
-        entityId:   orderData.order_id,
-        entityName: `Order #${orderData.order_id.slice(0, 8).toUpperCase()} (${customerName})`,
-        details:    { total_amount: Number(orderData.total_amount), item_count: items.length },
-      });
-    });
+  if (!orderData) {
+    console.error("[processAndCompleteOrder] Order data was null after update. This should not happen.");
+    return { error: "Failed to retrieve order data after update." };
   }
+
+  const u = orderData.users as any;
+  const customerName = u?.first_name && u?.last_name
+    ? `${u.first_name} ${u.last_name}`
+    : u?.display_name ?? "Customer";
+
+  console.log("[processAndCompleteOrder] Saving transaction for order:", orderId, "Customer:", customerName);
+
+  const { error: txError } = await supabase.from("transactions").insert({
+    order_id:       orderData.order_id,
+    tenant_id:      orderData.tenant_id,
+    customer_id:    orderData.customer_id,
+    customer_name:  customerName,
+    total_amount:   Number(orderData.total_amount),
+    payment_method: orderData.payment_method,
+    item_count:     items.length,
+  });
+
+  if (txError) {
+    console.error("[processAndCompleteOrder] Transaction insert failed:", txError);
+    return { error: `Order completed, but transaction record failed: ${txError.message} (Code: ${txError.code})` };
+  }
+
+  console.log("[processAndCompleteOrder] Transaction RECORDED successfully for order:", orderId);
+
+  // Audit log — fire-and-forget
+  getAuditContext().then((ctx: any) => {
+    if (!ctx) return;
+    logAuditEvent({
+      tenantId:   orderData.tenant_id,
+      userId:     ctx.userId,
+      userName:   ctx.userName,
+      action:     "COMPLETE",
+      entityType: "order",
+      entityId:   orderData.order_id,
+      entityName: `Order #${orderData.order_id.slice(0, 8).toUpperCase()} (${customerName})`,
+      details:    { total_amount: Number(orderData.total_amount), item_count: items.length },
+    });
+  });
 
   return { error: null };
 }
@@ -569,22 +665,27 @@ export async function processAndCompleteOrder(
 
 export async function fetchTransactions(tenantId: string): Promise<Transaction[]> {
   const supabase = createClient();
+  
+  // Use wildcard select and remove strict ordering to avoid errors if columns are missing
   const { data, error } = await supabase
     .from("transactions")
-    .select("transaction_id, order_id, tenant_id, customer_name, total_amount, payment_method, item_count, completed_at")
-    .eq("tenant_id", tenantId)
-    .order("completed_at", { ascending: false });
+    .select("*")
+    .eq("tenant_id", tenantId);
 
-  if (error || !data) { console.error("fetchTransactions error:", error); return []; }
-  return data.map((t) => ({
-    transaction_id: t.transaction_id,
-    order_id:       t.order_id,
+  if (error || !data) { 
+    console.error("[fetchTransactions] DB Error:", error); 
+    return []; 
+  }
+
+  return data.map((t: any) => ({
+    transaction_id: t.transaction_id || t.id || "Unknown",
+    order_id:       t.order_id || "Unknown",
     tenant_id:      t.tenant_id,
-    customer_name:  t.customer_name,
-    total_amount:   Number(t.total_amount),
-    payment_method: t.payment_method,
-    item_count:     t.item_count,
-    completed_at:   t.completed_at,
+    customer_name:  t.customer_name || "Customer",
+    total_amount:   Number(t.total_amount || 0),
+    payment_method: t.payment_method || "Unknown",
+    item_count:     t.item_count || 0,
+    completed_at:   t.completed_at || t.created_at || new Date().toISOString(),
   }));
 }
 
@@ -614,6 +715,26 @@ export async function logAuditEvent(params: {
   if (error) {
     console.error("[logAuditEvent] INSERT failed:", error.code, error.message, error.details);
   }
+}
+
+export async function logOrderView(
+  orderId: string, 
+  tenantId: string, 
+  viewType: "PROOFS" | "DETAILS" | "PAYMENT"
+): Promise<void> {
+  const ctx = await getAuditContext();
+  if (!ctx) return;
+
+  await logAuditEvent({
+    tenantId,
+    userId:     ctx.userId,
+    userName:   ctx.userName,
+    action:     `VIEW_${viewType}`,
+    entityType: "order",
+    entityId:   orderId,
+    entityName: `Order #${orderId.slice(0, 8).toUpperCase()}`,
+    details:    { view_type: viewType },
+  });
 }
 
 export async function fetchAuditLogs(tenantId: string): Promise<AuditLog[]> {
@@ -653,6 +774,127 @@ export async function fetchAuditLogs(tenantId: string): Promise<AuditLog[]> {
   }));
 }
 
+// ─── Delivery Proof & Customer Receipt ───────────────────────────────────────
+
+export async function uploadDeliveryProof(
+  orderId: string,
+  file: File
+): Promise<{ url: string | null; error: string | null }> {
+  const supabase = createClient();
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${orderId}_delivery_proof_${Date.now()}.${fileExt}`;
+  const filePath = `delivery-proofs/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("store-assets")
+    .upload(filePath, file);
+
+  if (uploadError) return { url: null, error: uploadError.message };
+
+  const { data } = supabase.storage.from("store-assets").getPublicUrl(filePath);
+  const publicUrl = data.publicUrl;
+  const { error: updateError } = await supabase
+    .from("orders")
+    .update({ delivery_proof_url: publicUrl })
+    .eq("order_id", orderId);
+
+  if (!updateError) {
+    // ONLY Notify customer AFTER delivery proof is uploaded
+    const { data: ord } = await supabase.from("orders").select("customer_id, tenant_id").eq("order_id", orderId).single();
+    if (ord) {
+      // Check for existing dispatch notification to avoid duplicates
+      const { data: existing } = await supabase
+        .from("customer_notifications")
+        .select("id")
+        .eq("order_id", orderId)
+        .eq("notification_type", "ORDER_DISPATCHED")
+        .limit(1)
+        .maybeSingle();
+
+      if (!existing) {
+        const { error: notifError } = await supabase.from("customer_notifications").insert({
+          customer_id:       ord.customer_id,
+          tenant_id:         ord.tenant_id,
+          order_id:          orderId,
+          notification_type: "DELIVERY_IN_PROGRESS", // Use distinct type
+          title:             "Delivery in Progress!",
+          message:           `Your order #${orderId.slice(0, 8).toUpperCase()} is on its way! Have you received it?`,
+        });
+        if (notifError) {
+          console.error("[uploadDeliveryProof] Notification failed:", notifError);
+          return { url: publicUrl, error: `Proof uploaded, but notification failed: ${notifError.message}` };
+        }
+      }
+    }
+  }
+
+  return { url: publicUrl, error: updateError?.message ?? null };
+}
+
+export async function uploadProofOfPayment(
+  orderId: string,
+  file: File
+): Promise<{ url: string | null; error: string | null }> {
+  const supabase = createClient();
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${orderId}_pop_${Date.now()}.${fileExt}`;
+  const filePath = `proofs-of-payment/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("store-assets")
+    .upload(filePath, file);
+
+  if (uploadError) return { url: null, error: uploadError.message };
+
+  const { data } = supabase.storage.from("store-assets").getPublicUrl(filePath);
+  const publicUrl = data.publicUrl;
+
+  const { error: updateError } = await supabase
+    .from("orders")
+    .update({ proof_of_payment_url: publicUrl })
+    .eq("order_id", orderId);
+
+  return { url: publicUrl, error: updateError?.message ?? null };
+}
+
+export async function confirmOrderReceipt(
+  orderId: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ 
+      fulfillment_status: "Received",
+      customer_confirmed_received: true,
+      received_at: new Date().toISOString()
+    })
+    .eq("order_id", orderId);
+
+  if (!error) {
+    // Record the transaction!
+    const { error: completionError } = await processAndCompleteOrder(orderId);
+    if (completionError) return { error: completionError };
+  }
+
+  return { error: error?.message ?? null };
+}
+
+export async function reportOrderUnreceived(
+  orderId: string,
+  reason: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("orders")
+    .update({ 
+      fulfillment_status: "Reported",
+      cancel_reason: reason // Reuse this column for the report reason
+    })
+    .eq("order_id", orderId);
+
+  return { error: error?.message ?? null };
+}
+
 // ─── Place a New Order ─────────────────────────────────────────────────────────
 
 export interface PlaceOrderPayload {
@@ -680,48 +922,16 @@ export async function placeOrder(
 
   console.log("[placeOrder] Explicit payment method for DB:", dbPaymentMethod);
 
-  console.log(`[placeOrder] Validating stock for ${payload.items.length} items...`);
-  for (const item of payload.items) {
-    if (item.item_type === "nfb_single") {
-      const { data: nfb } = await supabase.from("nfb_products").select("name, quantity").eq("product_id", item.item_id).single();
-      if (!nfb || nfb.quantity < item.quantity) {
-        return { order_id: null, error: `Sorry, ${nfb?.name || "item"} is out of stock or insufficient.` };
-      }
-    } else if (item.item_type === "nfb_variant") {
-      const { data: opt } = await supabase.from("nfb_variant_options").select("label, stock").eq("option_id", item.item_id).single();
-      if (!opt || opt.stock < item.quantity) {
-        return { order_id: null, error: `Sorry, ${opt?.label || "variant"} is out of stock.` };
-      }
-    } else if (item.item_type === "fnb_single" || item.item_type === "fnb_size") {
-      let productId = item.item_id;
-      let sizeLabel = item.size_label;
-
-      if (item.item_type === "fnb_size") {
-        const { data: sz } = await supabase.from("product_sizes").select("product_id, label").eq("size_id", item.item_id).single();
-        if (sz) { productId = sz.product_id; sizeLabel = sz.label; }
-      }
-
-      // Check ingredients directly for real-time accuracy
-      const { data: recipes } = sizeLabel 
-        ? await supabase.from("product_recipes").select("item_id, amount").eq("product_id", productId).eq("size_label", sizeLabel)
-        : await supabase.from("product_recipes").select("item_id, amount").eq("product_id", productId).is("size_label", null);
-
-      if (recipes && recipes.length > 0) {
-        for (const r of recipes) {
-          const { data: inv } = await supabase.from("fnb_inventory_items").select("name, stock").eq("item_id", r.item_id).single();
-          const needed = Number(r.amount) * item.quantity;
-          if (!inv || inv.stock < needed) {
-            return { order_id: null, error: `Sorry, we are out of ingredients for ${item.item_name}.` };
-          }
-        }
-      } else {
-        // Fallback to max_yield if no recipe is found (e.g. direct sale items)
-        const { data: fnb } = await supabase.from("products").select("name, max_yield").eq("product_id", productId).single();
-        if (!fnb || fnb.max_yield < item.quantity) {
-          return { order_id: null, error: `Sorry, ${item.item_name} is out of stock.` };
-        }
-      }
+  console.log(`[placeOrder] Validating aggregate stock for ${payload.items.length} items...`);
+  const validation = await validateInventoryForOrder(payload.tenant_id, payload.items);
+  
+  if (!validation.isPossible) {
+    let errorMsg = validation.error || "Insufficient stock.";
+    if (validation.bottlenecks && validation.bottlenecks.length > 0) {
+      // Create a clean, bulleted list for the customer
+      errorMsg = validation.bottlenecks.map((b: any) => b.reason).join("\n");
     }
+    return { order_id: null, error: errorMsg };
   }
 
   const { data: order, error: orderError } = await supabase
@@ -764,7 +974,7 @@ export async function placeOrder(
 
   async function proceedWithItems(orderId: string) {
     // Try with extended columns
-    const richItems = payload.items.map((item) => ({
+    const richItems = payload.items.map((item: any) => ({
       order_id:   orderId,
       item_id:    item.item_id,
       item_type:  item.item_type,
@@ -779,7 +989,7 @@ export async function placeOrder(
 
     // Fallback — base columns only
     console.warn("[placeOrder] Using base items insert:", itemsError.message);
-    const baseItems = payload.items.map((item) => ({
+    const baseItems = payload.items.map((item: any) => ({
       order_id:   orderId,
       item_id:    item.item_id,
       quantity:   item.quantity,

@@ -2,11 +2,149 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, RefreshCw, Loader2, ArrowUpDown, Receipt } from "lucide-react";
-import { fetchTransactions, type Transaction } from "@/lib/employee/order-actions";
+import { Search, RefreshCw, Loader2, ArrowUpDown, Receipt, Eye, X, Package, Clock, Truck, CheckCircle2, User, MapPin, Phone, Mail, Image as ImageIcon } from "lucide-react";
+import { fetchTransactions, fetchOrderById, fetchOrderItems, logOrderView, type Transaction, type Order, type OrderItem } from "@/lib/employee/order-actions";
 import { createClient } from "@/lib/supabase/client";
 
-const COLUMNS = ["Transaction ID", "Order ID", "Date & Time", "Customer", "Items", "Payment", "Total"];
+const COLUMNS = ["Transaction ID", "Order ID", "Date & Time", "Customer", "Items", "Payment", "Total", "Action"];
+
+// ─── Transaction Detail Modal ──────────────────────────────────────────────────
+
+function TransactionDetailModal({ orderId, onClose, tenantId }: { orderId: string, onClose: () => void, tenantId: string }) {
+  const [order, setOrder] = useState<Order | null>(null);
+  const [items, setItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const [ord, itms] = await Promise.all([
+        fetchOrderById(orderId),
+        fetchOrderItems(orderId)
+      ]);
+      setOrder(ord);
+      setItems(itms);
+      setLoading(false);
+      
+      // Log initial view
+      if (tenantId) logOrderView(orderId, tenantId, "DETAILS");
+    };
+    load();
+  }, [orderId, tenantId]);
+
+  const handleViewProof = (type: "PAYMENT" | "PROOFS") => {
+    if (!order) return;
+    const url = type === "PAYMENT" ? order.proof_of_payment_url : order.delivery_proof_url;
+    if (url) {
+      logOrderView(orderId, tenantId, type);
+      window.open(url, "_blank");
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div 
+        key="transaction-modal-backdrop"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+        className="fixed inset-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[999]" 
+        onClick={onClose} 
+      />
+      <motion.div 
+        key="transaction-modal-content"
+        initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed inset-0 z-[1000] flex items-center justify-center p-4 pointer-events-none"
+      >
+        <div className="bg-white rounded-[28px] w-full max-w-[500px] shadow-2xl pointer-events-auto overflow-hidden flex flex-col max-h-[90vh]">
+          {/* Header */}
+          <div className="bg-[#3A6131] px-6 py-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
+                <Receipt size={20} />
+              </div>
+              <div>
+                <h2 className="text-white font-black text-[17px]">Transaction Receipt</h2>
+                <p className="text-white/60 text-[11px] font-mono uppercase tracking-wider">Order #{orderId.slice(0,8)}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"><X size={18} /></button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {loading ? (
+              <div className="h-40 flex flex-center flex-col items-center justify-center gap-3">
+                <Loader2 size={32} className="text-[#3A6131] animate-spin" />
+                <p className="text-[12px] text-[#3A6131]/60 font-bold">Fetching Record...</p>
+              </div>
+            ) : order && (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Customer</p>
+                    <p className="text-[14px] text-[#3A6131] font-black">{order.customer_name}</p>
+                  </div>
+                  <div className="bg-[#F7B71D]/10 rounded-2xl p-4 border border-[#F7B71D]/20 text-right">
+                    <p className="text-[10px] text-[#8a6700] font-bold uppercase mb-1">Total Paid</p>
+                    <p className="text-[18px] text-[#3A6131] font-black">₱{order.total_amount.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Proofs Section */}
+                <div className="space-y-2">
+                  <p className="text-[11px] text-gray-400 font-bold uppercase px-1">Verification Proofs</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={() => handleViewProof("PAYMENT")}
+                      disabled={!order.proof_of_payment_url}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all ${order.proof_of_payment_url ? 'bg-white border-gray-200 hover:border-[#3A6131] group' : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500"><ImageIcon size={16} /></div>
+                        <span className="text-[12px] font-bold text-gray-600">Payment</span>
+                      </div>
+                      {order.proof_of_payment_url && <Eye size={14} className="text-gray-300 group-hover:text-[#3A6131]" />}
+                    </button>
+
+                    <button 
+                      onClick={() => handleViewProof("PROOFS")}
+                      disabled={!order.delivery_proof_url}
+                      className={`flex items-center justify-between p-3 rounded-xl border transition-all ${order.delivery_proof_url ? 'bg-white border-gray-200 hover:border-[#3A6131] group' : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center text-purple-500"><Truck size={16} /></div>
+                        <span className="text-[12px] font-bold text-gray-600">Delivery</span>
+                      </div>
+                      {order.delivery_proof_url && <Eye size={14} className="text-gray-300 group-hover:text-[#3A6131]" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Items List */}
+                <div className="space-y-2 pt-2">
+                  <p className="text-[11px] text-gray-400 font-bold uppercase px-1">Order Breakdown</p>
+                  <div className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100">
+                    {items.map((item, idx) => (
+                      <div key={`${item.item_id}-${idx}`} className={`p-4 flex items-center justify-between ${idx !== items.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                        <div>
+                          <p className="text-[13px] font-bold text-[#3A6131]">{item.item_name}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Qty: {item.quantity} × ₱{item.unit_price.toFixed(2)}</p>
+                        </div>
+                        <p className="text-[13px] font-black text-[#3A6131]">₱{(item.quantity * item.unit_price).toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="p-6 bg-gray-50/80 border-t border-gray-100">
+             <button onClick={onClose} className="w-full py-3 bg-[#3A6131] text-white font-black rounded-xl hover:bg-[#2D4B26] transition-colors shadow-lg shadow-[#3A6131]/20">Close Receipt</button>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 export default function TransactionsTable() {
   const [tenantId, setTenantId] = useState("");
@@ -15,6 +153,7 @@ export default function TransactionsTable() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const loadTxns = useCallback(async (tid: string) => {
     const data = await fetchTransactions(tid);
@@ -48,27 +187,27 @@ export default function TransactionsTable() {
     .filter((t) => {
       const q = search.toLowerCase();
       return (
+        t.customer_name.toLowerCase().includes(q) ||
         t.transaction_id.toLowerCase().includes(q) ||
-        t.order_id.toLowerCase().includes(q) ||
-        t.customer_name.toLowerCase().includes(q)
+        t.order_id.toLowerCase().includes(q)
       );
     })
     .sort((a, b) => {
-      const diff = new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime();
-      return sortAsc ? diff : -diff;
+      const diff = new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime();
+      return sortAsc ? -diff : diff;
     });
 
-  const totalRevenue = filtered.reduce((sum, t) => sum + t.total_amount, 0);
+  const totalRevenue = transactions.reduce((s, t) => s + t.total_amount, 0);
+  const avgOrder = transactions.length > 0 ? totalRevenue / transactions.length : 0;
 
   return (
-    <div className="w-full flex flex-col font-['Inter'] px-6">
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+    <div className="w-full flex flex-col font-['Inter'] px-6 space-y-6">
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { label: "Total Transactions", value: filtered.length.toString(), color: "text-[#385E31]" },
+          { label: "Total Transactions", value: transactions.length.toString(), color: "text-[#385E31]" },
           { label: "Total Revenue", value: `₱${totalRevenue.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`, color: "text-[#F7B71D]" },
-          { label: "Avg. Order Value", value: filtered.length ? `₱${(totalRevenue / filtered.length).toFixed(2)}` : "—", color: "text-purple-600" },
+          { label: "Avg. Order Value", value: transactions.length ? `₱${(totalRevenue / transactions.length).toFixed(2)}` : "—", color: "text-purple-600" },
         ].map((card) => (
           <div key={card.label} className="bg-white rounded-2xl border border-[#385E31]/15 px-5 py-4 shadow-sm">
             <p className="text-[11px] font-black uppercase tracking-wider text-[#3A6131]/40 mb-1">{card.label}</p>
@@ -103,7 +242,7 @@ export default function TransactionsTable() {
 
       {/* Table */}
       <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-hidden shadow-sm">
-        <div className="w-full grid grid-cols-7 bg-[#385E31] px-4 py-3 rounded-t-[8px]">
+        <div className="w-full grid grid-cols-8 bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
             <div key={col} className="text-center text-[#FFFCEB] text-[13px] font-bold">{col}</div>
           ))}
@@ -126,12 +265,12 @@ export default function TransactionsTable() {
               const isLast = idx === filtered.length - 1;
               return (
                 <motion.div
-                  key={txn.transaction_id}
+                  key={txn.transaction_id || `txn-${idx}`}
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.15 }}
-                  className={`w-full grid grid-cols-7 px-4 py-[14px] items-center hover:bg-[#3A6131]/3 transition-colors ${!isLast ? "border-b border-[#385E31]/10" : ""}`}
+                  className={`w-full grid grid-cols-8 px-4 py-[14px] items-center hover:bg-[#3A6131]/3 transition-colors ${!isLast ? "border-b border-[#385E31]/10" : ""}`}
                 >
                   <div className="text-center text-[#3A6131] text-[11px] font-black font-mono">
                     {txn.transaction_id.slice(0, 8).toUpperCase()}
@@ -154,12 +293,28 @@ export default function TransactionsTable() {
                   <div className="text-center text-[#F7B71D] text-[13px] font-black">
                     ₱{txn.total_amount.toFixed(2)}
                   </div>
+                  <div className="text-center">
+                    <button 
+                      onClick={() => setSelectedOrderId(txn.order_id)}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#385E31] text-[#F7B71D] hover:scale-110 transition-transform shadow-sm"
+                    >
+                      <Eye size={14} />
+                    </button>
+                  </div>
                 </motion.div>
               );
             })}
           </AnimatePresence>
         )}
       </div>
+
+      {selectedOrderId && (
+        <TransactionDetailModal 
+          orderId={selectedOrderId} 
+          tenantId={tenantId}
+          onClose={() => setSelectedOrderId(null)} 
+        />
+      )}
     </div>
   );
 }

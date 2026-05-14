@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ShoppingBag,
   Search,
@@ -107,7 +107,7 @@ export default function NfnbStorefront() {
         if (!tenantData) throw new Error("Could not load store information.");
 
         const [cats, prods, favs] = await Promise.all([
-          getProductCategories(tenantData.tenant_id),
+          getProductCategories(tenantData.tenant_id, "nfb_product"),
           getNfnbProducts(tenantData.tenant_id),
           fetchFavorites()
         ]);
@@ -134,6 +134,92 @@ export default function NfnbStorefront() {
     return () => clearInterval(timer);
   }, []);
 
+  // ─── Realtime Updates ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!tenant) return;
+    const supabase = createClient();
+
+    // 1. Listen for Main NF&B Product quantity changes
+    const productChannel = supabase
+      .channel('nfb_products_realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'nfb_products',
+        filter: `tenant_id=eq.${tenant.tenant_id}`
+      }, (payload) => {
+        setProducts(prev => {
+          const updated = prev.map(p => 
+            p.product_id === payload.new.product_id 
+              ? { ...p, quantity: payload.new.quantity } 
+              : p
+          );
+          // Sync open modal
+          if (selectedProduct?.product_id === payload.new.product_id) {
+            setSelectedProduct(prevModal => prevModal ? { ...prevModal, quantity: payload.new.quantity } : null);
+          }
+          return updated;
+        });
+      })
+      .subscribe();
+
+    // 2. Listen for Variant-specific stock changes
+    const variantChannel = supabase
+      .channel('nfb_variants_realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'nfb_variant_options',
+        filter: `tenant_id=eq.${tenant.tenant_id}`
+      }, (payload) => {
+        setProducts(prev => {
+          const updated = prev.map(p => ({
+            ...p,
+            variants: p.variants.map(v => ({
+              ...v,
+              options: v.options.map(o => 
+                o.option_id === payload.new.option_id 
+                  ? { ...o, stock: payload.new.stock } 
+                  : o
+              )
+            }))
+          }));
+
+          // Sync open modal
+          if (selectedProduct) {
+            const updatedVariants = selectedProduct.variants.map(v => ({
+              ...v,
+              options: v.options.map(o => 
+                o.option_id === payload.new.option_id 
+                  ? { ...o, stock: payload.new.stock } 
+                  : o
+              )
+            }));
+            setSelectedProduct(prev => prev ? { ...prev, variants: updatedVariants } : null);
+          }
+          return updated;
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productChannel);
+      supabase.removeChannel(variantChannel);
+    };
+  }, [tenant]);
+
+  const searchParams = useSearchParams();
+
+  // Listen for ?checkout=true in the URL
+  useEffect(() => {
+    if (searchParams.get("checkout") === "true") {
+      setIsCheckoutOpen(true);
+      // Clean up the URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [searchParams]);
+
   const handleToggleFavorite = async (productId: string) => {
     const { favorited, error } = await toggleFavorite(productId);
     if (!error) {
@@ -152,11 +238,17 @@ export default function NfnbStorefront() {
   const categoryTabs = ["All Products", ...categories.map((c) => c.name)];
 
   const filteredProducts = products.filter((p) => {
+    // Normalize names for safer comparison
+    const pCatName = p.category_name || "Uncategorized";
+    const activeCat = activeCategory || "All Products";
+
     const matchesCategory =
-      activeCategory === "All Products" || p.category_name === activeCategory;
+      activeCat === "All Products" || pCatName === activeCat;
+    
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
+    
     return matchesCategory && matchesSearch;
   });
 
@@ -315,16 +407,12 @@ export default function NfnbStorefront() {
               </div>
             ) : filteredProducts.length > 0 ? (
               <motion.div
+                key={`grid-${activeCategory}`}
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pb-12"
-                initial="hidden"
-                animate="visible"
-                variants={{
-                  hidden: { opacity: 0 },
-                  visible: {
-                    opacity: 1,
-                    transition: { staggerChildren: 0.05 },
-                  },
-                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
               >
                 {filteredProducts.map((product) => (
                   <motion.div
@@ -346,8 +434,10 @@ export default function NfnbStorefront() {
               </motion.div>
             ) : (
               <motion.div
+                key="empty-state"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="w-full flex flex-col items-center justify-center py-20 text-[#3A6131]/50"
               >
                 <Search size={48} className="mb-4 opacity-20" />

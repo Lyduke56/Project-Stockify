@@ -77,6 +77,10 @@ export default function NfbItemModal({ mode, tenantId, initial, onSave, onClose 
       setError("Item name and SKU are required.");
       return;
     }
+    if (!form.unit_price || Number(form.unit_price) <= 0) {
+      setError("Unit price is required.");
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
@@ -213,7 +217,7 @@ export default function NfbItemModal({ mode, tenantId, initial, onSave, onClose 
 
               {/* Unit Price */}
               <div className="bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/10">
-                <label className={labelStyle}>Unit Price <span className="lowercase normal-case font-medium">(per {form.unit_of_measure})</span></label>
+                <label className={labelStyle}>Unit Price <span className="lowercase normal-case font-medium">(per {form.unit_of_measure})</span> <span className="text-red-500">*</span></label>
                 <div className="flex items-center text-2xl font-black text-[#3A6131]">
                   <span className="mr-2 opacity-30">₱</span>
                   <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-xl" value={form.unit_price} onChange={(e) => set("unit_price", e.target.value)} placeholder="0.00" min="0" />

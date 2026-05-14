@@ -76,21 +76,33 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
     .eq("tenant_id", tenantId)
     .eq("fulfillment_status", "Pending");
 
-  // ── 4. Top selling product (by order item count this month) ─────────────────
-  const { data: orderItems } = await supabase
-    .from("order_items")
-    .select("item_name, quantity")
-    .eq("tenant_id", tenantId);
+  // ── 4. Top selling product (resilient fetch) ───────────────────────────────
+  let topProduct      = "—";
+  let topProductCount = 0;
 
-  const itemTotals: Record<string, number> = {};
-  for (const item of orderItems ?? []) {
-    itemTotals[item.item_name] = (itemTotals[item.item_name] ?? 0) + Number(item.quantity);
+  try {
+    const { data: orderItems, error: itemsErr } = await supabase
+      .from("order_items")
+      .select("item_name, quantity, orders!inner(tenant_id)")
+      .eq("orders.tenant_id", tenantId);
+
+    if (!itemsErr && orderItems) {
+      const itemTotals: Record<string, number> = {};
+      for (const item of orderItems) {
+        const name = (item as any).item_name ?? "Unknown Item";
+        itemTotals[name] = (itemTotals[name] ?? 0) + Number(item.quantity);
+      }
+      const topEntry = Object.entries(itemTotals).sort((a, b) => b[1] - a[1])[0];
+      if (topEntry) {
+        topProduct = topEntry[0];
+        topProductCount = topEntry[1];
+      }
+    }
+  } catch (e) {
+    console.warn("[fetchDashboardData] Could not calculate top product:", e);
   }
-  const topEntry = Object.entries(itemTotals).sort((a, b) => b[1] - a[1])[0];
-  const topProduct      = topEntry?.[0] ?? "—";
-  const topProductCount = topEntry?.[1] ?? 0;
 
-  // ── 5. Stock alerts ──────────────────────────────────────────────────────────
+  // ── 5. Stock alerts & Order alerts ──────────────────────────────────────────
   const alerts: StockAlert[] = [];
 
   // F&B ingredients — check stock vs alert_limit
@@ -111,49 +123,16 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
     }
   }
 
-  // NF&B products (simple) — check quantity vs reorder_threshold
-  const { data: nfbProds } = await supabase
-    .from("nfb_products")
-    .select("product_id, name, quantity, unit_of_measure")
-    .eq("tenant_id", tenantId)
-    .eq("is_active", true)
-    .order("quantity");
-
-  // NF&B inventory items
-  const { data: nfbItems } = await supabase
-    .from("nfb_inventory_items")
-    .select("item_id, name, quantity, reorder_threshold, unit_of_measure")
-    .eq("tenant_id", tenantId)
-    .eq("is_active", true)
-    .order("quantity");
-
-  for (const item of nfbItems ?? []) {
-    const qty       = Number(item.quantity) || 0;
-    const threshold = Number(item.reorder_threshold) || 0;
-    if (qty === 0) {
-      alerts.push({ id: `nfb-inv-${item.item_id}`, label: "Out of Stock", severity: "critical", details: `${item.name} (0 ${item.unit_of_measure} remaining)`, stock: qty, unit: item.unit_of_measure });
-    } else if (qty <= threshold) {
-      alerts.push({ id: `nfb-inv-${item.item_id}`, label: "Low Stock", severity: "warning", details: `${item.name} (${qty} ${item.unit_of_measure} remaining)`, stock: qty, unit: item.unit_of_measure });
-    }
-  }
-
-  // NF&B variant options — stock ≤ 5
-  const { data: variantOpts } = await supabase
-    .from("nfb_variant_options")
-    .select("option_id, label, stock, product_id, nfb_products(name, unit_of_measure)")
-    .eq("tenant_id", tenantId)
-    .lte("stock", 5)
-    .order("stock");
-
-  for (const opt of variantOpts ?? []) {
-    const stock = Number(opt.stock) || 0;
-    const prodName = (opt.nfb_products as any)?.name ?? "Product";
-    const unit     = (opt.nfb_products as any)?.unit_of_measure ?? "pcs";
-    if (stock === 0) {
-      alerts.push({ id: `var-${opt.option_id}`, label: "Out of Stock", severity: "critical", details: `${prodName} — ${opt.label} (0 ${unit} remaining)`, stock, unit });
-    } else {
-      alerts.push({ id: `var-${opt.option_id}`, label: "Low Stock", severity: "warning", details: `${prodName} — ${opt.label} (${stock} ${unit} remaining)`, stock, unit });
-    }
+  // Pending Orders alerts
+  if ((pendingOrders ?? 0) > 0) {
+    alerts.push({
+      id: "pending-orders-alert",
+      label: "Pending Orders",
+      severity: "warning",
+      details: `You have ${pendingOrders} unresolved order${pendingOrders !== 1 ? 's' : ''} awaiting action.`,
+      stock: pendingOrders ?? 0,
+      unit: "orders"
+    });
   }
 
   // Sort: critical first, then by stock ascending

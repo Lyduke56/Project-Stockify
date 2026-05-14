@@ -104,6 +104,11 @@ export default function FnbItemModal({ mode, tenantId, initial, onSave, onClose 
       setStep(2);
       return;
     }
+    if (!form.unit_cost || Number(form.unit_cost) <= 0) {
+      setError("Cost per " + form.purchase_unit + " is required.");
+      setStep(3);
+      return;
+    }
 
     try {
       setSaving(true);
@@ -293,32 +298,61 @@ export default function FnbItemModal({ mode, tenantId, initial, onSave, onClose 
                     <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 03</span>
                     <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Stock & Purchasing</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <label className={labelStyle}>
-                        Current Stock <span className="lowercase normal-case font-medium">({form.purchase_unit})</span>
-                      </label>
-                      <input type="number" className={inputStyle} value={form.stock} onChange={(e) => set("stock", e.target.value)} placeholder="0" min="0" />
-                      <p className="text-[10px] text-[#3A6131]/60 mt-2 pl-1 font-bold">
-                        = {(Number(form.stock) || 0) * (Number(form.conversion) || 1)} {form.base_unit} (Total Base Units)
+                  {/* ── Dynamic Metrics Cards ── */}
+                  <div className="flex gap-4">
+                    <div className="flex-1 bg-white p-6 rounded-[24px] border border-[#3A6131]/20 shadow-sm transition-all hover:border-[#3A6131]/40">
+                      <label className={labelStyle}>Current Stock <span className="lowercase normal-case font-medium">({form.purchase_unit})</span></label>
+                      <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                        <input
+                          type="number"
+                          className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-3xl"
+                          value={form.stock}
+                          onChange={(e) => set("stock", e.target.value)}
+                          placeholder="0"
+                          min="0"
+                        />
+                      </div>
+                      <p className="text-[10px] text-[#3A6131]/60 mt-2 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#F7B71D]" />
+                        = {(Number(form.stock) || 0) * (Number(form.conversion) || 1)} {form.base_unit} (Base Units)
                       </p>
                     </div>
-                    <div>
+
+                    <div className="flex-1 bg-[#3A6131]/5 p-6 rounded-[24px] border border-[#3A6131]/15 transition-all hover:bg-[#3A6131]/10">
+                      <label className={labelStyle}>Cost per {form.purchase_unit} <span className="text-red-500">*</span></label>
+                      <div className="flex items-center text-3xl font-black text-[#3A6131]">
+                        <span className="mr-2 opacity-30 text-xl">₱</span>
+                        <input
+                          type="number"
+                          className="bg-transparent border-none p-0 focus:ring-0 w-full font-black"
+                          value={form.unit_cost}
+                          onChange={(e) => set("unit_cost", e.target.value)}
+                          placeholder="0.00"
+                          min="0"
+                        />
+                      </div>
+                      <p className="text-[10px] text-[#3A6131]/40 mt-2 font-bold">Standard purchase price</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6 mt-2">
+                    <div className="bg-white/50 p-6 rounded-[24px] border border-[#3A6131]/10">
                       <label className={labelStyle}>
                         Low Stock Alert <span className="lowercase normal-case font-medium">({form.base_unit})</span>
                       </label>
-                      <input type="number" className={inputStyle} value={form.alert_limit} onChange={(e) => set("alert_limit", e.target.value)} placeholder="0" min="0" />
+                      <input
+                        type="number"
+                        className="bg-transparent border-b border-[#3A6131]/10 w-full py-2 text-lg font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D]"
+                        value={form.alert_limit}
+                        onChange={(e) => set("alert_limit", e.target.value)}
+                        placeholder="0"
+                        min="0"
+                      />
                     </div>
-                    <div className="bg-[#3A6131]/5 p-6 rounded-[24px] border border-[#3A6131]/10">
-                      <label className={labelStyle}>Cost per {form.purchase_unit}</label>
-                      <div className="flex items-center text-2xl font-black text-[#3A6131]">
-                        <span className="mr-2 opacity-30">₱</span>
-                        <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full font-black" value={form.unit_cost} onChange={(e) => set("unit_cost", e.target.value)} placeholder="0.00" min="0" />
-                      </div>
-                    </div>
+                    
                     <div className="bg-[#FFFCEB] p-6 rounded-[24px] border-[1.5px] border-[#F7B71D]/50 shadow-sm">
                       <label className={labelStyle}>Nearest Expiry Date</label>
-                      <div className="flex items-center text-[#3A6131] mt-2">
+                      <div className="flex items-center text-[#3A6131] mt-1">
                         <input
                           type="date"
                           className="bg-transparent border-none p-0 focus:ring-0 w-full font-bold text-lg text-[#385E31]"

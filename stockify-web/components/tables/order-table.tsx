@@ -4,21 +4,25 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, X, Loader2, AlertCircle, CheckCircle2,
-  Package, Clock, Truck, Ban, RefreshCw,
-  User, MapPin, Phone, Mail,
+  Package, Clock, Truck, Ban, RefreshCw, AlertTriangle,
+  User, MapPin, Phone, Mail, Upload
 } from "lucide-react";
 import {
   fetchOrders,
   fetchOrderItems,
   updateFulfillmentStatus,
   processAndCompleteOrder,
+  uploadDeliveryProof,
+  uploadProofOfPayment,
+  reportOrderUnreceived,
+  logOrderView,
   type Order,
   type OrderItem,
   type FulfillmentStatus,
 } from "@/lib/employee/order-actions";
 import { createClient } from "@/lib/supabase/client";
 
-const TABS: FulfillmentStatus[] = ["Pending", "Processing", "Dispatched", "Received", "Cancelled"];
+const TABS: FulfillmentStatus[] = ["Pending", "Processing", "Dispatched", "Received", "Reported", "Cancelled"];
 const COLUMNS = ["ORDER ID", "DATE / TIME", "CUSTOMER", "TOTAL AMOUNT", "PAYMENT METHOD", "ACTIONS"];
 
 const TAB_META: Record<FulfillmentStatus, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
@@ -26,6 +30,7 @@ const TAB_META: Record<FulfillmentStatus, { bg: string; text: string; badge: str
   Processing: { bg: "bg-blue-500", text: "text-white", badge: "bg-blue-100 text-blue-700", icon: <Package size={12} /> },
   Dispatched: { bg: "bg-purple-500", text: "text-white", badge: "bg-purple-100 text-purple-700", icon: <Truck size={12} /> },
   Received: { bg: "bg-[#385E31]", text: "text-[#F7B71D]", badge: "bg-[#385E31]/10 text-[#385E31]", icon: <CheckCircle2 size={12} /> },
+  Reported: { bg: "bg-orange-500", text: "text-white", badge: "bg-orange-50 text-orange-600", icon: <AlertCircle size={12} /> },
   Cancelled: { bg: "bg-red-500", text: "text-white", badge: "bg-red-50 text-red-600", icon: <Ban size={12} /> },
 };
 
@@ -169,26 +174,43 @@ function OrderDetailModal({
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [tenantId, setTenantId] = useState("");
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
+  const [activeModalTab, setActiveModalTab] = useState<'details' | 'fulfillment'>('details');
 
   useEffect(() => {
-    fetchOrderItems(order.order_id).then((data) => { setItems(data); setLoading(false); });
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: u } = await supabase
+    const init = async () => {
+      // Fetch order items
+      const itemsData = await fetchOrderItems(order.order_id);
+      setItems(itemsData);
+      setLoading(false);
+
+      const supabase = createClient();
+      
+      // Fetch current user / tenant info
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        const { data: u } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("user_id", authData.user.id)
+          .single();
+        if (u) setTenantId(u.tenant_id ?? "");
+      }
+
+      // Fetch the customer's profile
+      const { data: profile } = await supabase
         .from("users")
-        .select("tenant_id")
-        .eq("user_id", data.user.id)
+        .select("email, contact_number, address")
+        .eq("user_id", order.customer_id)
         .single();
-      if (u) setTenantId(u.tenant_id ?? "");
-    });
-    // Fetch the customer's profile
-    supabase
-      .from("users")
-      .select("email, contact_number, address")
-      .eq("user_id", order.customer_id)
-      .single()
-      .then(({ data }) => setCustomerProfile(data ?? null));
+      if (profile) setCustomerProfile(profile);
+
+      // Log the viewing of order details
+      if (order.tenant_id) {
+        logOrderView(order.order_id, order.tenant_id, "DETAILS");
+      }
+    };
+
+    init();
   }, [order.order_id, order.customer_id]);
 
   const act = async (fn: () => Promise<{ error: string | null }>, successMsg: string) => {
@@ -204,6 +226,58 @@ function OrderDetailModal({
     }
   };
 
+  const [deliveryInfo, setDeliveryInfo] = useState({ deliverer_name: "", delivery_id: "" });
+  const [deliveryFile, setDeliveryFile] = useState<File | null>(null);
+  const [paymentFile, setPaymentFile] = useState<File | null>(null);
+  const [resolutionRemarks, setResolutionRemarks] = useState("");
+
+  const handleDispatch = async () => {
+    if (!deliveryInfo.deliverer_name) {
+      setFeedback({ type: "error", msg: "Deliverer name is required." });
+      return;
+    }
+    setBusy(true);
+    const { error } = await updateFulfillmentStatus(order.order_id, "Dispatched", deliveryInfo);
+    setBusy(false);
+    if (error) setFeedback({ type: "error", msg: error });
+    else {
+      setFeedback({ type: "success", msg: "Order dispatched!" });
+      setTimeout(() => { onStatusChange(); onClose(); }, 1200);
+    }
+  };
+
+  const handleDeliveryProof = async () => {
+    if (!deliveryFile) {
+      setFeedback({ type: "error", msg: "Please select a proof of delivery image." });
+      return;
+    }
+    setBusy(true);
+    const { error } = await uploadDeliveryProof(order.order_id, deliveryFile);
+    setBusy(false);
+    if (error) setFeedback({ type: "error", msg: error });
+    else {
+      setFeedback({ type: "success", msg: "Proof of delivery uploaded!" });
+      setDeliveryFile(null);
+      onStatusChange();
+    }
+  };
+
+  const handlePaymentProof = async () => {
+    if (!paymentFile) {
+      setFeedback({ type: "error", msg: "Please select a proof of payment image." });
+      return;
+    }
+    setBusy(true);
+    const { error } = await uploadProofOfPayment(order.order_id, paymentFile);
+    setBusy(false);
+    if (error) setFeedback({ type: "error", msg: error });
+    else {
+      setFeedback({ type: "success", msg: "Proof of payment uploaded!" });
+      setPaymentFile(null);
+      onStatusChange();
+    }
+  };
+
   const handleCancel = async (reason: string) => {
     setBusy(true);
     setFeedback(null);
@@ -212,7 +286,7 @@ function OrderDetailModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId: order.order_id, reason }),
     });
-    const json = await res.json();
+    const json = (await res.json()) as { error?: string };
     setBusy(false);
     setShowCancel(false);
     if (json.error) {
@@ -223,7 +297,7 @@ function OrderDetailModal({
     }
   };
 
-  const meta = TAB_META[order.fulfillment_status];
+  const meta = TAB_META[order.fulfillment_status] || TAB_META.Pending;
 
   return (
     <AnimatePresence>
@@ -244,7 +318,7 @@ function OrderDetailModal({
         <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[540px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#3A6131]/10">
+          <div className="flex items-center justify-between px-6 pt-6 pb-4">
             <div>
               <p className="text-[#3A6131]/50 text-[11px] font-bold uppercase tracking-wider mb-0.5">Order</p>
               <h2 className="text-[#3A6131] font-black text-[16px] font-mono">{order.order_id.slice(0, 8).toUpperCase()}</h2>
@@ -259,164 +333,352 @@ function OrderDetailModal({
             </div>
           </div>
 
-          {/* Info row */}
-          <div className="px-6 py-4 grid grid-cols-3 gap-4 border-b border-[#3A6131]/10">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Customer</p>
-              <p className="text-[#3A6131] font-bold text-[13px]">{order.customer_name}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Payment</p>
-              <p className="text-[#3A6131] font-bold text-[13px]">{order.payment_method}</p>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Total</p>
-              <p className="text-[#F7B71D] font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
-            </div>
+          {/* Modal Tabs */}
+          <div className="flex px-6 border-b border-[#3A6131]/10 bg-white/50">
+            <button 
+              onClick={() => setActiveModalTab('details')}
+              className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all ${activeModalTab === 'details' ? 'border-[#385E31] text-[#385E31]' : 'border-transparent text-[#3A6131]/40 hover:text-[#3A6131]/60'}`}
+            >
+              Order Details
+            </button>
+            <button 
+              onClick={() => setActiveModalTab('fulfillment')}
+              className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all ${activeModalTab === 'fulfillment' ? 'border-[#385E31] text-[#385E31]' : 'border-transparent text-[#3A6131]/40 hover:text-[#3A6131]/60'}`}
+            >
+              Fulfillment
+            </button>
           </div>
 
-          {/* Customer Profile */}
-          <div className="px-6 py-3 border-b border-[#3A6131]/10 bg-[#3A6131]/2">
-            <div className="flex items-center gap-2 mb-2">
-              <User size={11} className="text-[#3A6131]/40" />
-              <p className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40">Customer Details</p>
-            </div>
-            {customerProfile ? (
-              <div className="flex flex-col gap-1.5">
-                {customerProfile.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail size={11} className="text-[#3A6131]/40 shrink-0" />
-                    <span className="text-[#3A6131] text-[12px] font-medium">{customerProfile.email}</span>
-                  </div>
-                )}
-                {customerProfile.contact_number && (
-                  <div className="flex items-center gap-2">
-                    <Phone size={11} className="text-[#3A6131]/40 shrink-0" />
-                    <span className="text-[#3A6131] text-[12px] font-medium">{customerProfile.contact_number}</span>
-                  </div>
-                )}
-                {customerProfile.address && (
-                  <div className="flex items-start gap-2">
-                    <MapPin size={11} className="text-[#3A6131]/40 shrink-0 mt-0.5" />
-                    <span className="text-[#3A6131] text-[12px] font-medium leading-snug">{customerProfile.address}</span>
-                  </div>
-                )}
-                {!customerProfile.email && !customerProfile.contact_number && !customerProfile.address && (
-                  <p className="text-[#3A6131]/30 text-[12px] font-medium italic">No contact details on file.</p>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-[#3A6131]/30">
-                <Loader2 size={12} className="animate-spin" />
-                <span className="text-[11px]">Loading customer info…</span>
-              </div>
-            )}
-          </div>
 
-          {/* Items */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 mb-3">Order Items</p>
-            {loading ? (
-              <div className="flex items-center justify-center py-8 text-[#3A6131]/30 gap-2">
-                <Loader2 size={18} className="animate-spin" /> Loading…
-              </div>
-            ) : items.length === 0 ? (
-              <p className="text-center text-[#3A6131]/30 text-[13px] py-8">No item details available yet.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {items.map((item) => (
-                  <div key={item.order_item_id} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-[#3A6131]/8">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[#3A6131] font-bold text-[13px] truncate">
-                        {item.item_name || `Item #${item.item_id.slice(0, 6)}`}
-                      </p>
-                      {item.size_label && (
-                        <span className="text-[11px] text-[#3A6131]/60 bg-[#3A6131]/8 px-2 py-0.5 rounded-full font-medium mt-0.5 inline-block">
-                          {item.size_label}
-                        </span>
+          <div className="flex-1 overflow-y-auto">
+            {activeModalTab === 'details' ? (
+              <div className="p-6 flex flex-col gap-6">
+                {/* Info row */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Customer</p>
+                    <p className="text-[#3A6131] font-bold text-[13px]">{order.customer_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Payment</p>
+                    <p className="text-[#3A6131] font-bold text-[13px]">{order.payment_method}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Total</p>
+                    <p className="text-[#F7B71D] font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Customer Profile */}
+                <div className="bg-[#3A6131]/5 rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <User size={12} className="text-[#3A6131]/60" />
+                    <p className="text-[11px] font-black uppercase tracking-wider text-[#3A6131]/60">Customer Profile</p>
+                  </div>
+                  {customerProfile ? (
+                    <div className="flex flex-col gap-2">
+                      {customerProfile.email && (
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[#3A6131]/40 border border-[#3A6131]/10">
+                            <Mail size={12} />
+                          </div>
+                          <span className="text-[#3A6131] text-[13px] font-medium">{customerProfile.email}</span>
+                        </div>
+                      )}
+                      {customerProfile.contact_number && (
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[#3A6131]/40 border border-[#3A6131]/10">
+                            <Phone size={12} />
+                          </div>
+                          <span className="text-[#3A6131] text-[13px] font-medium">{customerProfile.contact_number}</span>
+                        </div>
+                      )}
+                      {customerProfile.address && (
+                        <div className="flex items-start gap-3">
+                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[#3A6131]/40 border border-[#3A6131]/10 shrink-0 mt-0.5">
+                            <MapPin size={12} />
+                          </div>
+                          <span className="text-[#3A6131] text-[13px] font-medium leading-snug">{customerProfile.address}</span>
+                        </div>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[#3A6131] font-bold text-[13px]">×{item.quantity}</p>
-                      <p className="text-[#F7B71D] font-black text-[12px]">₱{(item.unit_price * item.quantity).toFixed(2)}</p>
+                  ) : (
+                    <div className="flex items-center gap-2 text-[#3A6131]/30 py-2">
+                      <Loader2 size={12} className="animate-spin" />
+                      <span className="text-[12px]">Retrieving profile…</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Items List */}
+                <div className="flex flex-col gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-wider text-[#3A6131]/60">Items ({items.length})</p>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8 text-[#3A6131]/30 gap-2">
+                      <Loader2 size={18} className="animate-spin" /> Loading…
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {items.map((item, idx) => (
+                        <div key={item.order_item_id || `item-${idx}`} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-[#3A6131]/8 shadow-sm">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[#3A6131] font-bold text-[13px] truncate">
+                              {item.item_name || `Item #${item.item_id.slice(0, 6)}`}
+                            </p>
+                            {item.size_label && (
+                              <span className="text-[10px] text-[#3A6131]/60 bg-[#3A6131]/8 px-2 py-0.5 rounded-full font-bold mt-1 inline-block uppercase">
+                                {item.size_label}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[#3A6131] font-bold text-[13px]">×{item.quantity}</p>
+                            <p className="text-[#F7B71D] font-black text-[12px]">₱{(item.unit_price * item.quantity).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-6 flex flex-col gap-6">
+                {/* GCash Proof of Payment */}
+                {order.payment_method === "QR Code" && order.proof_of_payment_url && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-blue-800 mb-3">Customer GCash Proof</p>
+                    <div className="relative aspect-video bg-white rounded-xl border border-blue-100 overflow-hidden cursor-pointer shadow-sm hover:ring-2 hover:ring-blue-400 transition-all"
+                      onClick={() => {
+                        logOrderView(order.order_id, tenantId, "PAYMENT");
+                        window.open(order.proof_of_payment_url!, "_blank");
+                      }}>
+                      <img src={order.proof_of_payment_url} alt="Proof of Payment" className="w-full h-full object-contain" />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                )}
 
-            {/* Cancel reason display for Cancelled orders */}
-            {order.fulfillment_status === "Cancelled" && order.cancel_reason && (
-              <div className="mt-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <p className="text-[10px] font-black uppercase tracking-wider text-red-400 mb-1">Cancellation Reason</p>
-                <p className="text-red-600 text-[13px] font-medium">{order.cancel_reason}</p>
+                {/* Fulfillment Actions based on status */}
+                {order.fulfillment_status === "Pending" && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col gap-3">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-yellow-800">Action Required</p>
+                    <button
+                      onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing"), "Order moved to Processing!")}
+                      disabled={busy}
+                      className="w-full bg-[#F7B71D] text-[#385E31] py-4 rounded-xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    >
+                      {busy ? <Loader2 size={18} className="animate-spin" /> : <Clock size={18} />} Mark as Processing
+                    </button>
+                  </div>
+                )}
+
+                {order.fulfillment_status === "Processing" && (
+                  <div className="flex flex-col gap-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/60 ml-1">Deliverer Name</label>
+                        <input
+                          type="text" placeholder="e.g. John Doe" value={deliveryInfo.deliverer_name}
+                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, deliverer_name: e.target.value }))}
+                          className="bg-white border border-[#3A6131]/10 rounded-xl px-4 py-3 text-[13px] text-[#3A6131] outline-none focus:border-purple-400 transition-colors"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/60 ml-1">Reference ID (Opt)</label>
+                        <input
+                          type="text" placeholder="e.g. Lalamove-001" value={deliveryInfo.delivery_id}
+                          onChange={(e) => setDeliveryInfo(prev => ({ ...prev, delivery_id: e.target.value }))}
+                          className="bg-white border border-[#3A6131]/10 rounded-xl px-4 py-3 text-[13px] text-[#3A6131] outline-none focus:border-purple-400 transition-colors"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDispatch}
+                      disabled={busy}
+                      className="w-full bg-purple-600 text-white py-4 rounded-xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-lg shadow-purple-100"
+                    >
+                      {busy ? <Loader2 size={18} className="animate-spin" /> : <Truck size={18} />} Mark as Dispatched
+                    </button>
+                  </div>
+                )}
+
+                {/* Dispatched Section */}
+                {order.fulfillment_status === "Dispatched" && (
+                  <div className="flex flex-col gap-5 p-5 bg-[#385E31]/5 rounded-2xl border border-[#385E31]/10">
+                    {/* Delivery Info Summary */}
+                    <div className="flex flex-col gap-1 mb-2">
+                      <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/40">Active Delivery</p>
+                      <p className="text-[#3A6131] font-bold text-[14px]">{order.deliverer_name} {order.delivery_id && <span className="text-[12px] opacity-60 font-mono">({order.delivery_id})</span>}</p>
+                    </div>
+
+                    {/* 1. Delivery Proof Section */}
+                    <div className="flex flex-col gap-3">
+                      <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">1. Proof of Success Delivery</p>
+                      {!order.delivery_proof_url ? (
+                        <div className="flex flex-col gap-3">
+                          <input 
+                            type="file" accept="image/*"
+                            onChange={(e) => setDeliveryFile(e.target.files?.[0] || null)}
+                            className="text-[12px] text-[#3A6131] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[12px] file:font-bold file:bg-[#385E31] file:text-[#F7B71D] hover:file:opacity-90"
+                          />
+                          <button
+                            onClick={handleDeliveryProof}
+                            disabled={busy || !deliveryFile}
+                            className="w-full bg-[#385E31] text-[#F7B71D] py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Delivery Proof
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-green-700 font-bold text-[12px] bg-green-100/50 p-3 rounded-xl">
+                            <CheckCircle2 size={16} /> Delivery Proof Verified
+                          </div>
+                          <div className="relative aspect-video bg-[#385E31]/5 rounded-xl border border-[#385E31]/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#385E31]/20 transition-all"
+                            onClick={() => {
+                              logOrderView(order.order_id, tenantId, "PROOFS");
+                              window.open(order.delivery_proof_url!, "_blank");
+                            }}>
+                            <img src={order.delivery_proof_url!} alt="Delivery Proof" className="w-full h-full object-contain" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. Payment Proof Section (COD Only) */}
+                    {order.payment_method === "Cash-on-Delivery" && (
+                      <div className="flex flex-col gap-3 pt-4 border-t border-[#385E31]/10">
+                        <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">2. Proof of Payment (Cash)</p>
+                        {!order.proof_of_payment_url ? (
+                          <div className="flex flex-col gap-3">
+                            <input 
+                              type="file" accept="image/*"
+                              onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+                              className="text-[12px] text-[#3A6131] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[12px] file:font-bold file:bg-[#F7B71D] file:text-[#385E31] hover:file:opacity-90"
+                            />
+                            <button
+                              onClick={handlePaymentProof}
+                              disabled={busy || !paymentFile}
+                              className="w-full bg-[#F7B71D] text-[#385E31] py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Payment Proof
+                            </button>
+                          </div>
+                        ) : (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-green-700 font-bold text-[12px] bg-green-100/50 p-3 rounded-xl">
+                            <CheckCircle2 size={16} /> Payment Recorded
+                          </div>
+                          <div className="relative aspect-video bg-[#385E31]/5 rounded-xl border border-[#385E31]/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#385E31]/20 transition-all"
+                            onClick={() => {
+                              logOrderView(order.order_id, tenantId, "PAYMENT");
+                              window.open(order.proof_of_payment_url!, "_blank");
+                            }}>
+                            <img src={order.proof_of_payment_url!} alt="Payment Proof" className="w-full h-full object-contain" />
+                          </div>
+                        </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Cancel Reason Display */}
+                {(order.fulfillment_status === "Cancelled" || order.fulfillment_status === "Reported") && (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                    <p className="text-[11px] font-black uppercase tracking-wider text-red-500 mb-2">Issue / Cancellation Reason</p>
+                    <p className="text-[#3A6131] text-[13px] font-medium leading-relaxed italic">
+                      "{order.cancel_reason || "No reason provided."}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Resolution Actions for Reported Orders */}
+                {order.fulfillment_status === "Reported" && (
+                  <div className="flex flex-col gap-4 bg-orange-50 border border-orange-200 rounded-2xl p-5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertTriangle size={18} className="text-orange-600" />
+                      <p className="text-[12px] font-black uppercase tracking-wider text-orange-800">Resolve Dispute</p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-orange-800 ml-1">Resolution Remarks (Required)</label>
+                      <textarea
+                        placeholder="e.g. Verified delivery proof with rider, or preparing re-delivery..."
+                        value={resolutionRemarks}
+                        onChange={(e) => setResolutionRemarks(e.target.value)}
+                        className="w-full bg-white border border-orange-200 rounded-xl px-4 py-3 text-[13px] text-[#3A6131] outline-none focus:ring-2 focus:ring-orange-400 min-h-[80px] resize-none"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      <button
+                        onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing", { 
+                          deliverer_name: null, 
+                          delivery_id: null, 
+                          delivery_proof_url: null,
+                          cancel_reason: resolutionRemarks // Overwrite with resolution reason
+                        }), "Order moved back to Processing for re-dispatch.")}
+                        disabled={busy || !resolutionRemarks.trim()}
+                        className="w-full bg-white border-2 border-orange-200 text-orange-700 py-3 rounded-xl font-bold text-[13px] hover:bg-orange-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <RefreshCw size={16} /> Re-Dispatch Order
+                      </button>
+
+                      <button
+                        onClick={() => act(() => processAndCompleteOrder(order.order_id, resolutionRemarks), "Order force-completed as Received.")}
+                        disabled={busy || !resolutionRemarks.trim()}
+                        className="w-full bg-orange-600 text-white py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                      >
+                        <CheckCircle2 size={16} /> Force Complete (Mark as Received)
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-orange-600/70 font-medium italic text-center">
+                      Resolving will update the customer's notification status.
+                    </p>
+                  </div>
+                )}
+
+                {/* General Status Text */}
+                {(order.fulfillment_status === "Received" || order.fulfillment_status === "Cancelled") && (
+                  <div className="text-center py-4 bg-[#3A6131]/5 rounded-2xl">
+                    <p className="text-[#3A6131]/40 text-[14px] font-bold">This order is {order.fulfillment_status.toLowerCase()}.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          {/* Feedback */}
-          {feedback && (
-            <div className={`mx-6 mb-3 rounded-xl px-4 py-3 flex items-center gap-2 text-[13px] font-medium ${feedback.type === "success" ? "bg-green-50 border border-green-200 text-green-700" : "bg-red-50 border border-red-200 text-red-600"}`}>
-              {feedback.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-              {feedback.msg}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="px-6 pb-6 pt-3 border-t border-[#3A6131]/10 flex flex-col gap-2">
-            {order.fulfillment_status === "Pending" && (
-              <>
-                <button
-                  onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing"), "Order moved to Processing.")}
-                  disabled={busy}
-                  className="w-full bg-blue-500 text-white py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Package size={16} />} Start Processing
-                </button>
-                <button onClick={() => setShowCancel(true)} disabled={busy}
-                  className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                  <Ban size={14} /> Cancel Order
-                </button>
-              </>
+          {/* Fixed Footer for Actions (Sticky at bottom) */}
+          <div className="px-6 py-4 bg-white border-t border-[#3A6131]/10 flex flex-col gap-3">
+            {/* Feedback Message */}
+            {feedback && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-bold ${feedback.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}
+              >
+                {feedback.type === 'success' ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                {feedback.msg}
+              </motion.div>
             )}
 
-            {order.fulfillment_status === "Processing" && (
-              <>
-                <button
-                  onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Dispatched"), "Order dispatched & stock deducted!")}
-                  disabled={busy}
-                  className="w-full bg-purple-500 text-white py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Truck size={16} />} Mark as Dispatched & Deduct Stock
-                </button>
-                <button onClick={() => setShowCancel(true)} disabled={busy}
-                  className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                  <Ban size={14} /> Cancel Order
-                </button>
-              </>
+            {/* Main Completion Button (Only shows in Fulfillment Tab or if customer confirmed) */}
+            {order.fulfillment_status === "Dispatched" && order.customer_confirmed_received && order.delivery_proof_url && (
+              <button
+                onClick={() => act(() => processAndCompleteOrder(order.order_id), "Order received & transaction completed!")}
+                disabled={busy || (order.payment_method === "Cash-on-Delivery" && !order.proof_of_payment_url)}
+                className="w-full bg-[#385E31] text-[#F7B71D] py-4 rounded-2xl font-black text-[15px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-[#385E31]/20"
+              >
+                {busy ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                Complete Transaction
+              </button>
             )}
 
-            {order.fulfillment_status === "Dispatched" && (
-              <>
-                <button
-                  onClick={() => act(() => processAndCompleteOrder(order.order_id, tenantId), "Order received & transaction completed!")}
-                  disabled={busy}
-                  className="w-full bg-[#385E31] text-[#F7B71D] py-3.5 rounded-2xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {busy ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                  {busy ? "Processing…" : "Mark as Received & Complete Transaction"}
-                </button>
-                <button onClick={() => setShowCancel(true)} disabled={busy}
-                  className="w-full bg-red-50 border border-red-200 text-red-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                  <Ban size={14} /> Cancel Order
-                </button>
-              </>
-            )}
-
-            {(order.fulfillment_status === "Received" || order.fulfillment_status === "Cancelled") && (
-              <p className="text-center text-[#3A6131]/40 text-[13px] font-medium py-2">
-                This order is {order.fulfillment_status === "Received" ? "completed" : "cancelled"}.
-              </p>
+            {/* Cancel Button (Always visible as fallback) */}
+            {order.fulfillment_status !== "Received" && order.fulfillment_status !== "Cancelled" && (
+              <button onClick={() => setShowCancel(true)} disabled={busy}
+                className="w-full py-3 text-[12px] font-bold text-red-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all flex items-center justify-center gap-2">
+                <Ban size={14} /> Cancel Order
+              </button>
             )}
           </div>
 
@@ -590,10 +852,10 @@ export default function OrdersTable() {
           <AnimatePresence>
             {filtered.map((order, idx) => {
               const isLast = idx === filtered.length - 1;
-              const m = TAB_META[order.fulfillment_status];
+              const m = TAB_META[order.fulfillment_status] || TAB_META.Pending;
               return (
                 <motion.div
-                  key={order.order_id}
+                  key={order.order_id || `order-${idx}`}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}

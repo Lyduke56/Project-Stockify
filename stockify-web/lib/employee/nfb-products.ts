@@ -4,6 +4,7 @@
 // Stock is managed directly via nfb_products.quantity.
 
 import { createClient } from "@/lib/supabase/client";
+import { recalculateNfbProductQuantity } from "@/lib/shared/inventory-utils";
 import { logAuditEvent } from "@/lib/employee/order-actions";
 
 // ─── Audit helper ─────────────────────────────────────────────────
@@ -32,7 +33,8 @@ export type NfbVariantOption = {
   price:           number;
   unit_cost:       number;
   stock:           number;
-  sku_suffix:      string | null;
+  reorder_threshold: number;
+  unit_of_measure: string | null;
   sort_order:      number;
 };
 
@@ -56,6 +58,7 @@ export type NfbProduct = {
   unit_of_measure: string;
   unit_cost:       number;
   price:           number;
+  reorder_threshold: number;
   visible:         boolean;
   is_active:       boolean;
   created_at:      string;
@@ -74,6 +77,7 @@ export type NfbProductInput = {
   unit_of_measure: string;
   unit_cost:       number;
   price:           number;
+  reorder_threshold: number;
   visible:         boolean;
 };
 
@@ -82,7 +86,8 @@ export type VariantOptionInput = {
   price:      string;
   unit_cost?: string;
   stock:      string;
-  sku_suffix: string;
+  reorder_threshold?: string;
+  unit_of_measure: string;
 };
 
 export type VariantTypeInput = {
@@ -120,20 +125,20 @@ export async function fetchNfbProducts(tenantId: string): Promise<NfbProduct[]> 
       product_categories ( name ),
       nfb_variant_types (
         variant_type_id, name, sort_order,
-        nfb_variant_options ( option_id, label, price, unit_cost, stock, sku_suffix, sort_order )
+        nfb_variant_options ( option_id, label, price, unit_cost, stock, reorder_threshold, sku_suffix, sort_order )
       )
     `)
     .eq("tenant_id", tenantId)
-    .eq("is_active", true)
     .order("name");
 
   if (error) throw error;
 
   return (data ?? []).map((row: any) => ({
     ...row,
-    unit_cost:     Number(row.unit_cost),
-    price:         Number(row.price),
-    image_url:     row.image_url ?? null,
+    unit_cost:           Number(row.unit_cost),
+    price:               Number(row.price),
+    reorder_threshold:   Number(row.reorder_threshold ?? 0),
+    image_url:           row.image_url ?? null,
     category_name: row.product_categories?.name ?? "Uncategorized",
     variants: (row.nfb_variant_types ?? [])
       .sort((a: NfbVariantType, b: NfbVariantType) => a.sort_order - b.sort_order)
@@ -141,7 +146,10 @@ export async function fetchNfbProducts(tenantId: string): Promise<NfbProduct[]> 
         ...vt,
         options: (vt.nfb_variant_options ?? []).sort(
           (a: NfbVariantOption, b: NfbVariantOption) => a.sort_order - b.sort_order
-        ),
+        ).map((o: any) => ({
+          ...o,
+          unit_of_measure: o.sku_suffix ?? "pcs",
+        })),
       })),
   }));
 }
@@ -152,10 +160,29 @@ export async function addNfbProduct(
   variants: VariantTypeInput[]
 ): Promise<NfbProduct> {
   const supabase = createClient();
+  
+  // Unique check
+  const { data: existing } = await supabase
+    .from("nfb_products")
+    .select("name, sku")
+    .eq("tenant_id", tenantId)
+    .or(`name.ilike."${input.name.trim()}",sku.ilike."${input.sku.trim()}"`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+      throw new Error(`Product with name "${input.name}" already exists.`);
+    }
+    if (existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+      throw new Error(`Product with SKU "${input.sku}" already exists.`);
+    }
+  }
+  // Prepare payload safely
+  const payload: any = { ...input, tenant_id: tenantId };
 
   const { data: product, error: productError } = await supabase
     .from("nfb_products")
-    .insert({ ...input, tenant_id: tenantId })
+    .insert(payload)
     .select()
     .single();
 
@@ -191,12 +218,17 @@ export async function addNfbProduct(
             price:           Number(o.price) || 0,
             unit_cost:       Number(o.unit_cost) || 0,
             stock:           Number(o.stock) || 0,
-            sku_suffix:      o.sku_suffix.trim() || null,
+            reorder_threshold: Number(o.reorder_threshold) || 0,
+            sku_suffix:      o.unit_of_measure.trim() || null,
             sort_order:      j,
           }))
         );
-      if (optError) throw optError;
     }
+  }
+
+  // Recalculate main product quantity as sum of variants
+  if (variants.length > 0) {
+    await recalculateNfbProductQuantity(product.product_id, tenantId);
   }
 
   // Fire-and-forget audit log
@@ -223,11 +255,38 @@ export async function updateNfbProduct(
   input:     Partial<NfbProductInput>,
   variants:  VariantTypeInput[]
 ): Promise<void> {
-  const supabase = createClient();
+    const supabase = createClient();
+
+  // Unique check
+  if (input.name || input.sku) {
+    let filters = [];
+    if (input.name) filters.push(`name.ilike."${input.name.trim()}"`);
+    if (input.sku)  filters.push(`sku.ilike."${input.sku.trim()}"`);
+
+    const { data: existing } = await supabase
+      .from("nfb_products")
+      .select("name, sku")
+      .eq("tenant_id", tenantId)
+      .neq("product_id", productId)
+      .or(filters.join(","))
+      .maybeSingle();
+
+    if (existing) {
+      if (input.name && existing.name.toLowerCase() === input.name.trim().toLowerCase()) {
+        throw new Error(`Product with name "${input.name}" already exists.`);
+      }
+      if (input.sku && existing.sku.toLowerCase() === input.sku.trim().toLowerCase()) {
+        throw new Error(`Product with SKU "${input.sku}" already exists.`);
+      }
+    }
+  }
+
+
+  const payload = { ...input };
 
   const { error: productError } = await supabase
     .from("nfb_products")
-    .update(input)
+    .update(payload)
     .eq("product_id", productId);
 
   if (productError) throw normaliseError(productError, input.sku ?? "");
@@ -264,13 +323,20 @@ export async function updateNfbProduct(
             price:           Number(o.price) || 0,
             unit_cost:       Number(o.unit_cost) || 0,
             stock:           Number(o.stock) || 0,
-            sku_suffix:      o.sku_suffix.trim() || null,
+            reorder_threshold: Number(o.reorder_threshold) || 0,
+            sku_suffix:      o.unit_of_measure.trim() || null,
             sort_order:      j,
           }))
         );
       if (optError) throw optError;
     }
   }
+
+  // Recalculate main product quantity as sum of variants
+  if (variants.length > 0) {
+    await recalculateNfbProductQuantity(productId, tenantId);
+  }
+
   // Fire-and-forget audit log
   getAuditCtx().then((ctx) => {
     if (!ctx) return;
@@ -334,6 +400,9 @@ export async function uploadNfbProductImage(
   productId: string,
   file:      File
 ): Promise<string> {
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("File size exceeds 5MB limit.");
+  }
   const supabase = createClient();
   const ext      = file.name.split(".").pop() ?? "jpg";
   const filePath = `${tenantId}/nfb-${productId}.${ext}`;
