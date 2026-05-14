@@ -58,17 +58,17 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   // Removed showSettingsModal state!
 
-  // Fallback: extract shopName from the URL path if params doesn't resolve it
-  const shopName = (params?.shopName as string) || pathname?.split("/")[1];
+  // Fallback: extract businessName from the URL path if params doesn't resolve it
+  const businessName = (params?.businessName as string) || pathname?.split("/")[1];
 
   const clientNavItems = [
-    { id: "dashboard", label: "Dashboard",            iconFileName: "icon-dashboard",            path: `/${shopName}/stockify-client-side/Dashboard` },
-    { id: "billing",   label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: `/${shopName}/stockify-client-side/billing` },
+    { id: "dashboard", label: "Dashboard",            iconFileName: "icon-dashboard",            path: `/${businessName}/stockify-client-side/Dashboard` },
+    { id: "billing",   label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: `/${businessName}/stockify-client-side/billing` },
   ];
 
   const bottomItems = [
     // Added the path route for the new settings page based on your file structure
-    { id: "settings", label: "Settings", iconFileName: "icon-settings", path: `/${shopName}/stockify-client-side/settings` },
+    { id: "settings", label: "Settings", iconFileName: "icon-settings", path: `/${businessName}/stockify-client-side/settings` },
     { id: "logout",   label: "Logout",   iconFileName: "icon-logout" },
   ];
 

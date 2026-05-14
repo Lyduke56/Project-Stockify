@@ -62,7 +62,7 @@ export default function DashboardHome() {
           
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.45 }}>
             <StatCard 
-              title="Total Orders" 
+              title="Total Success Transactions" 
               value="143" 
               svgName="AC_orders"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
