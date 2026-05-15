@@ -14,29 +14,29 @@ import type { NfbProduct } from "@/lib/employee/nfb-products";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface IngredientRow {
-  item_id:   string;
-  name:      string;
-  unit:      string;       // base_unit
-  stock:     number;       // current stock
+  item_id: string;
+  name: string;
+  unit: string;       // base_unit
+  stock: number;       // current stock
   addAmount: string;       // user input
 }
 
 interface VariantOptionRow {
-  option_id:      string;
-  variant_type:   string;
-  label:          string;
-  stock:          number;
+  option_id: string;
+  variant_type: string;
+  label: string;
+  stock: number;
   unit_of_measure: string;
-  addAmount:      string;
+  addAmount: string;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 interface RestockModalProps {
-  type:      "fnb" | "nfnb";
-  product:   Product | NfbProduct;
-  tenantId:  string;
-  onClose:   () => void;
+  type: "fnb" | "nfnb";
+  product: Product | NfbProduct;
+  tenantId: string;
+  onClose: () => void;
   onSuccess: () => void;
 }
 
@@ -48,14 +48,14 @@ export default function RestockModal({
   const supabase = createClient();
 
   // ── F&B state ─────────────────────────────────────────────────
-  const [ingredients,    setIngredients]    = useState<IngredientRow[]>([]);
+  const [ingredients, setIngredients] = useState<IngredientRow[]>([]);
   // ── NF&B simple state ─────────────────────────────────────────
-  const [simpleAdd,      setSimpleAdd]      = useState("");
+  const [simpleAdd, setSimpleAdd] = useState("");
   // ── NF&B variant state ────────────────────────────────────────
-  const [variantRows,    setVariantRows]    = useState<VariantOptionRow[]>([]);
+  const [variantRows, setVariantRows] = useState<VariantOptionRow[]>([]);
 
-  const [loading,  setLoading]  = useState(true);
-  const [saving,   setSaving]   = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   // ── Load data on mount ────────────────────────────────────────
@@ -84,7 +84,7 @@ export default function RestockModal({
     }
 
     // Deduplicate ingredient IDs
-    const itemIds = [...new Set(recipes.map((r) => r.item_id))];
+    const itemIds = [...new Set(recipes.map((r: any) => r.item_id))];
 
     const { data: items } = await supabase
       .from("fnb_inventory_items")
@@ -92,11 +92,11 @@ export default function RestockModal({
       .in("item_id", itemIds);
 
     setIngredients(
-      (items ?? []).map((i) => ({
-        item_id:   i.item_id,
-        name:      i.name,
-        unit:      i.base_unit,
-        stock:     Number(i.stock) || 0,
+      (items ?? []).map((i: any) => ({
+        item_id: i.item_id,
+        name: i.name,
+        unit: i.base_unit,
+        stock: Number(i.stock) || 0,
         addAmount: "",
       }))
     );
@@ -115,8 +115,8 @@ export default function RestockModal({
     }
 
     // Fetch live stock from DB for all options
-    const optionIds = nfb.variants!.flatMap((v) =>
-      (v.options ?? []).map((o) => o.option_id)
+    const optionIds = nfb.variants!.flatMap((v: any) =>
+      (v.options ?? []).map((o: any) => o.option_id)
     );
 
     const { data: opts } = await supabase
@@ -127,14 +127,14 @@ export default function RestockModal({
     const rows: VariantOptionRow[] = [];
     for (const vt of nfb.variants!) {
       for (const opt of vt.options ?? []) {
-        const live = opts?.find((o) => o.option_id === opt.option_id);
+        const live = opts?.find((o: any) => o.option_id === opt.option_id);
         rows.push({
-          option_id:       opt.option_id,
-          variant_type:    vt.name,
-          label:           opt.label,
-          stock:           live ? Number(live.stock) : Number(opt.stock) || 0,
+          option_id: opt.option_id,
+          variant_type: vt.name,
+          label: opt.label,
+          stock: live ? Number(live.stock) : Number(opt.stock) || 0,
           unit_of_measure: (nfb as any).unit_of_measure ?? "pcs",
-          addAmount:       "",
+          addAmount: "",
         });
       }
     }
@@ -186,13 +186,13 @@ export default function RestockModal({
         for (const ing of toUpdate) {
           logAuditEvent({
             tenantId,
-            userId:     auditUserId,
-            userName:   auditUserName,
-            action:     "RESTOCK",
+            userId: auditUserId,
+            userName: auditUserName,
+            action: "RESTOCK",
             entityType: "ingredient",
-            entityId:   ing.item_id,
+            entityId: ing.item_id,
             entityName: `${ing.name} (via ${product.name})`,
-            details:    { added: Number(ing.addAmount), new_stock: ing.stock + Number(ing.addAmount), unit: ing.unit },
+            details: { added: Number(ing.addAmount), new_stock: ing.stock + Number(ing.addAmount), unit: ing.unit },
           });
         }
 
@@ -218,13 +218,13 @@ export default function RestockModal({
           // Audit log
           logAuditEvent({
             tenantId,
-            userId:     auditUserId,
-            userName:   auditUserName,
-            action:     "RESTOCK",
+            userId: auditUserId,
+            userName: auditUserName,
+            action: "RESTOCK",
             entityType: "product",
-            entityId:   product.product_id,
+            entityId: product.product_id,
             entityName: product.name,
-            details:    { added: n, new_qty: newQty, unit: nfb.unit_of_measure },
+            details: { added: n, new_qty: newQty, unit: nfb.unit_of_measure },
           });
 
         } else {
@@ -251,13 +251,13 @@ export default function RestockModal({
           for (const row of toUpdate) {
             logAuditEvent({
               tenantId,
-              userId:     auditUserId,
-              userName:   auditUserName,
-              action:     "RESTOCK",
+              userId: auditUserId,
+              userName: auditUserName,
+              action: "RESTOCK",
               entityType: "variant",
-              entityId:   row.option_id,
+              entityId: row.option_id,
               entityName: `${product.name} — ${row.variant_type}: ${row.label}`,
-              details:    { added: Number(row.addAmount), new_stock: row.stock + Number(row.addAmount), unit: row.unit_of_measure },
+              details: { added: Number(row.addAmount), new_stock: row.stock + Number(row.addAmount), unit: row.unit_of_measure },
             });
           }
         }
@@ -274,7 +274,7 @@ export default function RestockModal({
   }
 
   // ── Helpers ───────────────────────────────────────────────────
-  const isFnb      = type === "fnb";
+  const isFnb = type === "fnb";
   const nfbProduct = product as NfbProduct;
   const hasVariants = !isFnb && nfbProduct.variants && nfbProduct.variants.length > 0;
 
@@ -348,7 +348,7 @@ export default function RestockModal({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {ingredients.map((ing, idx) => (
+                    {ingredients.map((ing: any, idx) => (
                       <div
                         key={ing.item_id}
                         className="bg-white border border-[#385E31]/10 rounded-2xl px-4 py-3 flex items-center gap-4"
@@ -368,8 +368,8 @@ export default function RestockModal({
                             placeholder="0"
                             value={ing.addAmount}
                             onChange={(e) =>
-                              setIngredients((prev) =>
-                                prev.map((r, i) => i === idx ? { ...r, addAmount: e.target.value } : r)
+                              setIngredients((prev: any) =>
+                                prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
                               )
                             }
                             className="w-[80px] border border-[#385E31]/20 focus:border-[#385E31] rounded-xl px-3 py-2 text-[13px] text-[#385E31] font-bold text-center outline-none transition-colors bg-[#FFFCEB]"
@@ -427,7 +427,7 @@ export default function RestockModal({
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {variantRows.map((row, idx) => (
+                  {variantRows.map((row: any, idx) => (
                     <div
                       key={row.option_id}
                       className="bg-white border border-[#385E31]/10 rounded-2xl px-4 py-3 flex items-center gap-4"
@@ -452,8 +452,8 @@ export default function RestockModal({
                           placeholder="0"
                           value={row.addAmount}
                           onChange={(e) =>
-                            setVariantRows((prev) =>
-                              prev.map((r, i) => i === idx ? { ...r, addAmount: e.target.value } : r)
+                            setVariantRows((prev: any) =>
+                              prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
                             )
                           }
                           className="w-[80px] border border-[#385E31]/20 focus:border-[#385E31] rounded-xl px-3 py-2 text-[13px] text-[#385E31] font-bold text-center outline-none transition-colors bg-[#FFFCEB]"
@@ -473,11 +473,10 @@ export default function RestockModal({
               <motion.div
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-medium ${
-                  feedback.ok
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-medium ${feedback.ok
                     ? "bg-green-50 border border-green-200 text-green-700"
                     : "bg-red-50 border border-red-200 text-red-600"
-                }`}
+                  }`}
               >
                 {feedback.ok
                   ? <CheckCircle2 size={15} />

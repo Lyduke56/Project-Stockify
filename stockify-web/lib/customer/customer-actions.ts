@@ -52,7 +52,7 @@ export async function fetchFavorites() {
     .eq("customer_id", user.id);
 
   if (error || !data) return [];
-  return data.map(f => f.product_id);
+  return data.map((f: any) => f.product_id);
 }
 
 /**

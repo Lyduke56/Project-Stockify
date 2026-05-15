@@ -60,7 +60,7 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
     .eq("tenant_id", tenantId);
 
   const totalRevenue = (txAll ?? []).reduce(
-    (sum, t) => sum + Number(t.total_amount), 0
+    (sum: number, t: any) => sum + Number(t.total_amount), 0
   );
 
   // ── 2. Total orders (all-time) ───────────────────────────────────────────────
@@ -92,7 +92,7 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
         const name = (item as any).item_name ?? "Unknown Item";
         itemTotals[name] = (itemTotals[name] ?? 0) + Number(item.quantity);
       }
-      const topEntry = Object.entries(itemTotals).sort((a, b) => b[1] - a[1])[0];
+      const topEntry = Object.entries(itemTotals).sort((a: any, b: any) => b[1] - a[1])[0];
       if (topEntry) {
         topProduct = topEntry[0];
         topProductCount = topEntry[1];
@@ -136,7 +136,7 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
   }
 
   // Sort: critical first, then by stock ascending
-  alerts.sort((a, b) => {
+  alerts.sort((a: any, b: any) => {
     if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
     return a.stock - b.stock;
   });
@@ -167,7 +167,7 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
 
   // Stats derived from chart
   const chartRevenues = Object.values(byDay);
-  const projectedTotal = chartRevenues.reduce((s, v) => s + v, 0);
+  const projectedTotal = chartRevenues.reduce((s: number, v: number) => s + v, 0);
   const dailyAvg       = chartRevenues.length > 0 ? projectedTotal / chartRevenues.length : 0;
   const chartAvg       = Math.round((dailyAvg / 1000) * 10) / 10;
 

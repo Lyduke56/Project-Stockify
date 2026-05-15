@@ -33,15 +33,7 @@ const getSupabase = () => {
 };
 const supabase = getSupabase();
 
-// ─── MRR Chart Data ──────────────────────────────────────────────────────────
-const mrrData = [
-  { month: "Jan", revenue: 45000 },
-  { month: "Feb", revenue: 52000 },
-  { month: "Mar", revenue: 48000 },
-  { month: "Apr", revenue: 61000 },
-  { month: "May", revenue: 68000 },
-  { month: "Jun", revenue: 75000 },
-];
+
 
 // ─── Audit Log Type ───────────────────────────────────────────────────────────
 interface AuditLog {
@@ -105,7 +97,11 @@ export default function SuperadminDashboard() {
   const [stats, setStats] = useState({
     active:  0,
     pending: 0,
+    suspended: 0,
   });
+
+  const [mrrData, setMrrData] = useState<{ month: string; revenue: number }[]>([]);
+  const [currentMrr, setCurrentMrr] = useState(0);
 
   const [auditLogs,    setAuditLogs]    = useState<AuditLog[]>([]);
   const [logsLoading,  setLogsLoading]  = useState(true);
@@ -114,14 +110,10 @@ export default function SuperadminDashboard() {
   useEffect(() => {
     const fetchAuditLogs = async () => {
       try {
-        const { data, error } = await supabase
-          .from("audit_logs")
-          .select("id, created_at, performed_by, business_name, event_type, description")
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (error) throw error;
-        setAuditLogs(data ?? []);
+        const res = await fetch("/api/superadmin/audit-logs?pageSize=10");
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        setAuditLogs(json.data ?? []);
       } catch (error) {
         console.error("Error fetching audit logs:", error);
       } finally {
@@ -130,41 +122,34 @@ export default function SuperadminDashboard() {
     };
 
     fetchAuditLogs();
-
-    // Poll every 10 seconds
     const interval = setInterval(fetchAuditLogs, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // ── Fetch stat counts ───────────────────────────────────────────────────────
+  // ── Fetch stat counts & MRR ────────────────────────────────────────────────
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardStats = async () => {
       try {
-        const [activeRes, pendingRes, suspendedRes] = await Promise.all([
-          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", true),
-          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", false),
-          supabase.from("suspended_tenants").select("*", { count: "exact", head: true }),
-        ]);
+        const res = await fetch("/api/superadmin/dashboard/stats");
+        const data = await res.json();
 
-        const totalActiveVerified = activeRes.count   || 0;
-        const totalSuspended      = suspendedRes.count || 0;
+        if (data.error) throw new Error(data.error);
 
-        setStats({
-          active:  totalActiveVerified - totalSuspended,
-          pending: pendingRes.count || 0,
-        });
+        setStats(data.stats || { active: 0, pending: 0, suspended: 0 });
+        
+        if (data.mrrChartData && data.mrrChartData.length > 0) {
+          setMrrData(data.mrrChartData);
+          setCurrentMrr(data.mrrChartData[data.mrrChartData.length - 1].revenue);
+        } else {
+          setMrrData([{ month: "—", revenue: 0 }]);
+        }
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
       }
     };
 
-    // Initial fetch
-    fetchStats();
-
-    // Poll every 5 seconds
-    const interval = setInterval(fetchStats, 5000);
-
-    // Cleanup on unmount
+    fetchDashboardStats();
+    const interval = setInterval(fetchDashboardStats, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -223,7 +208,13 @@ export default function SuperadminDashboard() {
             />
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.35 }}>
-            <StatCard title="Pending Invoices" value="124" trendText="Review their payment status and take action" className="w-full pb-5 h-full" svgName="SA-late-payments" />
+            <StatCard 
+              title="Suspended Tenants" 
+              value={stats.suspended} 
+              trendText="Total suspended tenants" 
+              className="w-full pb-5 h-full" 
+              svgName="SA-late-payments" 
+            />
           </motion.div>
         </div>
 

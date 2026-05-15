@@ -1,11 +1,58 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
 import StatCard from "@/components/cards/stat-cards";
 import ShopStatus from "@/components/cards/admin/shop-status";
+import { createClient } from "@/lib/supabase/client";
+import { fetchClientDashboardData } from "@/lib/client/dashboard-stats";
+import type { ClientDashboardStats } from "@/lib/client/dashboard-stats";
+import { Loader2 } from "lucide-react";
 
-export default function DashboardHome() {
+interface DashboardHomeProps {
+  onManageShop?: () => void;
+}
+
+export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
+  const [data, setData] = useState<ClientDashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoading(false);
+          return;
+        }
+
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (userError) throw userError;
+
+        if (userData?.tenant_id) {
+          const stats = await fetchClientDashboardData(userData.tenant_id);
+          setData(stats);
+        }
+      } catch (err) {
+        console.error("Dashboard initialization failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  const formatCurrency = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+    return n.toString();
+  };
+
   return (
     <div className="flex-1 flex flex-col h-full w-full font-['Inter']">
       
@@ -33,10 +80,10 @@ export default function DashboardHome() {
           className="mb-6"
         >
           <h2 className="text-[#385E31] text-4xl font-bold">
-            Hello, Client!
+            Hello, {loading ? "..." : (data?.shopStatus?.shopName?.split(' ')[0] || "Client")}!
           </h2>
           <p className="text-stone-400 font-medium mt-1">
-            Shop Name Corporation, Inc.
+            {loading ? "Loading shop details..." : data?.shopStatus?.shopName}
           </p>
         </motion.div>
 
@@ -45,7 +92,7 @@ export default function DashboardHome() {
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.25 }}>
             <StatCard 
               title="Active New Customers" 
-              value="58" 
+              value={loading ? <Loader2 className="animate-spin" size={32} /> : data?.activeNewCustomers.toString() ?? "0"} 
               svgName="AC_active"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
             />
@@ -54,7 +101,7 @@ export default function DashboardHome() {
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.35 }}>
             <StatCard 
               title="Monthly Revenue" 
-              value="62.3k" 
+              value={loading ? <Loader2 className="animate-spin" size={32} /> : formatCurrency(data?.monthlyRevenue ?? 0)} 
               svgName="AC_peso"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[3.8rem]" 
             />
@@ -63,7 +110,7 @@ export default function DashboardHome() {
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.45 }}>
             <StatCard 
               title="Total Success Transactions" 
-              value="143" 
+              value={loading ? <Loader2 className="animate-spin" size={32} /> : data?.totalSuccessTransactions.toString() ?? "0"} 
               svgName="AC_orders"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
             />
@@ -79,18 +126,24 @@ export default function DashboardHome() {
         >
           <div className="w-full h-[3px] bg-[#385E31]/20 rounded-full" />
           
-          <ShopStatus
-            shopName="Coffee Shop" 
-            clientName="Shop Name"
-            itemCount={245}
-            lowStockCount={12}
-            revenue="$48.5K"
-            orders={124}
-            onManageShop={() => console.log("manage shop clicked")}
-          />
+          {loading ? (
+            <div className="w-full flex justify-center py-10">
+              <Loader2 className="animate-spin text-[#385E31]" size={40} />
+            </div>
+          ) : (
+            <ShopStatus
+              shopName="Administrator View" 
+              clientName={data?.shopStatus?.shopName ?? "My Shop"}
+              itemCount={data?.shopStatus?.itemCount ?? 0}
+              lowStockCount={data?.shopStatus?.lowStockCount ?? 0}
+              revenue={`₱${formatCurrency(data?.shopStatus?.revenue ?? 0)}`}
+              orders={data?.shopStatus?.orders ?? 0}
+              onManageShop={onManageShop}
+            />
+          )}
         </motion.div>
 
       </div>
     </div>
   );
-}
+}

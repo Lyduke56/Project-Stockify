@@ -4,15 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { motion, Variants } from "framer-motion"; // <-- Added imports
 
-import SidebarClient      from "@/components/navbars/sidebar-client";
-import NavbarClient       from "@/components/navbars/navbar-client";
-import ProofUploadModal   from "@/components/modals/client/billing/proof-upload-modal";
+import SidebarClient from "@/components/navbars/sidebar-client";
+import NavbarClient from "@/components/navbars/navbar-client";
+import ProofUploadModal from "@/components/modals/client/billing/proof-upload-modal";
 import CancelConfirmModal from "@/components/modals/client/billing/cancel-confirm-modal";
 
 import SubscriptionStatusCard from "@/components/cards/client/billing/SubscriptionStatusCard";
-import PaymentMethodCard      from "@/components/cards/client/billing/PaymentMethodCard";
-import SubmissionHistory      from "@/components/cards/client/billing/SubmissionHistory";
-import BillingHistoryTable    from "@/components/tables/client/billing/BillingHistoryTable";
+import PaymentMethodCard from "@/components/cards/client/billing/PaymentMethodCard";
+import SubmissionHistory from "@/components/cards/client/billing/SubmissionHistory";
+import BillingHistoryTable from "@/components/tables/client/billing/BillingHistoryTable";
 
 import type {
   SubscriptionRecord,
@@ -50,21 +50,21 @@ const itemVariants: Variants = {
 export default function ClientBillingPage() {
   const supabase = useMemo(() => createClient(), []);
 
-  const [tenant,          setTenant]          = useState<TenantData | null>(null);
-  const [records,         setRecords]         = useState<SubscriptionRecord[]>([]);
-  const [submissions,     setSubmissions]     = useState<PaymentSubmission[]>([]);
+  const [tenant, setTenant] = useState<TenantData | null>(null);
+  const [records, setRecords] = useState<SubscriptionRecord[]>([]);
+  const [submissions, setSubmissions] = useState<PaymentSubmission[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
-    payment_qr_url:       null,
-    payment_gcash_name:   "Stockify",
+    payment_qr_url: null,
+    payment_gcash_name: "Stockify",
     payment_gcash_number: "",
     payment_instructions: "Scan the QR code using GCash or any e-wallet, then upload your screenshot.",
   });
 
-  const [currentUserId,   setCurrentUserId]   = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentTenantId, setCurrentTenantId] = useState<string | null>(null);
-  const [sessionReady,    setSessionReady]    = useState(false);
-  const [dataLoading,     setDataLoading]     = useState(false);
-  const [sessionError,    setSessionError]    = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const [showUpload, setShowUpload] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
@@ -79,7 +79,7 @@ export default function ClientBillingPage() {
 
   const resolveSession = useCallback(async (authUserId: string) => {
     try {
-      const res  = await fetch(`/api/client/billing?userId=${authUserId}`);
+      const res = await fetch(`/api/client/billing?userId=${authUserId}`);
       const json = await res.json();
 
       if (!res.ok || !json.user) {
@@ -99,7 +99,7 @@ export default function ClientBillingPage() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (session?.user?.id) {
         resolveSession(session.user.id);
       } else {
@@ -109,7 +109,7 @@ export default function ClientBillingPage() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => { if (session?.user?.id) resolveSession(session.user.id); }
+      (_event: any, session: any) => { if (session?.user?.id) resolveSession(session.user.id); }
     );
 
     return () => { subscription.unsubscribe(); };
@@ -143,15 +143,15 @@ export default function ClientBillingPage() {
       };
 
       // 3. Parse safely
-      const recordsJson  = await safeParse(recordsRes);
-      const subsJson     = await safeParse(subsRes);
+      const recordsJson = await safeParse(recordsRes);
+      const subsJson = await safeParse(subsRes);
       const settingsJson = await safeParse(settingsRes);
 
       // 4. Update state only with valid data
-      if (recordsJson.records)   setRecords(recordsJson.records);
-      if (subsJson.submissions)  setSubmissions(subsJson.submissions);
+      if (recordsJson.records) setRecords(recordsJson.records);
+      if (subsJson.submissions) setSubmissions(subsJson.submissions);
       if (settingsJson.settings) setPaymentSettings((prev) => ({ ...prev, ...settingsJson.settings }));
-      
+
     } catch (e) {
       console.error("[ClientBilling] fetchAll error:", e);
     } finally {
@@ -175,17 +175,21 @@ export default function ClientBillingPage() {
       .channel(channelName)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "payment_submissions",
-          filter: `tenant_id=eq.${currentTenantId}` },
+        {
+          event: "*", schema: "public", table: "payment_submissions",
+          filter: `tenant_id=eq.${currentTenantId}`
+        },
         () => { fetchAllRef.current(); }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "subscription_records",
-          filter: `tenant_id=eq.${currentTenantId}` },
+        {
+          event: "*", schema: "public", table: "subscription_records",
+          filter: `tenant_id=eq.${currentTenantId}`
+        },
         () => { fetchAllRef.current(); }
       )
-      .subscribe((status) => {
+      .subscribe((status: any) => {
         if (status === "SUBSCRIBED") {
           console.debug("[ClientBilling] realtime subscribed for tenant", currentTenantId);
         }
@@ -201,11 +205,11 @@ export default function ClientBillingPage() {
 
   // ── Derived values ────────────────────────────────────────────────────────
 
-  const latestRecord  = records[0] ?? null;
+  const latestRecord = records[0] ?? null;
   const hasPendingSub = submissions.some((s) => s.status === "Pending");
-  
+
   // Updated totalUnpaid calculation: amount - amount_paid
-  const totalUnpaid   = records
+  const totalUnpaid = records
     .filter((r) => r.payment_status !== "Paid")
     .reduce((sum, r) => sum + (Number(r.amount) - Number(r.amount_paid || 0)), 0);
 
@@ -222,7 +226,7 @@ export default function ClientBillingPage() {
             <NavbarClient />
             <div className="w-full flex items-center gap-3 px-5 py-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm font-medium shadow-sm">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-red-600">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
               <span><strong>Session error:</strong> {sessionError}. Please try refreshing the page.</span>
             </div>
@@ -239,7 +243,7 @@ export default function ClientBillingPage() {
       <SidebarClient active="billing" />
 
       <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
-        <motion.div 
+        <motion.div
           className="mx-auto w-full max-w-6xl space-y-8"
           variants={containerVariants}
           initial="hidden"
@@ -254,7 +258,7 @@ export default function ClientBillingPage() {
           {successMsg && (
             <motion.div variants={itemVariants} className="w-full flex items-center gap-3 px-5 py-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm font-medium shadow-sm animate-in fade-in slide-in-from-top-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-600">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
               {successMsg}
             </motion.div>
@@ -310,9 +314,9 @@ export default function ClientBillingPage() {
           <motion.section variants={itemVariants} className="w-full mt-4 p-5 bg-blue-50/60 border border-blue-100 rounded-2xl flex items-start gap-3.5 shadow-sm">
             <div className="mt-0.5 shrink-0 bg-blue-100 p-2 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
             <div className="flex flex-col gap-1">

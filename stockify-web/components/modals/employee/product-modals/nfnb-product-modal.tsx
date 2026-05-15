@@ -16,75 +16,75 @@ import {
 } from "@/lib/employee/nfb-products";
 
 export interface NfbProductModalProps {
-  mode:     "add" | "edit";
+  mode: "add" | "edit";
   tenantId: string;
   initial?: NfbProduct;
   onSave: (
     input: {
-      category_id:     string | null;
-      name:            string;
-      sku:             string;
-      description:     string | null;
-      image_url?:      string | null;
-      quantity:        number;
+      category_id: string | null;
+      name: string;
+      sku: string;
+      description: string | null;
+      image_url?: string | null;
+      quantity: number;
       unit_of_measure: string;
-      unit_cost:       number;
-      price:           number;
+      unit_cost: number;
+      price: number;
       reorder_threshold: number;
-      visible:         boolean;
+      visible: boolean;
     },
     variants: VariantTypeInput[]
   ) => Promise<void>;
   onClose: () => void;
 }
 
-const labelStyle  = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
-const inputStyle  = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
+const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
+const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
 const selectStyle = `${inputStyle} appearance-none pr-10 bg-[image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'%233A6131'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpolyline%20points%3D'6%209%2012%2015%2018%209'%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")] bg-no-repeat bg-[right_14px_center]`;
 
 const ALL_STEPS = [
-  { id: 1, label: "Basic Information", icon: Info   },
-  { id: 2, label: "Variants",          icon: Layers, variantsOnly: true },
-  { id: 3, label: "Pricing & Metrics", icon: Coins  },
+  { id: 1, label: "Basic Information", icon: Info },
+  { id: 2, label: "Variants", icon: Layers, variantsOnly: true },
+  { id: 3, label: "Pricing & Metrics", icon: Coins },
 ];
 
 const UNIT_OPTIONS = ["pcs", "box", "set", "unit", "pack", "roll", "pair", "sheet", "bottle"];
 
 // Extended variant option now includes unit_of_measure instead of sku_suffix
 interface VariantOptionInputExtended {
-  label:           string;
-  price:           string;
-  unit_cost:       string;
-  stock:           string;
+  label: string;
+  price: string;
+  unit_cost: string;
+  stock: string;
   reorder_threshold: string;
   unit_of_measure: string;
 }
 
-const EMPTY_OPTION = (): VariantOptionInputExtended => ({ 
-  label: "", 
-  price: "", 
-  unit_cost: "", 
-  stock: "", 
+const EMPTY_OPTION = (): VariantOptionInputExtended => ({
+  label: "",
+  price: "",
+  unit_cost: "",
+  stock: "",
   reorder_threshold: "0",
-  unit_of_measure: "pcs" 
+  unit_of_measure: "pcs"
 });
 
 
 
 // Variant type using extended option
 interface VariantTypeInputExtended {
-  name:    string;
+  name: string;
   options: VariantOptionInputExtended[];
 }
 
 export default function NfbProductModal({ mode, tenantId, initial, onSave, onClose }: NfbProductModalProps) {
-  const [step,           setStep]           = useState(1);
-  const [saving,         setSaving]         = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
-  const [categories,     setCategories]     = useState<Category[]>([]);
-  const [loadingCats,    setLoadingCats]    = useState(true);
-  const [imageFile,      setImageFile]      = useState<File | null>(null);
-  const [imagePreview,   setImagePreview]   = useState<string | null>(initial?.image_url?.split('?')[0] ?? null);
+  const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(initial?.image_url?.split('?')[0] ?? null);
   const [imageUploading, setImageUploading] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -95,7 +95,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
   // Derive visible steps — single item skips step 2
   const visibleSteps = ALL_STEPS.filter((s) => !(s.variantsOnly && productType === "single"));
-  const totalSteps   = visibleSteps.length;
+  const totalSteps = visibleSteps.length;
 
   // Map logical step index (1-based) within visibleSteps to actual step id
   const currentStepDef = visibleSteps.find((s) => s.id === step);
@@ -124,26 +124,26 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
   };
 
   const [form, setForm] = useState({
-    name:            initial?.name            ?? "",
-    sku:             initial?.sku             ?? "",
-    description:     initial?.description     ?? "",
-    category_id:     initial?.category_id     ?? "",
-    quantity:        initial?.quantity != null ? String(initial.quantity) : "",
+    name: initial?.name ?? "",
+    sku: initial?.sku ?? "",
+    description: initial?.description ?? "",
+    category_id: initial?.category_id ?? "",
+    quantity: initial?.quantity != null ? String(initial.quantity) : "",
     unit_of_measure: initial?.unit_of_measure ?? "pcs",
-    unit_cost:       initial?.unit_cost != null ? String(initial.unit_cost) : "",
-    price:           initial?.price != null ? String(initial.price) : "",
+    unit_cost: initial?.unit_cost != null ? String(initial.unit_cost) : "",
+    price: initial?.price != null ? String(initial.price) : "",
     reorder_threshold: initial?.reorder_threshold != null ? String(initial.reorder_threshold) : "0",
-    visible:         initial?.visible         ?? true,
+    visible: initial?.visible ?? true,
   });
 
   const [variants, setVariants] = useState<VariantTypeInputExtended[]>(
-    initial?.variants?.map((vt) => ({
+    initial?.variants?.map((vt: any) => ({
       name: vt.name,
-      options: vt.options?.map((o) => ({
-        label:           o.label ?? "",
-        price:           o.price != null ? String(o.price) : "",
-        unit_cost:       o.unit_cost != null ? String(o.unit_cost) : "",
-        stock:           o.stock != null ? String(o.stock) : "",
+      options: vt.options?.map((o: any) => ({
+        label: o.label ?? "",
+        price: o.price != null ? String(o.price) : "",
+        unit_cost: o.unit_cost != null ? String(o.unit_cost) : "",
+        stock: o.stock != null ? String(o.stock) : "",
         reorder_threshold: o.reorder_threshold != null ? String(o.reorder_threshold) : "0",
         unit_of_measure: o.unit_of_measure ?? "pcs",
       })) ?? [],
@@ -169,18 +169,18 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
   // ── Variant helpers ───────────────────────────────────────────
 
-  const addVariantType        = () => setVariants((p) => [...p, { name: "", options: [EMPTY_OPTION()] }]);
-  const removeVariantType     = (ti: number) => setVariants((p) => p.filter((_, i) => i !== ti));
+  const addVariantType = () => setVariants((p) => [...p, { name: "", options: [EMPTY_OPTION()] }]);
+  const removeVariantType = (ti: number) => setVariants((p: any[]) => p.filter((_: any, i: number) => i !== ti));
   const updateVariantTypeName = (ti: number, name: string) =>
-    setVariants((p) => p.map((vt, i) => (i === ti ? { ...vt, name } : vt)));
-  const addVariantOption      = (ti: number) =>
-    setVariants((p) => p.map((vt, i) => (i === ti ? { ...vt, options: [...vt.options, EMPTY_OPTION()] } : vt)));
-  const removeVariantOption   = (ti: number, oi: number) =>
-    setVariants((p) => p.map((vt, i) => (i === ti ? { ...vt, options: vt.options.filter((_, j) => j !== oi) } : vt)));
-  const updateVariantOption   = (ti: number, oi: number, key: keyof VariantOptionInputExtended, val: string) =>
-    setVariants((p) =>
-      p.map((vt, i) =>
-        i === ti ? { ...vt, options: vt.options.map((o, j) => (j === oi ? { ...o, [key]: val } : o)) } : vt
+    setVariants((p: any[]) => p.map((vt: any, i: number) => (i === ti ? { ...vt, name } : vt)));
+  const addVariantOption = (ti: number) =>
+    setVariants((p: any[]) => p.map((vt: any, i: number) => (i === ti ? { ...vt, options: [...vt.options, EMPTY_OPTION()] } : vt)));
+  const removeVariantOption = (ti: number, oi: number) =>
+    setVariants((p: any[]) => p.map((vt: any, i: number) => (i === ti ? { ...vt, options: vt.options.filter((_: any, j: number) => j !== oi) } : vt)));
+  const updateVariantOption = (ti: number, oi: number, key: keyof VariantOptionInputExtended, val: string) =>
+    setVariants((p: any[]) =>
+      p.map((vt: any, i: number) =>
+        i === ti ? { ...vt, options: vt.options.map((o: any, j: number) => (j === oi ? { ...o, [key]: val } : o)) } : vt
       )
     );
 
@@ -199,25 +199,25 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
     const validVariants: VariantTypeInput[] = productType === "with_variants"
       ? variants
-          .map((vt) => ({
-            ...vt,
-            options: vt.options
-              .filter((o) => o.label.trim())
-              .map((o) => ({
-                label:           o.label,
-                price:           o.price,
-                unit_cost:       o.unit_cost,
-                stock:           o.stock,
-                reorder_threshold: o.reorder_threshold,
-                unit_of_measure: o.unit_of_measure,
-              })),
-          }))
-          .filter((vt) => vt.name.trim() && vt.options.length > 0)
+        .map((vt: any) => ({
+          ...vt,
+          options: vt.options
+            .filter((o: any) => o.label.trim())
+            .map((o: any) => ({
+              label: o.label,
+              price: o.price,
+              unit_cost: o.unit_cost,
+              stock: o.stock,
+              reorder_threshold: o.reorder_threshold,
+              unit_of_measure: o.unit_of_measure,
+            })),
+        }))
+        .filter((vt: any) => vt.name.trim() && vt.options.length > 0)
       : [];
 
     if (validVariants.length > 0) {
-      const allOptions = validVariants.flatMap((vt) => vt.options);
-      const totalVariantStock = allOptions.reduce((sum, o) => sum + (Number(o.stock) || 0), 0);
+      const allOptions = validVariants.flatMap((vt: any) => vt.options);
+      const totalVariantStock = allOptions.reduce((sum: number, o: any) => sum + (Number(o.stock) || 0), 0);
       const baseQuantity = Number(form.quantity) || 0;
       if (totalVariantStock > baseQuantity && baseQuantity > 0) {
         setError(`Total variant stock (${totalVariantStock}) cannot exceed base quantity (${baseQuantity}).`);
@@ -227,13 +227,13 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
     const finalPrice = (() => {
       if (validVariants.length === 0) return Number(form.price) || 0;
-      const prices = validVariants.flatMap((vt) => vt.options).map((o) => Number(o.price) || 0);
+      const prices = validVariants.flatMap((vt: any) => vt.options).map((o: any) => Number(o.price) || 0);
       return prices.length > 0 ? Math.min(...prices) : 0;
     })();
 
     const finalUnitCost = (() => {
       if (validVariants.length === 0) return Number(form.unit_cost) || 0;
-      const costs = validVariants.flatMap((vt) => vt.options).map((o) => Number(o.unit_cost) || 0);
+      const costs = validVariants.flatMap((vt: any) => vt.options).map((o: any) => Number(o.unit_cost) || 0);
       return costs.length > 0 ? Math.min(...costs) : 0;
     })();
 
@@ -253,17 +253,17 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
       await onSave(
         {
-          category_id:     form.category_id || null,
-          name:            form.name.trim(),
-          sku:             form.sku.trim().toUpperCase(),
-          description:     form.description.trim() || null,
-          image_url:       imageUrl,
-          quantity:        Number(form.quantity) || 0,
+          category_id: form.category_id || null,
+          name: form.name.trim(),
+          sku: form.sku.trim().toUpperCase(),
+          description: form.description.trim() || null,
+          image_url: imageUrl,
+          quantity: Number(form.quantity) || 0,
           unit_of_measure: form.unit_of_measure,
-          unit_cost:       finalUnitCost,
-          price:           finalPrice,
+          unit_cost: finalUnitCost,
+          price: finalPrice,
           reorder_threshold: Number(form.reorder_threshold) || 0,
-          visible:         form.visible,
+          visible: form.visible,
         },
         validVariants
       );
@@ -296,7 +296,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
             </p>
             <nav className="flex flex-col gap-7">
               <AnimatePresence initial={false}>
-                {visibleSteps.map((s, idx) => (
+                {visibleSteps.map((s: any, idx: number) => (
                   <motion.div
                     key={s.id}
                     initial={{ opacity: 0, x: -16, height: 0 }}
@@ -309,11 +309,10 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                       className={`flex items-center gap-4 transition-all duration-300 ${step === s.id ? "translate-x-2" : "opacity-40"}`}
                     >
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                          step === s.id
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id
                             ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20"
                             : "bg-white/10 text-white"
-                        }`}
+                          }`}
                       >
                         <s.icon size={18} strokeWidth={2.5} />
                       </div>
@@ -336,9 +335,8 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
               {visibleSteps.map((s, i) => (
                 <div
                   key={s.id}
-                  className={`h-1.5 rounded-full transition-all duration-500 ${
-                    step === s.id ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
-                  }`}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${step === s.id ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
+                    }`}
                 />
               ))}
             </div>
@@ -391,68 +389,67 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     </div>
 
                     <div className="col-span-2">
-                    <label className={labelStyle}>Description</label>
-                    <textarea
-                      className={`${inputStyle} h-20 resize-none`}
-                      value={form.description}
-                      onChange={(e) => set("description", e.target.value)}
-                      placeholder="Brief product description…"
-                    />
-                  </div>
-
-                  {/* Image Upload */}
-                  <div className="col-span-2">
-                    <label className={labelStyle}>Product Image <span className="text-[#3A6131]/40 font-normal">(optional)</span></label>
-                    <div
-                      onClick={() => imageInputRef.current?.click()}
-                      className={`relative flex flex-col items-center justify-center gap-2 w-full h-36 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
-                        imagePreview
-                          ? 'border-[#3A6131]/30 bg-transparent'
-                          : 'border-[#3A6131]/20 bg-[#3A6131]/3 hover:border-[#3A6131]/50 hover:bg-[#3A6131]/5'
-                      }`}
-                    >
-                      {imagePreview ? (
-                        <>
-                          <img src={imagePreview} alt="preview" className="w-full h-full object-cover rounded-2xl" />
-                          <div className="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <p className="text-white text-[12px] font-bold flex items-center gap-1"><UploadCloud size={14} /> Change Image</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
-                            className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
-                          >
-                            <X size={12} />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <Package size={28} className="text-[#3A6131]/30" />
-                          <p className="text-[#3A6131]/50 text-[12px] font-medium">Click to upload product image</p>
-                          <p className="text-[#3A6131]/30 text-[10px]">PNG, JPG, WEBP up to 5MB</p>
-                        </>
-                      )}
+                      <label className={labelStyle}>Description</label>
+                      <textarea
+                        className={`${inputStyle} h-20 resize-none`}
+                        value={form.description}
+                        onChange={(e) => set("description", e.target.value)}
+                        placeholder="Brief product description…"
+                      />
                     </div>
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        
-                        if (file.size > 5 * 1024 * 1024) {
-                          setError("Image size exceeds the 5MB limit. Please choose a smaller file.");
-                          return;
-                        }
 
-                        setImageFile(file);
-                        setImagePreview(URL.createObjectURL(file));
-                        setError(null);
-                      }}
-                    />
-                  </div>
+                    {/* Image Upload */}
+                    <div className="col-span-2">
+                      <label className={labelStyle}>Product Image <span className="text-[#3A6131]/40 font-normal">(optional)</span></label>
+                      <div
+                        onClick={() => imageInputRef.current?.click()}
+                        className={`relative flex flex-col items-center justify-center gap-2 w-full h-36 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${imagePreview
+                            ? 'border-[#3A6131]/30 bg-transparent'
+                            : 'border-[#3A6131]/20 bg-[#3A6131]/3 hover:border-[#3A6131]/50 hover:bg-[#3A6131]/5'
+                          }`}
+                      >
+                        {imagePreview ? (
+                          <>
+                            <img src={imagePreview} alt="preview" className="w-full h-full object-cover rounded-2xl" />
+                            <div className="absolute inset-0 bg-black/30 rounded-2xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                              <p className="text-white text-[12px] font-bold flex items-center gap-1"><UploadCloud size={14} /> Change Image</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setImagePreview(null); setImageFile(null); }}
+                              className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <Package size={28} className="text-[#3A6131]/30" />
+                            <p className="text-[#3A6131]/50 text-[12px] font-medium">Click to upload product image</p>
+                            <p className="text-[#3A6131]/30 text-[10px]">PNG, JPG, WEBP up to 5MB</p>
+                          </>
+                        )}
+                      </div>
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          if (file.size > 5 * 1024 * 1024) {
+                            setError("Image size exceeds the 5MB limit. Please choose a smaller file.");
+                            return;
+                          }
+
+                          setImageFile(file);
+                          setImagePreview(URL.createObjectURL(file));
+                          setError(null);
+                        }}
+                      />
+                    </div>
 
                     <div>
                       <label className={labelStyle}>SKU Code</label>
@@ -477,7 +474,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                           onChange={(e) => set("category_id", e.target.value)}
                         >
                           <option value="">— No Category —</option>
-                          {categories.map((c) => (
+                          {categories.map((c: any) => (
                             <option key={c.category_id} value={c.category_id}>{c.name}</option>
                           ))}
                         </select>
@@ -491,22 +488,20 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                         <button
                           type="button"
                           onClick={() => handleProductTypeChange("single")}
-                          className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${
-                            productType === "single"
+                          className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${productType === "single"
                               ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
                               : "text-[#3A6131]/50 hover:text-[#3A6131]"
-                          }`}
+                            }`}
                         >
                           Single Item
                         </button>
                         <button
                           type="button"
                           onClick={() => handleProductTypeChange("with_variants")}
-                          className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${
-                            productType === "with_variants"
+                          className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${productType === "with_variants"
                               ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
                               : "text-[#3A6131]/50 hover:text-[#3A6131]"
-                          }`}
+                            }`}
                         >
                           With Variants
                         </button>
@@ -548,7 +543,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                               value={form.unit_of_measure}
                               onChange={(e) => set("unit_of_measure", e.target.value)}
                             >
-                              {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                              {UNIT_OPTIONS.map((u: string) => <option key={u} value={u}>{u}</option>)}
                             </select>
                           </motion.div>
                         </>
@@ -615,7 +610,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     </div>
                   ) : (
                     <div className="space-y-4 mt-4">
-                      {variants.map((vt, ti) => (
+                      {variants.map((vt: any, ti: number) => (
                         <div key={ti} className="bg-white rounded-2xl border border-[#3A6131]/10 overflow-hidden shadow-sm">
                           {/* Variant type header */}
                           <div className="flex items-center gap-3 px-4 py-3 bg-[#3A6131]/5 border-b border-[#3A6131]/10">
@@ -646,7 +641,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
                           {/* Options */}
                           <div className="space-y-1 px-4 pb-3">
-                            {vt.options.map((opt, oi) => (
+                            {vt.options.map((opt: any, oi: number) => (
                               <div key={oi} className="flex gap-2 items-center">
                                 <input
                                   className="flex-1 bg-[#FFFCEB]/60 border border-[#3A6131]/10 rounded-xl px-3 py-2 text-[12px] font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D]"
@@ -667,7 +662,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                                   value={opt.unit_of_measure}
                                   onChange={(e) => updateVariantOption(ti, oi, "unit_of_measure", e.target.value)}
                                 >
-                                  {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
+                                  {UNIT_OPTIONS.map((u: string) => <option key={u} value={u}>{u}</option>)}
                                 </select>
                                 <button
                                   onClick={() => removeVariantOption(ti, oi)}
@@ -781,9 +776,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                           <span className="mr-2 opacity-30 text-xl">₱</span>
                           <span className="text-2xl">
                             {(() => {
-                              const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
+                              const validOpts = variants.flatMap((vt: any) => vt.options).filter((o: any) => o.label.trim());
                               if (validOpts.length === 0) return "0.00";
-                              const costs = validOpts.map(o => Number(o.unit_cost || 0));
+                              const costs = validOpts.map((o: any) => Number(o.unit_cost || 0));
                               const min = Math.min(...costs); const max = Math.max(...costs);
                               return min === max ? min.toFixed(2) : `${min.toFixed(2)} - ${max.toFixed(2)}`;
                             })()}
@@ -798,9 +793,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                           <span className="mr-2 opacity-30 text-xl">₱</span>
                           <span className="text-2xl">
                             {(() => {
-                              const validOpts = variants.flatMap(vt => vt.options).filter(o => o.label.trim());
+                              const validOpts = variants.flatMap((vt: any) => vt.options).filter((o: any) => o.label.trim());
                               if (validOpts.length === 0) return "0.00";
-                              const prices = validOpts.map(o => Number(o.price || 0));
+                              const prices = validOpts.map((o: any) => Number(o.price || 0));
                               const min = Math.min(...prices); const max = Math.max(...prices);
                               return min === max ? min.toFixed(2) : `${min.toFixed(2)} - ${max.toFixed(2)}`;
                             })()}
@@ -814,8 +809,8 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   {/* ── Option rows for variants ── */}
                   {hasVariants && (
                     <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full">
-                      {variants.map((vt, ti) => {
-                        const visibleOpts = vt.options.filter((o) => o.label.trim());
+                      {variants.map((vt: any, ti: number) => {
+                        const visibleOpts = vt.options.filter((o: any) => o.label.trim());
                         if (!vt.name.trim() || visibleOpts.length === 0) return null;
                         return (
                           <div key={ti} className="bg-white rounded-2xl border border-[#3A6131]/10 overflow-hidden shadow-sm">
@@ -832,7 +827,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                             </div>
 
                             <div className="space-y-1 px-4 pb-4">
-                              {vt.options.map((opt, oi) => {
+                              {vt.options.map((opt: any, oi: number) => {
                                 if (!opt.label.trim()) return null;
                                 return (
                                   <div key={oi} className="flex gap-2 items-center">

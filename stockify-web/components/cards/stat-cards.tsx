@@ -2,7 +2,7 @@ import React from "react";
 
 export interface StatCardProps {
   title: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   trendText?: string;
   svgName?: string;
   icon?: React.ReactNode;
