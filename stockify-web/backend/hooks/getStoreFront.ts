@@ -128,30 +128,30 @@ export const getFnbProducts = async (
 
   if (error || !data) return [];
 
-  return data.map((p) => {
+  return data.map((p: any) => {
     const rawSizes = (p.product_sizes as any[]) ?? [];
     const sizes: FnbProductSize[] = rawSizes
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((s) => ({
-        size_id:   s.size_id,
-        label:     s.label,
-        price:     Number(s.price),
+      .map((s: any) => ({
+        size_id: s.size_id,
+        label: s.label,
+        price: Number(s.price),
         is_default: s.is_default,
         sort_order: s.sort_order,
-        max_yield:  Number(s.max_yield ?? 0),
+        max_yield: Number(s.max_yield ?? 0),
       }));
 
     // Compute the display price: if sizes exist use lowest, else use base
-    const basePrice = sizes.length > 0 ? Math.min(...sizes.map((s) => s.price)) : Number(p.price);
+    const basePrice = sizes.length > 0 ? Math.min(...sizes.map((s: any) => s.price)) : Number(p.price);
 
     return {
-      product_id:    p.product_id,
-      name:          p.name,
-      description:   p.description ?? null,
-      image_url:     p.image_url ?? null,
-      price:         basePrice,
-      max_yield:     p.max_yield,
-      category_id:   p.category_id ?? null,
+      product_id: p.product_id,
+      name: p.name,
+      description: p.description ?? null,
+      image_url: p.image_url ?? null,
+      price: basePrice,
+      max_yield: p.max_yield,
+      category_id: p.category_id ?? null,
       category_name: (p.product_categories as any)?.name ?? null,
       sizes,
     };
@@ -161,21 +161,21 @@ export const getFnbProducts = async (
 // ─── NF&B Products (with variants) ─────────────────────────────────────────────
 
 const mapNfnbProducts = (data: any[], hasImage: boolean): NfnbProduct[] =>
-  data.map((p) => {
+  data.map((p: any) => {
     const rawVariantTypes = (p.nfb_variant_types as any[]) ?? [];
 
     const variants: NfnbVariantType[] = rawVariantTypes
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((vt) => ({
+      .map((vt: any) => ({
         variant_type_id: vt.variant_type_id,
-        name:            vt.name,
-        options:         ((vt.nfb_variant_options as any[]) ?? [])
+        name: vt.name,
+        options: ((vt.nfb_variant_options as any[]) ?? [])
           .sort((a: any, b: any) => a.sort_order - b.sort_order)
           .map((o: any) => ({
             option_id: o.option_id,
-            label:     o.label,
-            price:     Number(o.price),
-            stock:     Number(o.stock),
+            label: o.label,
+            price: Number(o.price),
+            stock: Number(o.stock),
           })),
       }));
 
@@ -183,15 +183,15 @@ const mapNfnbProducts = (data: any[], hasImage: boolean): NfnbProduct[] =>
     const basePrice = allOptPrices.length > 0 ? Math.min(...allOptPrices) : (Number(p.price) || 0);
 
     return {
-      product_id:      p.product_id,
-      name:            p.name,
-      description:     p.description ?? null,
-      image_url:       hasImage ? (p.image_url ?? null) : null,
-      price:           basePrice,
-      quantity:        p.quantity,
+      product_id: p.product_id,
+      name: p.name,
+      description: p.description ?? null,
+      image_url: hasImage ? (p.image_url ?? null) : null,
+      price: basePrice,
+      quantity: p.quantity,
       unit_of_measure: p.unit_of_measure,
-      category_id:     p.category_id ?? null,
-      category_name:   (p.product_categories as any)?.name ?? null,
+      category_id: p.category_id ?? null,
+      category_name: (p.product_categories as any)?.name ?? null,
       variants,
     };
   });

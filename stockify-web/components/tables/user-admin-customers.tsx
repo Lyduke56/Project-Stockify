@@ -1,42 +1,43 @@
 "use client";
 
 import React from "react";
-
-type CustomerStatus = "Active" | "Suspended";
-
-interface CustomerRecord {
-  name: string;
-  email: string;
-  contact: string;
-  status: CustomerStatus;
-  onSuspend?: () => void;
-  onReactivate?: () => void;
-}
+import { useCustomerRecords, CustomerRecord } from "@/backend/hooks/useCustomerRecords";
+import { Loader2 } from "lucide-react";
 
 interface RegisteredCustomersTableProps {
-  records?: CustomerRecord[];
+  userId: string;
 }
 
-const defaultRecords: CustomerRecord[] = [
-  { name: "Asa Mitaka",  email: "morningwar@gmail.com",  contact: "0947-XXX-YYY", status: "Active" },
-  { name: "Yoru Mitaka", email: "eveningpeace@gmail.com", contact: "0967-XXX-YYY", status: "Suspended" },
-  { name: "Asa Mitaka",  email: "morningwar@gmail.com",  contact: "0947-XXX-YYY", status: "Active" },
-  { name: "Yoru Mitaka", email: "eveningpeace@gmail.com", contact: "0967-XXX-YYY", status: "Suspended" },
-  { name: "Asa Mitaka",  email: "morningwar@gmail.com",  contact: "0947-XXX-YYY", status: "Active" },
-  { name: "Yoru Mitaka", email: "eveningpeace@gmail.com", contact: "0967-XXX-YYY", status: "Suspended" },
-];
-
-const statusColors: Record<CustomerStatus, string> = {
+const statusColors: Record<"Active" | "Suspended", string> = {
   Active:    "#385E31",
   Suspended: "#E53333",
 };
 
 // Standardized grid layout for customer data
-const GRID_LAYOUT = "1.5fr 2fr 1.5fr 1fr 1fr";
+const GRID_LAYOUT = "1.5fr 2fr 1.5fr 1fr";
 
 export default function RegisteredCustomersTable({
-  records = defaultRecords,
+  userId,
 }: RegisteredCustomersTableProps) {
+  const { records, loading, error } = useCustomerRecords(userId);
+
+  if (loading) {
+    return (
+      <div className="w-full flex justify-center items-center py-10">
+        <Loader2 className="animate-spin text-[#385E31] mr-2" size={20} />
+        <span className="text-sm font-semibold text-[#385E31]">Loading customers...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full flex flex-col items-center gap-2 py-10">
+        <span className="text-sm font-semibold text-[#E53333]">Failed to load customers: {error}</span>
+      </div>
+    );
+  }
+
   return (
     <div
       className="w-full rounded-[10px] overflow-hidden border border-[#385E31]"
@@ -50,7 +51,7 @@ export default function RegisteredCustomersTable({
           gridTemplateColumns: GRID_LAYOUT,
         }}
       >
-        {["Name", "Email", "Contact #", "Status", "Actions"].map((col) => (
+        {["Name", "Email", "Contact #", "Status"].map((col) => (
           <div key={col} className="px-4 py-3 flex justify-center items-center">
             <span className="text-[16px] font-bold font-['Inter'] text-[#FFFCF0]">
               {col}
@@ -60,71 +61,52 @@ export default function RegisteredCustomersTable({
       </div>
 
       {/* Rows */}
-      {records.map((record, i) => (
-        <div
-          key={i}
-          className="grid w-full border-t border-[#385E31]/10 items-center"
-          style={{ gridTemplateColumns: GRID_LAYOUT }}
-        >
-          {/* Name */}
-          <Cell>
-            <span className="text-sm font-medium text-[#385E31] text-center">
-              {record.name}
-            </span>
-          </Cell>
-
-          {/* Email */}
-          <Cell>
-            <span className="text-sm font-medium text-[#385E31] text-center">
-              {record.email}
-            </span>
-          </Cell>
-
-          {/* Contact # */}
-          <Cell>
-            <span className="text-sm font-medium text-[#385E31] text-center">
-              {record.contact}
-            </span>
-          </Cell>
-
-          {/* Status Badge */}
-          <Cell>
-            <div
-              className="px-4 py-1 rounded-full flex justify-center items-center min-w-[90px]"
-              style={{ backgroundColor: statusColors[record.status] }}
-            >
-              <span className="text-[10px] font-bold text-[#FFFCF0]">
-                {record.status}
+      {records.length === 0 ? (
+        <div className="py-10 flex justify-center">
+          <span className="text-sm text-[#385E31]/60">No registered customers found.</span>
+        </div>
+      ) : (
+        records.map((record) => (
+          <div
+            key={record.user_id}
+            className="grid w-full border-t border-[#385E31]/10 items-center"
+            style={{ gridTemplateColumns: GRID_LAYOUT }}
+          >
+            {/* Name */}
+            <Cell>
+              <span className="text-sm font-medium text-[#385E31] text-center">
+                {record.name}
               </span>
-            </div>
-          </Cell>
+            </Cell>
 
-          {/* Actions Button */}
-          <Cell>
-            {record.status === "Active" ? (
-              <button
-                onClick={record.onSuspend}
-                className="px-4 py-1 rounded-full flex justify-center items-center transition-all hover:brightness-110 active:scale-95 shadow-sm min-w-[90px]"
-                style={{ backgroundColor: "#E53333" }}
+            {/* Email */}
+            <Cell>
+              <span className="text-sm font-medium text-[#385E31] text-center">
+                {record.email}
+              </span>
+            </Cell>
+
+            {/* Contact # */}
+            <Cell>
+              <span className="text-sm font-medium text-[#385E31] text-center">
+                {record.contact}
+              </span>
+            </Cell>
+
+            {/* Status Badge */}
+            <Cell>
+              <div
+                className="px-4 py-1 rounded-full flex justify-center items-center min-w-[90px]"
+                style={{ backgroundColor: statusColors[record.status] }}
               >
                 <span className="text-[10px] font-bold text-[#FFFCF0]">
-                  Suspend
+                  {record.status}
                 </span>
-              </button>
-            ) : (
-              <button
-                onClick={record.onReactivate}
-                className="px-4 py-1 rounded-full flex justify-center items-center transition-all hover:brightness-110 active:scale-95 shadow-sm min-w-[90px]"
-                style={{ backgroundColor: "#E5AC24" }}
-              >
-                <span className="text-[10px] font-bold text-[#24481F]">
-                  Reactivate
-                </span>
-              </button>
-            )}
-          </Cell>
-        </div>
-      ))}
+              </div>
+            </Cell>
+          </div>
+        ))
+      )}
     </div>
   );
 }
@@ -136,4 +118,4 @@ function Cell({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
-}
+}

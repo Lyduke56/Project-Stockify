@@ -69,12 +69,12 @@ export function useStaffRecords(userId: string | null): UseStaffRecordsResult {
         if (tenantErr) throw new Error(tenantErr.message);
 
         // ── Step 3: normalise into StaffRecord shape ──────────────────────
-        const normalised: StaffRecord[] = (tenantUsers ?? []).map((u) => ({
+        const normalised: StaffRecord[] = (tenantUsers ?? []).map((u: any) => ({
           user_id: u.user_id,
           display_name:
             u.display_name ??
             ([u.first_name, u.last_name].filter(Boolean).join(" ") ||
-            u.email),
+              u.email),
           first_name: u.first_name,
           last_name: u.last_name,
           email: u.email,

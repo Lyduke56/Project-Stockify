@@ -51,7 +51,7 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
     setUserProfile(null);
 
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data }) => {
+    supabase.auth.getUser().then(async ({ data }: any) => {
       const uid = data.user?.id ?? null;
       setUserId(uid);
 
@@ -123,7 +123,7 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
 
   const paymentMethods: { id: PaymentMethod; label: string; icon: React.ReactNode }[] = [
     { id: "Cash-on-Delivery", label: "Cash on Delivery", icon: <Banknote size={18} /> },
-    { id: "QR Code",          label: "QR Code Payment", icon: <Smartphone size={18} /> },
+    { id: "QR Code", label: "QR Code Payment", icon: <Smartphone size={18} /> },
   ];
 
   return (
@@ -309,28 +309,27 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
                           return true;
                         })
                         .map((pm) => (
-                        <button
-                          key={pm.id}
-                          onClick={() => setPaymentMethod(pm.id)}
-                          className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
-                            paymentMethod === pm.id
-                              ? "border-[#3A6131] bg-[#3A6131]/5"
-                              : "border-[#3A6131]/15 bg-white hover:border-[#3A6131]/30"
-                          }`}
-                        >
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${paymentMethod === pm.id ? "bg-[#3A6131] text-[#F7B71D]" : "bg-[#3A6131]/8 text-[#3A6131]/60"}`}>
-                            {pm.icon}
-                          </div>
-                          <span className={`font-bold text-[15px] ${paymentMethod === pm.id ? "text-[#3A6131]" : "text-[#3A6131]/60"}`}>
-                            {pm.label}
-                          </span>
-                          {paymentMethod === pm.id && (
-                            <div className="ml-auto w-5 h-5 rounded-full bg-[#3A6131] flex items-center justify-center">
-                              <div className="w-2 h-2 rounded-full bg-white" />
+                          <button
+                            key={pm.id}
+                            onClick={() => setPaymentMethod(pm.id)}
+                            className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${paymentMethod === pm.id
+                                ? "border-[#3A6131] bg-[#3A6131]/5"
+                                : "border-[#3A6131]/15 bg-white hover:border-[#3A6131]/30"
+                              }`}
+                          >
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${paymentMethod === pm.id ? "bg-[#3A6131] text-[#F7B71D]" : "bg-[#3A6131]/8 text-[#3A6131]/60"}`}>
+                              {pm.icon}
                             </div>
-                          )}
-                        </button>
-                      ))}
+                            <span className={`font-bold text-[15px] ${paymentMethod === pm.id ? "text-[#3A6131]" : "text-[#3A6131]/60"}`}>
+                              {pm.label}
+                            </span>
+                            {paymentMethod === pm.id && (
+                              <div className="ml-auto w-5 h-5 rounded-full bg-[#3A6131] flex items-center justify-center">
+                                <div className="w-2 h-2 rounded-full bg-white" />
+                              </div>
+                            )}
+                          </button>
+                        ))}
                     </div>
 
                     {/* GCash QR & Upload */}
@@ -343,8 +342,8 @@ export function CheckoutModal({ isOpen, onClose, tenantId, onSuccess }: Checkout
                         <div className="w-full h-px bg-blue-200" />
                         <div className="w-full text-left">
                           <p className="text-blue-800 text-[11px] font-black uppercase tracking-wider mb-2">Upload Proof of Payment</p>
-                          <input 
-                            type="file" 
+                          <input
+                            type="file"
                             accept="image/*"
                             onChange={(e) => setPopFile(e.target.files?.[0] || null)}
                             className="text-xs text-blue-900 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200"

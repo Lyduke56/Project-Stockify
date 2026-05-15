@@ -152,11 +152,11 @@ export default function FnbStorefront() {
         schema: 'public',
         table: 'products',
         filter: `tenant_id=eq.${tenant.tenant_id}`
-      }, (payload) => {
+      }, (payload: any) => {
         setProducts(prev => {
-          const updated = prev.map(p => 
-            p.product_id === payload.new.product_id 
-              ? { ...p, max_yield: payload.new.max_yield } 
+          const updated = prev.map(p =>
+            p.product_id === payload.new.product_id
+              ? { ...p, max_yield: payload.new.max_yield }
               : p
           );
           // Sync open modal
@@ -176,26 +176,26 @@ export default function FnbStorefront() {
         schema: 'public',
         table: 'product_sizes',
         filter: `tenant_id=eq.${tenant.tenant_id}`
-      }, (payload) => {
+      }, (payload: any) => {
         setProducts(prev => {
           const updated = prev.map(p => ({
             ...p,
-            sizes: p.sizes.map(s => 
-              s.size_id === payload.new.size_id 
-                ? { ...s, max_yield: payload.new.max_yield } 
+            sizes: p.sizes.map(s =>
+              s.size_id === payload.new.size_id
+                ? { ...s, max_yield: payload.new.max_yield }
                 : s
             )
           }));
-          
+
           // Sync open modal
           if (selectedProduct) {
             const hasSize = selectedProduct.sizes.some(s => s.size_id === payload.new.size_id);
             if (hasSize) {
               setSelectedProduct(prev => prev ? {
                 ...prev,
-                sizes: prev.sizes.map(s => 
-                  s.size_id === payload.new.size_id 
-                    ? { ...s, max_yield: payload.new.max_yield } 
+                sizes: prev.sizes.map(s =>
+                  s.size_id === payload.new.size_id
+                    ? { ...s, max_yield: payload.new.max_yield }
                     : s
                 )
               } : null);
@@ -231,7 +231,7 @@ export default function FnbStorefront() {
   const handleToggleFavorite = async (productId: string) => {
     const { favorited, error } = await toggleFavorite(productId);
     if (!error) {
-      setFavorites(prev => 
+      setFavorites(prev =>
         favorited ? [...prev, productId] : prev.filter(id => id !== productId)
       );
     }
@@ -250,13 +250,13 @@ export default function FnbStorefront() {
     const activeCat = activeCategory || "All Products";
 
     const matchesCategory =
-      activeCat === "All Products" || 
+      activeCat === "All Products" ||
       (activeCat === "My Favorites" ? favorites.includes(p.product_id) : pCatName === activeCat);
-    
+
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     return matchesCategory && matchesSearch;
   });
 
@@ -310,7 +310,7 @@ export default function FnbStorefront() {
         </motion.div>
       </div>
 
-      <CustomerHeader 
+      <CustomerHeader
         businessName={businessName}
         tenantLogo={tenant?.logo_url ?? undefined}
         tenantName={tenant?.business_name}
@@ -360,11 +360,10 @@ export default function FnbStorefront() {
               <button
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
-                className={`transition-all duration-300 rounded-full ${
-                  currentSlide === idx
+                className={`transition-all duration-300 rounded-full ${currentSlide === idx
                     ? "w-6 h-2 bg-[#F7B71D]"
                     : "w-2 h-2 bg-[#FFFCEB]/40 hover:bg-[#FFFCEB]/80"
-                }`}
+                  }`}
               />
             ))}
           </div>
@@ -477,7 +476,7 @@ export default function FnbStorefront() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         tenantId={tenant?.tenant_id ?? ""}
-        onSuccess={() => {}}
+        onSuccess={() => { }}
       />
     </div>
   );

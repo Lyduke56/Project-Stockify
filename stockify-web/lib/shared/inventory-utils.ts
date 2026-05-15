@@ -66,8 +66,8 @@ export async function recalculateMaxYield(productId: string, tenantId: string) {
     .eq("product_id", productId)
     .eq("tenant_id", tenantId);
 
-  const sizeLabels = allSizes?.map(s => s.label) || [];
-  const recipeSizes = Array.from(new Set(recipes.map(r => r.size_label)));
+  const sizeLabels = allSizes?.map((s: any) => s.label) || [];
+  const recipeSizes = Array.from(new Set(recipes.map((r: any) => r.size_label)));
   
   // Combine them: every size should be considered
   const allConsideredSizes = Array.from(new Set([...sizeLabels, ...recipeSizes]));
@@ -79,7 +79,7 @@ export async function recalculateMaxYield(productId: string, tenantId: string) {
 
   for (const size of allConsideredSizes) {
     // Exact match for size label
-    const sizeRecipes = recipes.filter(r => 
+    const sizeRecipes = recipes.filter((r: any) => 
       (size === null && r.size_label === null) || 
       (size !== null && r.size_label === size)
     );
@@ -185,8 +185,8 @@ export async function recalculateYieldsForIngredient(itemId: string, tenantId: s
     console.log(`[recalculateYieldsForIngredient] No products found using this ingredient.`);
     return;
   }
-  const productIds = Array.from(new Set(recipes.map(r => r.product_id)));
-  await Promise.all(productIds.map(pid => recalculateMaxYield(pid, tenantId)));
+  const productIds = Array.from(new Set(recipes.map((r: any) => r.product_id)));
+  await Promise.all(productIds.map((pid: any) => recalculateMaxYield(pid, tenantId)));
 }
 
 export interface InventoryValidationResult {
@@ -326,17 +326,17 @@ export async function validateInventoryForOrder(
         return null;
       }));
 
-      const validRecs = productRecs.filter((r): r is NonNullable<typeof r> => r !== null);
+      const validRecs = productRecs.filter((r: any): r is NonNullable<typeof r> => r !== null);
       
       // Check if all affected products use the same amount of this ingredient
       const firstAmount = validRecs[0]?.amountPerServing;
-      const allSameAmount = validRecs.every(r => r.amountPerServing === firstAmount);
+      const allSameAmount = validRecs.every((r: any) => r.amountPerServing === firstAmount);
 
       let reason = "";
       if (allSameAmount && validRecs.length > 1) {
-        reason = `⚠️ We're short on ${inv.name}. You can only order a combined total of ${validRecs[0].max} servings across: ${validRecs.map(r => r.name).join(", ")}.`;
+        reason = `⚠️ We're short on ${inv.name}. You can only order a combined total of ${validRecs[0].max} servings across: ${validRecs.map((r: any) => r.name).join(", ")}.`;
       } else {
-        const recStrings = validRecs.map(r => `${r.name} (Max: ${r.max})`).join(", ");
+        const recStrings = validRecs.map((r: any) => `${r.name} (Max: ${r.max})`).join(", ");
         reason = `⚠️ We're short on ${inv.name}. Total available: ${recStrings}. (Note: These items share the same ingredient stock)`;
       }
 
@@ -379,7 +379,7 @@ export async function recalculateNfbProductQuantity(productId: string, tenantId:
 
   if (options.length === 0) return; // No variants, quantity is handled manually or stays as is
 
-  const totalQuantity = options.reduce((sum, opt) => sum + (Number(opt.stock) || 0), 0);
+  const totalQuantity = options.reduce((sum: number, opt: any) => sum + (Number(opt.stock) || 0), 0);
 
   console.log(`[recalculateNfbProductQuantity] Updating product ${productId} total quantity to: ${totalQuantity}`);
   await supabase

@@ -21,13 +21,7 @@ export type SectionKey =
   | "store-settings"
   | "admin-settings";
 
-const SECTIONS: Record<SectionKey, React.ReactNode> = {
-  "dashboard": <DashboardSection />,
-  "user-admin": <UserAdminSection />,
-  "storefront": <StorefrontSection />,
-  "store-settings": <StoreSettingsSection />,
-  "admin-settings": <AdminSettingsSection />
-};
+// Removed static SECTIONS to allow passing props in the render method
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -39,7 +33,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const querySection = searchParams.get("section") as SectionKey;
-    if (querySection && Object.keys(SECTIONS).includes(querySection) && querySection !== activeSection) {
+    const validSections: SectionKey[] = ["dashboard", "user-admin", "storefront", "store-settings", "admin-settings"];
+    if (querySection && validSections.includes(querySection) && querySection !== activeSection) {
       setActiveSection(querySection);
     }
   }, [searchParams, activeSection]);
@@ -62,7 +57,13 @@ export default function AdminDashboard() {
         />
         
         <main className="p-5">
-          {SECTIONS[activeSection]}
+          {activeSection === "dashboard" && (
+            <DashboardSection onManageShop={() => handleSetSection("store-settings")} />
+          )}
+          {activeSection === "user-admin" && <UserAdminSection />}
+          {activeSection === "storefront" && <StorefrontSection />}
+          {activeSection === "store-settings" && <StoreSettingsSection />}
+          {activeSection === "admin-settings" && <AdminSettingsSection />}
         </main>
       </div>
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
-import type { User } from "@supabase/supabase-js";
+import type { User, AuthChangeEvent, Session } from "@supabase/supabase-js";
 import SlideshowBackground from "@/components/sections/customer/slideshow-background";
 import CompleteProfileForm from "@/components/sections/customer/complete-profile-form";
 
@@ -22,7 +22,7 @@ export default function CompleteProfilePage() {
 
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (_event: AuthChangeEvent, session: Session | null) => {
         if (!session?.user) {
           router.replace(`/${businessName}/customer/registration`);
           return;

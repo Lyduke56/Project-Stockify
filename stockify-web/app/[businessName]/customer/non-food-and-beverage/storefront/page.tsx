@@ -147,11 +147,11 @@ export default function NfnbStorefront() {
         schema: 'public',
         table: 'nfb_products',
         filter: `tenant_id=eq.${tenant.tenant_id}`
-      }, (payload) => {
+      }, (payload: any) => {
         setProducts(prev => {
-          const updated = prev.map(p => 
-            p.product_id === payload.new.product_id 
-              ? { ...p, quantity: payload.new.quantity } 
+          const updated = prev.map(p =>
+            p.product_id === payload.new.product_id
+              ? { ...p, quantity: payload.new.quantity }
               : p
           );
           // Sync open modal
@@ -171,15 +171,15 @@ export default function NfnbStorefront() {
         schema: 'public',
         table: 'nfb_variant_options',
         filter: `tenant_id=eq.${tenant.tenant_id}`
-      }, (payload) => {
+      }, (payload: any) => {
         setProducts(prev => {
           const updated = prev.map(p => ({
             ...p,
             variants: p.variants.map(v => ({
               ...v,
-              options: v.options.map(o => 
-                o.option_id === payload.new.option_id 
-                  ? { ...o, stock: payload.new.stock } 
+              options: v.options.map(o =>
+                o.option_id === payload.new.option_id
+                  ? { ...o, stock: payload.new.stock }
                   : o
               )
             }))
@@ -189,9 +189,9 @@ export default function NfnbStorefront() {
           if (selectedProduct) {
             const updatedVariants = selectedProduct.variants.map(v => ({
               ...v,
-              options: v.options.map(o => 
-                o.option_id === payload.new.option_id 
-                  ? { ...o, stock: payload.new.stock } 
+              options: v.options.map(o =>
+                o.option_id === payload.new.option_id
+                  ? { ...o, stock: payload.new.stock }
                   : o
               )
             }));
@@ -223,7 +223,7 @@ export default function NfnbStorefront() {
   const handleToggleFavorite = async (productId: string) => {
     const { favorited, error } = await toggleFavorite(productId);
     if (!error) {
-      setFavorites(prev => 
+      setFavorites(prev =>
         favorited ? [...prev, productId] : prev.filter(id => id !== productId)
       );
     }
@@ -244,11 +244,11 @@ export default function NfnbStorefront() {
 
     const matchesCategory =
       activeCat === "All Products" || pCatName === activeCat;
-    
+
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.description ?? "").toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     return matchesCategory && matchesSearch;
   });
 
@@ -302,7 +302,7 @@ export default function NfnbStorefront() {
         </motion.div>
       </div>
 
-      <CustomerHeader 
+      <CustomerHeader
         businessName={businessName}
         tenantLogo={tenant?.logo_url ?? undefined}
         tenantName={tenant?.business_name}
@@ -352,11 +352,10 @@ export default function NfnbStorefront() {
               <button
                 key={idx}
                 onClick={() => setCurrentSlide(idx)}
-                className={`transition-all duration-300 rounded-full ${
-                  currentSlide === idx
+                className={`transition-all duration-300 rounded-full ${currentSlide === idx
                     ? "w-6 h-2 bg-[#F7B71D]"
                     : "w-2 h-2 bg-[#FFFCEB]/40 hover:bg-[#FFFCEB]/80"
-                }`}
+                  }`}
               />
             ))}
           </div>
@@ -469,7 +468,7 @@ export default function NfnbStorefront() {
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         tenantId={tenant?.tenant_id ?? ""}
-        onSuccess={() => {}}
+        onSuccess={() => { }}
       />
     </div>
   );
