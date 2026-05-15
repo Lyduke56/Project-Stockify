@@ -52,7 +52,7 @@ export async function logAudit(payload: AuditPayload): Promise<string | null> {
   const { data, error } = await supabase
     .from("audit_logs")
     .insert({
-      performed_by:  payload.performedBy + "{}",
+      performed_by:  payload.performedBy,
       event_type:    payload.eventType,
       description:   payload.description,
       tenant_id:     payload.tenantId    ?? null,

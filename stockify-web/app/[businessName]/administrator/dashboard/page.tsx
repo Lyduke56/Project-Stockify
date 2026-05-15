@@ -39,10 +39,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const querySection = searchParams.get("section") as SectionKey;
-    if (querySection && Object.keys(SECTIONS).includes(querySection)) {
+    if (querySection && Object.keys(SECTIONS).includes(querySection) && querySection !== activeSection) {
       setActiveSection(querySection);
     }
-  }, [searchParams]);
+  }, [searchParams, activeSection]);
 
   const handleSetSection = (section: SectionKey) => {
     setActiveSection(section); 
