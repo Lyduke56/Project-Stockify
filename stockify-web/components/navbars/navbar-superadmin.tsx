@@ -1,20 +1,53 @@
 "use client";
 
-import { useState } from "react"; // 1. Import useState
+import { useEffect, useState, useCallback } from "react"; 
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import SuperadminProfileModal from "../modals/superadmin/superadmin-profile/modal";
 
 interface NavbarSuperAdminProps {
   onHome?: () => void; 
   openNotifs: () => void;
-  // Note: We removed openProfile from here since the Navbar handles it now!
 }
 
 export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps) {
   const router = useRouter(); 
+  const supabase = createClient();
   
-  // 2. Initialize state for the profile modal
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [systemAlertCount, setSystemAlertCount] = useState<number>(0);
+
+  const checkGlobalPlatformIssues = useCallback(async () => {
+    // Query tenants across global application context scope
+    const { data, error } = await supabase
+      .from("tenants")
+      .select("tenant_id")
+      .or("subscription_status.eq.Pending,is_suspended.eq.true");
+
+    if (!error && data) {
+      setSystemAlertCount(data.length);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
+    checkGlobalPlatformIssues();
+
+    // Listen to changes globally across all tenants
+    const channel = supabase
+      .channel("global-system-compliance")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tenants" },
+        () => {
+          checkGlobalPlatformIssues();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [checkGlobalPlatformIssues]);
 
   const handleHomeClick = () => {
     router.push("/superadmin/dashboard");
@@ -22,7 +55,6 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
   };
 
   return (
-    
     <>
       <nav className="relative w-full h-[60px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
 
@@ -51,25 +83,34 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
             <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
           </button>
 
-          {/* Notifications */}
-          <div className="relative">
-            <button onClick={openNotifs} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer">
+          {/* Notifications with Real-time Count */}
+          <div className="relative flex items-center justify-center">
+            <button 
+              onClick={openNotifs} 
+              className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+              title="Notifications"
+            >
               <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white" />
             </button>
+            
+            {systemAlertCount > 0 && (
+              <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                {systemAlertCount}
+              </div>
+            )}
           </div>
 
-          {/* Profile Button - 4. Change onClick to set the modal state to true */}
+          {/* Profile Button */}
           <button 
             onClick={() => setIsProfileModalOpen(true)} 
             className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+            title="Profile Settings"
           >
             <img src="/navbar-profile-settings.svg" alt="Profile Settings" className="w-full h-full object-contain rounded-full border border-[#385E31]" />
           </button>
         </div>
       </nav>
 
-      {/* 5. Render the Modal outside of the <nav> element */}
       <SuperadminProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 

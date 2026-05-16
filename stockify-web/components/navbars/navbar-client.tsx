@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-// Make sure this path points to where you saved the ClientProfileModal
+import { createClient } from "@/lib/supabase/client";
 import ClientProfileModal from "../modals/client/profile/modal";
 
 interface NavbarClientProps {
@@ -12,12 +12,69 @@ interface NavbarClientProps {
 
 export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps = {}) {
   const router = useRouter();
+  const supabase = createClient();
 
-  // Initialize state for the profile modal
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState<number>(0);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const initNotifications = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Resolve tenant mapping via user metadata or profile lookup
+      const { data: userProfile } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (userProfile?.tenant_id) {
+        setTenantId(userProfile.tenant_id);
+
+        // Fetch initial billing alerts count
+        const { count, error } = await supabase
+          .from("billing_notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("tenant_id", userProfile.tenant_id);
+
+        if (!error && count !== null) {
+          setNotifCount(count);
+        }
+      }
+    };
+
+    initNotifications();
+  }, []);
+
+  // Listen to incoming billing logs in real-time
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const channel = supabase
+      .channel("realtime-client-billing")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "billing_notifications",
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => {
+          setNotifCount((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tenantId]);
 
   const handleHomeClick = () => {
-    router.push("/dashboard"); // Adjust if your client home route is different
+    router.push("/dashboard"); 
     if (onHome) onHome();
   };
 
@@ -50,17 +107,24 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
             <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
           </button>
 
-          {/* Notifications */}
-          <div className="relative">
+          {/* Notifications with Dynamic Counter */}
+          <div className="relative flex items-center justify-center">
             <button 
-              onClick={openNotifs} 
+              onClick={() => {
+                if (openNotifs) openNotifs();
+                setNotifCount(0); // Clear visual indicator badge counter when opened
+              }} 
               className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
               title="Notifications"
             >
               <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
-              {/* Notification Badge */}
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white" />
             </button>
+            
+            {notifCount > 0 && (
+              <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                {notifCount > 9 ? "9+" : notifCount}
+              </div>
+            )}
           </div>
 
           {/* Profile Button - Opens Modal */}
