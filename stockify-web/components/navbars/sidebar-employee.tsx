@@ -5,36 +5,24 @@ import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { getUserData } from "@/backend/hooks/getUserRole";
 import { createClient } from "@/lib/supabase/client";
-import { getCurrentUserContext, type BusinessType } from "@/lib/employee/inventory";
+import { getCurrentUserContext } from "@/lib/employee/inventory";
 import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
-
-// ── Permissions ──────────────────────────────────────────────
-
-const MANAGER_ONLY_SECTIONS = new Set<SectionKey>([
-  "audit-logs",
-  "transactions",
-]);
-
-const FNB_ONLY_SECTIONS = new Set<SectionKey>([
-  "ingredients", // This corresponds to "Stock Inventory"
-]);
-
-// ── Component ────────────────────────────────────────────────
 
 interface SidebarEmployeeProps {
   activeSection:    SectionKey;
   setActiveSection: (section: SectionKey) => void;
+  onOpenSettings:   () => void; // Added property prop hook callback to target settings modal overlay
 }
 
-export default function SidebarEmployee({ activeSection, setActiveSection }: SidebarEmployeeProps) {
+export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings }: SidebarEmployeeProps) {
   const router   = useRouter();
   const supabase = createClient();
 
   const [role,         setRole]         = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<string | null>(null);
-  const [businessName, setBusinessName] = useState<string | null>(null); // Track business slug
+  const [businessName, setBusinessName] = useState<string | null>(null);
   const [loading,      setLoading]      = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false); // Handle button visual lock
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -45,26 +33,19 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
           return;
         }
 
-        // Fetch user data metadata payloads safely
         const [userRole, ctx, bName] = await Promise.all([
           getUserData(user.id),
           getCurrentUserContext(),
           getBusinessNameByUserId(user.id),
         ]);
-
-        console.log("DEBUG - Database Business Context Object:", ctx);
-        console.log("DEBUG - Database Business Name Slug:", bName);
         
         setRole(userRole);
         
-        // FIX 1: Access camelCase 'businessType' exactly as defined in your inventory type maps
         if (ctx && ctx.businessType) {
           setBusinessType(ctx.businessType.toString());
         }
         
-        // FIX 2: Handle business names safely based on lookup hooks
         if (bName) {
-          // If bName is coming back as an object { business_name, ... }, grab its inner value
           if (typeof bName === "object" && bName !== null) {
             const resolvedName = (bName as any).business_name || (bName as any).businessName || "";
             setBusinessName(resolvedName);
@@ -81,9 +62,6 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
     init();
   }, [supabase.auth]);
 
-  // ── Logic ──────────────────────────────────────────────────
-
-  // We trim and lowercase to handle "Food and Beverage", "food and beverage", or "Food and Beverage "
   const cleanType = businessType?.toLowerCase().trim() || "";
   const isFnb = cleanType === "food & beverage";
   const isEmployee = role?.toLowerCase() === "employee";
@@ -98,49 +76,30 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
   ];
 
   const navItems = allNavItems.filter((item) => {
-    // 1. Hide manager sections from employees
-    if (isEmployee && MANAGER_ONLY_SECTIONS.has(item.section as SectionKey)) return false;
-
-    // 2. Hide "ingredients" if the tenant is NOT F&B
-    if (FNB_ONLY_SECTIONS.has(item.section as SectionKey) && !isFnb) return false;
-
+    if (isEmployee && (item.section === "audit-logs" || item.section === "transactions")) return false;
+    if (item.section === "ingredients" && !isFnb) return false;
     return true;
   });
 
-  // Dynamic Multi-Tenant Logout Routine
   const handleLogout = async () => {
     if (isLoggingOut) return;
     setIsLoggingOut(true);
-
     try {
-      // 1. Terminate Supabase Auth session layer
       await supabase.auth.signOut();
-
-      // 2. Clear out client-side data state structures
       localStorage.clear();
       sessionStorage.clear();
-
-      // 3. Fallback to root route if business slug resolution fails
       const fallbackTarget = businessName ? encodeURIComponent(businessName.trim()) : "";
-      
-      if (fallbackTarget) {
-        window.location.href = `http://localhost:3000/${fallbackTarget}/login`;
-      } else {
-        window.location.href = "http://localhost:3000/";
-      }
+      window.location.href = fallbackTarget ? `http://localhost:3000/${fallbackTarget}/login` : "http://localhost:3000/";
     } catch (error) {
       console.error("Logout execution error:", error);
       setIsLoggingOut(false);
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────
-
   if (loading || role === null) return null;
 
   return (
     <div className="w-64 h-screen pt-6 pb-8 bg-[#385E31] shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
-
       <div className="flex flex-col gap-1">
         {navItems.map((item) => (
           <div
@@ -167,13 +126,11 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
+          
+          {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
           <div
-            onClick={() => setActiveSection("store-settings")}
-            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${
-              activeSection === "store-settings" 
-                ? "bg-[#E5AD24] text-[#385E31] shadow-md font-bold" 
-                : "text-[#FFF9D7] hover:bg-[#368028] font-semibold"
-            }`}
+            onClick={onOpenSettings}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-[#FFF9D7] hover:bg-[#368028] font-semibold transition-all duration-200"
           >
             <img src="/icon-settings.svg" className="w-8 h-8" />
             <span className="text-base">Settings</span>
@@ -184,13 +141,8 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
             disabled={isLoggingOut}
             className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-[#FFF9D7] hover:bg-[#368028] border-0 bg-transparent text-left font-semibold disabled:opacity-50 transition-all duration-200"
           >
-            <img 
-              src="/icon-logout.svg" 
-              className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} 
-            />
-            <span className="text-base">
-              {isLoggingOut ? "Logging out..." : "Logout"}
-            </span>
+            <img src="/icon-logout.svg" className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} />
+            <span className="text-base">{isLoggingOut ? "Logging out..." : "Logout"}</span>
           </button>
         </div>
       </div>
