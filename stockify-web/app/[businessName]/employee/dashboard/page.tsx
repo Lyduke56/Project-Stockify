@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client"; // Added to fetch user tenant data context
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
 
@@ -12,9 +13,8 @@ import OrdersSection from "@/components/sections/employee/orders";
 import TransactionsSection from "@/components/sections/employee/transactions";  
 import SettingsSection from "@/components/sections/employee/store-settings";
 import IngredientsSection from "@/components/sections/employee/ingredients";
+import NotificationModal from "@/components/modals/notification-modal"; // Make sure this path points to your updated modal file!
 
-// Removed the import type { SectionKey } from... line above! 
-// This file is the "source of truth" for this type.
 export type SectionKey =
   | "dashboard"
   | "audit-logs"
@@ -32,17 +32,37 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "ingredients":   <IngredientsSection />,
   "orders":        <OrdersSection />,
   "transactions":  <TransactionsSection />,
-  "analytics":     <div />, // Analytics is a separate page
+  "analytics":     <div />, 
   "store-settings": <SettingsSection />
 };
 
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
+  const supabase = createClient();
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+  const [tenantId, setTenantId] = useState<string | null>(null); // Track employee's store link context
+
+  // Fetch the current user profile metadata safely on component mount
+  useEffect(() => {
+    const getEmployeeProfileContext = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile?.tenant_id) {
+        setTenantId(profile.tenant_id);
+      }
+    };
+    getEmployeeProfileContext();
+  }, [supabase]);
 
   useEffect(() => {
     const handlePopState = () => {
-      // Look at the URL and update our state to match
       const params = new URLSearchParams(window.location.search);
       const section = params.get("section") as SectionKey;
       if (section && SECTIONS[section]) {
@@ -59,8 +79,6 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        // If the page is being loaded from the browser cache (back button)
-        // reload the window to trigger a middleware session check
         window.location.reload();
       }
     };
@@ -84,8 +102,6 @@ export default function EmployeeDashboard() {
     window.history.replaceState(null, "", `?section=${section}`);
   };
 
-  // --- ADDED THESE MISSING FUNCTIONS ---
-  // These connect your Navbar buttons to your modal state!
   const handleOpenProfile = () => setIsProfileOpen(true);
   const handleOpenNotifs = () => setIsNotifsOpen(true);
   const handleOpenSettings = () => setIsSettingsOpen(true);
@@ -107,10 +123,16 @@ export default function EmployeeDashboard() {
         </main>
       </div>
 
-      {/* MODALS RENDER HERE */}
-      {/* Once you uncomment these, the Navbar buttons will make them pop up! */}
+      {/* UNCOMMENTED & ACTIVATED YOUR NOTIFICATION MODAL LAYER PORTAL */}
+      <NotificationModal 
+        isOpen={isNotifsOpen} 
+        onClose={() => setIsNotifsOpen(false)} 
+        role="employee"
+        tenantId={tenantId}
+      />
+
+      {/* Keep these commented out or uncomment them once their modal files exist */}
       {/* <EmployeeProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} /> */}
-      {/* <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} /> */}
       {/* <EmployeeSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} /> */}
     </div>
   );
