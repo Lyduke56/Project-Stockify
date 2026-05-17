@@ -32,7 +32,9 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
 
   const [role,         setRole]         = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null); // Track business slug
   const [loading,      setLoading]      = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // Handle button visual lock
 
   useEffect(() => {
     const init = async () => {
@@ -43,15 +45,33 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
           return;
         }
 
-        const [userRole, ctx] = await Promise.all([
+        // Fetch user data metadata payloads safely
+        const [userRole, ctx, bName] = await Promise.all([
           getUserData(user.id),
           getCurrentUserContext(),
+          getBusinessNameByUserId(user.id),
         ]);
 
-        console.log("DEBUG - Database Business Type:", ctx?.businessType);
+        console.log("DEBUG - Database Business Context Object:", ctx);
+        console.log("DEBUG - Database Business Name Slug:", bName);
         
         setRole(userRole);
-        if (ctx) setBusinessType(ctx.businessType);
+        
+        // FIX 1: Access camelCase 'businessType' exactly as defined in your inventory type maps
+        if (ctx && ctx.businessType) {
+          setBusinessType(ctx.businessType.toString());
+        }
+        
+        // FIX 2: Handle business names safely based on lookup hooks
+        if (bName) {
+          // If bName is coming back as an object { business_name, ... }, grab its inner value
+          if (typeof bName === "object" && bName !== null) {
+            const resolvedName = (bName as any).business_name || (bName as any).businessName || "";
+            setBusinessName(resolvedName);
+          } else {
+            setBusinessName(bName);
+          }
+        }
       } catch (err) {
         console.error("Sidebar init error:", err);
       } finally {
@@ -86,6 +106,33 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
 
     return true;
   });
+
+  // Dynamic Multi-Tenant Logout Routine
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+
+    try {
+      // 1. Terminate Supabase Auth session layer
+      await supabase.auth.signOut();
+
+      // 2. Clear out client-side data state structures
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // 3. Fallback to root route if business slug resolution fails
+      const fallbackTarget = businessName ? encodeURIComponent(businessName.trim()) : "";
+      
+      if (fallbackTarget) {
+        window.location.href = `http://localhost:3000/${fallbackTarget}/login`;
+      } else {
+        window.location.href = "http://localhost:3000/";
+      }
+    } catch (error) {
+      console.error("Logout execution error:", error);
+      setIsLoggingOut(false);
+    }
+  };
 
   // ── Render ─────────────────────────────────────────────────
 
@@ -122,21 +169,29 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
         <div className="w-full flex flex-col gap-1">
           <div
             onClick={() => setActiveSection("store-settings")}
-            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-[#E5AD24] text-[#385E31]" : "text-[#FFF9D7]"}`}
+            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${
+              activeSection === "store-settings" 
+                ? "bg-[#E5AD24] text-[#385E31] shadow-md font-bold" 
+                : "text-[#FFF9D7] hover:bg-[#368028] font-semibold"
+            }`}
           >
             <img src="/icon-settings.svg" className="w-8 h-8" />
-            <span className="font-semibold">Settings</span>
+            <span className="text-base">Settings</span>
           </div>
-          <div
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.replace("/");
-            }}
-            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-[#FFF9D7] hover:bg-[#368028]"
+          
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-[#FFF9D7] hover:bg-[#368028] border-0 bg-transparent text-left font-semibold disabled:opacity-50 transition-all duration-200"
           >
-            <img src="/icon-logout.svg" className="w-8 h-8" />
-            <span className="font-semibold">Logout</span>
-          </div>
+            <img 
+              src="/icon-logout.svg" 
+              className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} 
+            />
+            <span className="text-base">
+              {isLoggingOut ? "Logging out..." : "Logout"}
+            </span>
+          </button>
         </div>
       </div>
     </div>
