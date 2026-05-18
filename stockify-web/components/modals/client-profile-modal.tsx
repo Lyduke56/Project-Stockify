@@ -1,471 +1,522 @@
 "use client";
 
-import { useEffect, useState, useRef, ChangeEvent } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
-interface ClientProfileForm {
-  businessName: string;
-  businessContact: string;
-  businessType: string;
-  validBusinessPermit: File | null;
-  validBusinessPermitName: string;
-  businessOwnerValidId: File | null;
-  businessOwnerValidIdName: string;
-  businessWarehouseAddress: string;
-  lastName: string;
-  firstName: string;
-  middleName: string;
-  suffix: string;
-  profilePicture: File | null;
-  profilePicturePreview: string;
+// ── Types ───────────────────────────────────────────────────────────────────
+
+interface ClientProfileData {
+  ownerLastName: string;
+  ownerFirstName: string;
+  ownerMiddleName: string;
+  ownerSuffix: string;
   gender: string;
   email: string;
+  contactNo: string;
   citizenship: string;
-  contactNumber: string;
   permanentAddress: string;
+  
+  businessName: string;
+  businessAddress: string;
+  businessContactNo: string;
+  businessType: string;
+  
+  avatarUrl: string | null;
+  businessPermitName: string;
+  ownerIdName: string;
 }
 
-function InputField({
-  placeholder,
-  value,
-  onChange,
-  type = "text",
-}: {
-  placeholder: string;
-  value: string;
-  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  type?: string;
-}) {
-  return (
-    <input
-      type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      className="bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-medium text-base px-5 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 focus:outline-2 focus:outline-[#3A6131] transition w-full"
-    />
-  );
-}
+// ── SVGs ──────────────────────────────────────────────────────────────────────
 
-function SelectField({
-  placeholder,
-  value,
-  onChange,
-  options,
-}: {
-  placeholder: string;
-  value: string;
-  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
-  options: string[];
-}) {
-  return (
-    <div className="relative w-full">
-      <select
-        value={value}
-        onChange={onChange}
-        className="bg-[#FFD980] text-[#3A6131] font-medium text-base px-5 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 focus:outline-2 focus:outline-[#3A6131] transition w-full appearance-none cursor-pointer pr-10"
-      >
-        <option value="" disabled>{placeholder}</option>
-        {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
-      </select>
-      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-[#3A6131]">
-        <svg className="fill-current h-4 w-4" viewBox="0 0 20 20">
-          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-        </svg>
-      </div>
-    </div>
-  );
-}
+const XIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+const MailIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </svg>
+);
+const PhoneIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+const MapPinIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" />
+  </svg>
+);
+const BuildingIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path>
+  </svg>
+);
+const UserIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+  </svg>
+);
+const FileIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline>
+  </svg>
+);
+const LogOutIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" />
+  </svg>
+);
+const LoaderIcon = () => (
+  <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </svg>
+);
+const CameraIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+    <circle cx="12" cy="13" r="3" />
+  </svg>
+);
 
-function UploadButton({
-  label,
-  fileName,
-  onClick,
-}: {
+// ── Field Row ─────────────────────────────────────────────────────────────────
+
+interface FieldRowProps {
+  icon?: React.ReactNode;
   label: string;
-  fileName: string;
-  onClick: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 w-full relative">
-      <input
-        value={fileName || ""}
-        readOnly
-        placeholder={label}
-        className="bg-[#FFD980] placeholder-[#3A6131]/70 text-[#3A6131] font-medium text-base px-5 py-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-[#3A6131]/40 w-full truncate cursor-default pr-24"
-      />
-      <button
-        type="button"
-        onClick={onClick}
-        className="absolute right-2 shrink-0 bg-[#3A6131] text-[#FFD980] font-semibold text-sm px-4 py-1.5 rounded-[3px] hover:bg-[#24481F] transition"
-      >
-        Upload
-      </button>
-    </div>
-  );
+  name: string;
+  value: string;
+  isEditing: boolean;
+  inputType?: string;
+  colSpan?: boolean;
+  disabled?: boolean;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  options?: string[];
 }
 
-function SectionCard({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
+function FieldRow({ icon, label, name, value, isEditing, inputType = "text", colSpan = false, disabled = false, onChange, options }: FieldRowProps) {
   return (
-    <div className="w-full px-6 pt-4 pb-6 rounded-[10px] flex flex-col gap-4" style={{ backgroundColor: "#385E31" }}>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 flex items-center justify-center text-[#FFD980]">
+    <div className={`flex items-start gap-3 ${colSpan ? 'col-span-1 sm:col-span-2' : 'col-span-1'}`}>
+      {icon && (
+        <div className="w-8 h-8 rounded-full bg-[#385E31]/[0.06] flex items-center justify-center shrink-0 text-[#385E31] mt-0.5">
           {icon}
         </div>
-        <span className="text-[#FFD980] text-2xl font-bold font-['Inter']">{title}</span>
-      </div>
-      <div className="w-full p-6 rounded-[5px] flex flex-col gap-4" style={{ backgroundColor: "#FFFCF0" }}>
-        {children}
+      )}
+      <div className="flex flex-col flex-1 w-full">
+        <span className="text-[9.5px] font-bold text-[#385E31]/45 uppercase tracking-[0.08em] mb-1">
+          {label}
+        </span>
+        {isEditing ? (
+          options ? (
+            <select
+              name={name}
+              value={value}
+              onChange={onChange}
+              disabled={disabled}
+              className="w-full bg-white border border-[#385E31]/20 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold text-[#385E31] outline-none focus:border-[#F7B71D] transition-colors disabled:opacity-60"
+            >
+              <option value="" disabled>Select {label}</option>
+              {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          ) : (
+            <input
+              type={inputType}
+              name={name}
+              value={value}
+              onChange={onChange}
+              disabled={disabled}
+              className="w-full bg-white border border-[#385E31]/20 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold text-[#385E31] outline-none focus:border-[#F7B71D] transition-colors disabled:opacity-60"
+            />
+          )
+        ) : (
+          <span className="text-[13px] font-semibold text-[#385E31] break-words leading-tight">{value || "—"}</span>
+        )}
       </div>
     </div>
   );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
+
+interface ClientProfileModalProps {
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 export default function ClientProfileModal({
   isOpen,
   onClose,
-  onSave,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave?: (form: ClientProfileForm) => void;
-}) {
-  if (!isOpen) return null;
+}: ClientProfileModalProps) {
+  const supabase = createClient();
+  const [mounted, setMounted] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const permitRef = useRef<HTMLInputElement>(null);
-  const validIdRef = useRef<HTMLInputElement>(null);
-  const profilePicRef = useRef<HTMLInputElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [form, setForm] = useState<ClientProfileForm>({
-    businessName: "",
-    businessContact: "",
-    businessType: "",
-    validBusinessPermit: null,
-    validBusinessPermitName: "",
-    businessOwnerValidId: null,
-    businessOwnerValidIdName: "",
-    businessWarehouseAddress: "",
-    lastName: "",
-    firstName: "",
-    middleName: "",
-    suffix: "",
-    profilePicture: null,
-    profilePicturePreview: "",
-    gender: "",
+  const [formData, setFormData] = useState<ClientProfileData>({
+    ownerLastName: "",
+    ownerFirstName: "",
+    ownerMiddleName: "",
+    ownerSuffix: "",
+    gender: "Male",
     email: "",
-    citizenship: "",
-    contactNumber: "",
+    contactNo: "",
+    citizenship: "Filipino",
     permanentAddress: "",
+    businessName: "",
+    businessAddress: "",
+    businessContactNo: "",
+    businessType: "Food & Beverage",
+    avatarUrl: null,
+    businessPermitName: "No file uploaded",
+    ownerIdName: "No file uploaded",
   });
 
-  const set = <K extends keyof ClientProfileForm>(key: K, val: ClientProfileForm[K]) =>
-    setForm((p) => ({ ...p, [key]: val }));
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
-  const handleProfilePic = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    set("profilePicture", file);
-    set("profilePicturePreview", URL.createObjectURL(file));
-  };
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
-  const handlePermit = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    set("validBusinessPermit", file);
-    set("validBusinessPermitName", file.name);
-  };
+  // ── FETCH DATA FROM SUPABASE ──
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
 
-  const handleValidId = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    set("businessOwnerValidId", file);
-    set("businessOwnerValidIdName", file.name);
+      if (user) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        const { data: tenantData } = await supabase
+          .from("tenants")
+          .select("*")
+          .eq("owner_id", user.id)
+          .single();
+
+        if (userData && tenantData) {
+          const profileState = {
+            ownerLastName: userData.last_name || "",
+            ownerFirstName: userData.first_name || "",
+            ownerMiddleName: userData.middle_name || "",
+            ownerSuffix: userData.suffix || "",
+            gender: userData.gender || "Male",
+            email: userData.email || user.email || "",
+            contactNo: userData.contact_number || "",
+            citizenship: userData.citizenship || "Filipino",
+            permanentAddress: userData.permanent_address || "",
+            businessName: tenantData.business_name || "",
+            businessAddress: tenantData.business_address || "",
+            businessContactNo: tenantData.business_contact || "",
+            businessType: tenantData.business_type || "Food & Beverage",
+            avatarUrl: userData.avatar_url || null,
+            businessPermitName: tenantData.permit_url ? tenantData.permit_url.split('/').pop() : "No file uploaded",
+            ownerIdName: tenantData.owner_id_url ? tenantData.owner_id_url.split('/').pop() : "No file uploaded",
+          };
+          setFormData(profileState);
+          setAvatarPreview(userData.avatar_url || null);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading workspace configurations:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-  if (isOpen) {
-    const fetchProfile = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        // Fetch from BOTH tables
-        const { data: tenantData } = await supabase
-          .from('tenants')
-          .select('*')
-          .eq('owner_id', user.id)
-          .single();
-
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (tenantData && userData) {
-          setForm({
-            ...form,
-  // Business Info (from tenantData)
-  businessName: tenantData.business_name || "",
-  businessContact: tenantData.business_contact || "",
-  businessType: tenantData.business_type || "",
-  businessWarehouseAddress: tenantData.business_address || "",
-  validBusinessPermitName: tenantData.permit_url ? "Current Permit Saved" : "",
-  businessOwnerValidIdName: tenantData.owner_id_url ? "Current ID Saved" : "",
-
-  // Personal Info (from userData)
-  firstName: userData.first_name || "",
-  lastName: userData.last_name || "",
-  middleName: userData.middle_name || "",
-  gender: userData.gender || "",
-  email: userData.email || "", // Note: Auth email is usually read-only
-  contactNumber: userData.contact_number || "",
-  profilePicturePreview: userData.avatar_url || "" 
-});
-        }
-      }
-    };
-    fetchProfile();
-  }
-}, [isOpen]);
-
-  const handleFinalSave = async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert("No user found.");
-      return;
+    if (isOpen) {
+      fetchProfileData();
+      setIsEditing(false);
     }
+  }, [isOpen]);
 
-    try {
-      const uploadFile = async (file: File | null, bucket: string) => {
-        if (!file) return null;
-        const filePath = `${user.id}/${Date.now()}-${file.name}`;
-        await supabase.storage.from(bucket).upload(filePath, file);
-        return supabase.storage.from(bucket).getPublicUrl(filePath).data.publicUrl;
-      };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-      const permitUrl = await uploadFile(form.validBusinessPermit, 'registration-docs');
-      const idUrl = await uploadFile(form.businessOwnerValidId, 'registration-docs');
-      const avatarUrl = await uploadFile(form.profilePicture, 'profile-assets');
-
-      // Update Database
-      await supabase.from('tenants').update({
-        business_name: form.businessName,
-        business_type: form.businessType,
-        business_address: form.businessWarehouseAddress,
-        permit_url: permitUrl,
-      }).eq('owner_id', user.id);
-
-      await supabase.from('users').update({
-        first_name: form.firstName,
-        last_name: form.lastName,
-        avatar_url: avatarUrl
-      }).eq('id', user.id);
-
-      alert("Saved!");
-      onClose();
-    } catch (err) {
-      alert("Error saving!");
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setAvatarPreview(reader.result as string);
+      reader.readAsDataURL(file);
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div
-        className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl shadow-2xl flex flex-col"
-        style={{ backgroundColor: "#FFFCF0" }}
-      >
-        {/* Header */}
-        <header
-          className="px-8 py-5 flex justify-between items-center sticky top-0 z-10"
-          style={{ backgroundColor: "#FFFCF0", borderBottom: "1px solid rgba(56,94,49,0.15)" }}
-        >
-          <h2 className="text-2xl font-bold uppercase tracking-widest font-['Inter']" style={{ color: "#385E31" }}>
-            Client Profile
-          </h2>
-          <button onClick={onClose} className="text-lg font-bold hover:scale-110 transition-transform" style={{ color: "#385E31" }}>
-            ✕
-          </button>
-        </header>
+  // ── SAVE HANDLER ──
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-        {/* Body */}
-        <div className="p-8 flex flex-col gap-6 overflow-y-auto scrollbar-hide">
+      // Sync data to public.users
+      await supabase
+        .from("users")
+        .update({
+          first_name: formData.ownerFirstName,
+          last_name: formData.ownerLastName,
+          middle_name: formData.ownerMiddleName,
+          suffix: formData.ownerSuffix,
+          gender: formData.gender,
+          citizenship: formData.citizenship,
+          contact_number: formData.contactNo,
+          permanent_address: formData.permanentAddress,
+          avatar_url: avatarPreview
+        })
+        .eq("id", user.id);
 
-          {/* Business Details */}
-          <SectionCard
-            icon={<img src="/business-details.svg" alt="Business" className="w-full h-full object-contain" />}
-            title="Business Details"
+      // Sync data to public.tenants
+      await supabase
+        .from("tenants")
+        .update({
+          business_name: formData.businessName,
+          business_type: formData.businessType,
+          business_contact: formData.businessContactNo,
+          business_address: formData.businessAddress,
+        })
+        .eq("owner_id", user.id);
+
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed saving profile configurations:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    fetchProfileData();
+    setIsEditing(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
+  if (!mounted) return null;
+
+  const initials = (formData.ownerFirstName?.[0] || "O") + (formData.ownerLastName?.[0] || "W");
+  const fullName = `${formData.ownerFirstName} ${formData.ownerMiddleName ? formData.ownerMiddleName[0] + '.' : ''} ${formData.ownerLastName} ${formData.ownerSuffix}`.trim();
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/40 backdrop-blur-[3px]"
+            onClick={!isSaving ? onClose : undefined}
+          />
+
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          {/* Modal */}
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+            className="relative w-full max-w-[540px] bg-[#FFFCEB] rounded-[28px] overflow-hidden border border-[#385E31]/10 shadow-[0_24px_64px_rgba(56,94,49,0.18)] flex flex-col max-h-[85vh] z-10"
           >
-            {/* Business Name */}
-            <InputField
-              placeholder="Business Name *"
-              value={form.businessName}
-              onChange={(e) => set("businessName", e.target.value)}
-            />
+            {/* ── BANNER ── */}
+            <div className="bg-[#385E31] px-5 pt-5 pb-0 relative flex-shrink-0">
+              {!isEditing && (
+                <button
+                  onClick={onClose}
+                  className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/35 transition-colors z-10"
+                >
+                  <XIcon />
+                </button>
+              )}
 
-            {/* Logo + fields */}
-            <div className="flex gap-4 items-start">
-              {/* Logo placeholder */}
+              {/* Avatar Picture */}
               <div
-                className="w-28 h-28 rounded-[5px] shrink-0 flex items-center justify-center outline outline-1 outline-[#3A6131]/40"
-                style={{ backgroundColor: "#FFD980" }}
+                className={`w-20 h-20 rounded-[18px] bg-[#FFFCEB] p-[5px] mx-auto translate-y-10 relative z-20 group ${isEditing ? "cursor-pointer" : ""}`}
+                onClick={() => isEditing && fileInputRef.current?.click()}
               >
-                <img src="/business-details.svg" alt="Logo" className="w-16 h-16 object-contain opacity-60" />
-              </div>
-
-              {/* Right fields */}
-              <div className="flex-1 flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField
-                    placeholder="Business Contact/Tel. No. *"
-                    value={form.businessContact}
-                    onChange={(e) => set("businessContact", e.target.value)}
-                  />
-                  <SelectField
-                    placeholder="Business Type"
-                    value={form.businessType}
-                    onChange={(e) => set("businessType", e.target.value)}
-                    options={["Food & Beverage", "Non-Food & Beverage"]}
-                  />
+                <div className="w-full h-full rounded-[13px] overflow-hidden relative bg-[#F7B71D] flex items-center justify-center text-[#385E31] text-2xl font-black">
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                  {isEditing && (
+                    <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center text-white gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <CameraIcon />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">Change</span>
+                    </div>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <UploadButton
-                      label="Valid Business Permit *"
-                      fileName={form.validBusinessPermitName}
-                      onClick={() => permitRef.current?.click()}
-                    />
-                    <input ref={permitRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handlePermit} />
-                  </div>
-                  <div>
-                    <UploadButton
-                      label="Business Owner Valid ID *"
-                      fileName={form.businessOwnerValidIdName}
-                      onClick={() => validIdRef.current?.click()}
-                    />
-                    <input ref={validIdRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleValidId} />
-                  </div>
-                </div>
-                <InputField
-                  placeholder="Business/Warehouse Address *"
-                  value={form.businessWarehouseAddress}
-                  onChange={(e) => set("businessWarehouseAddress", e.target.value)}
-                />
               </div>
             </div>
-          </SectionCard>
 
-          {/* Business Owner's Information */}
-          <SectionCard
-            icon={<img src="/business-owner.svg" alt="Owner" className="w-full h-full object-contain" />}
-            title="Business Owner's Information"
-          >
-            {/* Name row */}
-            <div className="grid grid-cols-4 gap-3">
-              <InputField placeholder="Last Name *"   value={form.lastName}   onChange={(e) => set("lastName", e.target.value)} />
-              <InputField placeholder="First Name *"  value={form.firstName}  onChange={(e) => set("firstName", e.target.value)} />
-              <InputField placeholder="Middle Name *" value={form.middleName} onChange={(e) => set("middleName", e.target.value)} />
-              <InputField placeholder="Suffix"        value={form.suffix}     onChange={(e) => set("suffix", e.target.value)} />
-            </div>
-
-            {/* Profile pic + fields */}
-            <div className="flex gap-4 items-start">
-              {/* Profile picture */}
-              <div
-                className="w-28 h-32 rounded-[5px] shrink-0 flex flex-col items-center justify-center overflow-hidden outline outline-1 outline-[#3A6131]/40 relative cursor-pointer"
-                style={{ backgroundColor: "#FFD980" }}
-                onClick={() => profilePicRef.current?.click()}
-              >
-                {form.profilePicturePreview ? (
-                  <img src={form.profilePicturePreview} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <img src="/business-owner.svg" alt="Upload" className="w-16 h-16 object-contain opacity-60" />
-                )}
-                <input ref={profilePicRef} type="file" accept="image/*" className="hidden" onChange={handleProfilePic} />
-              </div>
-
-              {/* Right fields */}
-              <div className="flex-1 flex flex-col gap-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <SelectField
-                    placeholder="Gender *"
-                    value={form.gender}
-                    onChange={(e) => set("gender", e.target.value)}
-                    options={["Male", "Female", "Non-binary", "Prefer not to say"]}
-                  />
-                  <InputField
-                    placeholder="Email Address *"
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => set("email", e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <SelectField
-                    placeholder="Citizenship *"
-                    value={form.citizenship}
-                    onChange={(e) => set("citizenship", e.target.value)}
-                    options={["Filipino", "American", "Chinese", "Japanese", "Korean", "Other"]}
-                  />
-                  <InputField
-                    placeholder="Contact No. *"
-                    value={form.contactNumber}
-                    onChange={(e) => set("contactNumber", e.target.value)}
-                  />
-                </div>
-                <InputField
-                  placeholder="Permanent Address *"
-                  value={form.permanentAddress}
-                  onChange={(e) => set("permanentAddress", e.target.value)}
-                />
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* Footer */}
-        <footer
-          className="px-8 py-5 flex items-center justify-between sticky bottom-0"
-          style={{ backgroundColor: "#FFFCF0", borderTop: "1px solid rgba(56,94,49,0.15)" }}
-        >
-          {/* Help text */}
-          <div className="flex items-center gap-2">
-            <img src="/icon-info.svg" alt="info" className="w-4 h-4" />
-            <p className="text-sm font-['Inter']" style={{ color: "#385E31" }}>
-              Need help with billing? <a href="mailto:support@stockify.com" className="underline" style={{ color: "#E5AC24" }}>Contact our support team at support@stockify.com</a>
-            </p>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onClose}
-              className="px-10 py-2.5 rounded-[10px] font-bold font-['Inter'] text-sm transition-all hover:brightness-105 active:scale-95"
-              style={{ backgroundColor: "#385E31", color: "#FFFCF0" }}
+            {/* ── SCROLLABLE BODY ── */}
+            <div
+              className="flex-1 overflow-y-auto px-6 pb-4 [scrollbar-width:thin] [scrollbar-color:rgba(56,94,49,0.2)_transparent]
+                &::-webkit-scrollbar]:w-[4px]
+                &::-webkit-scrollbar-track]:bg-transparent
+                &::-webkit-scrollbar-thumb]:bg-[#385E31]/20
+                &::-webkit-scrollbar-thumb]:rounded-full"
             >
-              CANCEL CHANGES
-            </button>
-            <button
-  onClick={handleFinalSave} // <--- CHANGE THIS LINE
-  className="px-10 py-2.5 rounded-[10px] font-bold font-['Inter'] text-sm transition-all hover:brightness-105 active:scale-95"
-  style={{ backgroundColor: "#E5AC24", color: "#24481F" }}
->
-  SAVE CHANGES
-</button>
-          </div>
-        </footer>
-      </div>
-    </div>
+              {/* Identity Header */}
+              <div className="pt-14 text-center mb-6">
+                <h2 className="text-xl font-black text-[#385E31] tracking-wide mb-1.5">
+                  {loading ? "Loading content variables..." : fullName}
+                </h2>
+                <div className="flex items-center justify-center gap-2">
+                  <span className="bg-[#385E31]/10 text-[#385E31] px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest">
+                    Business Owner
+                  </span>
+                </div>
+              </div>
+
+              {/* SECTION: Owner Information */}
+              <div className="bg-white/65 border border-[#385E31]/10 rounded-2xl p-5 mb-4 flex flex-col gap-4">
+                <h3 className="text-[11px] font-extrabold text-[#385E31] uppercase tracking-[0.1em] flex items-center justify-between pb-2 border-b border-[#385E31]/10">
+                  <div className="flex items-center gap-2"><UserIcon /> Owner Information</div>
+                </h3>
+
+                {isEditing ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                    <FieldRow label="First Name" name="ownerFirstName" value={formData.ownerFirstName} isEditing={isEditing} onChange={handleInputChange} />
+                    <FieldRow label="Last Name" name="ownerLastName" value={formData.ownerLastName} isEditing={isEditing} onChange={handleInputChange} />
+                    <FieldRow label="Middle Name" name="ownerMiddleName" value={formData.ownerMiddleName} isEditing={isEditing} onChange={handleInputChange} />
+                    <FieldRow label="Suffix" name="ownerSuffix" value={formData.ownerSuffix} isEditing={isEditing} onChange={handleInputChange} />
+                    <FieldRow label="Gender" name="gender" value={formData.gender} isEditing={isEditing} onChange={handleInputChange} options={["Male", "Female", "Other"]} />
+                    <FieldRow label="Citizenship" name="citizenship" value={formData.citizenship} isEditing={isEditing} onChange={handleInputChange} />
+                    <FieldRow label="Email Address" name="email" value={formData.email} isEditing={isEditing} inputType="email" colSpan disabled onChange={handleInputChange} />
+                    <FieldRow label="Contact No." name="contactNo" value={formData.contactNo} isEditing={isEditing} colSpan onChange={handleInputChange} />
+                    <FieldRow label="Permanent Address" name="permanentAddress" value={formData.permanentAddress} isEditing={isEditing} colSpan onChange={handleInputChange} />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                    <FieldRow icon={<MailIcon />} label="Email Address" name="email" value={formData.email} isEditing={false} colSpan onChange={()=>{}} />
+                    <FieldRow icon={<PhoneIcon />} label="Contact No." name="contactNo" value={formData.contactNo} isEditing={false} onChange={()=>{}} />
+                    <FieldRow icon={<UserIcon />} label="Gender & Citizenship" name="genderInfo" value={`${formData.gender}, ${formData.citizenship}`} isEditing={false} onChange={()=>{}} />
+                    <FieldRow icon={<MapPinIcon />} label="Permanent Address" name="permanentAddress" value={formData.permanentAddress} isEditing={false} colSpan onChange={()=>{}} />
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION: Business Details */}
+              <div className="bg-white/65 border border-[#385E31]/10 rounded-2xl p-5 mb-2.5 flex flex-col gap-4">
+                <h3 className="text-[11px] font-extrabold text-[#385E31] uppercase tracking-[0.1em] flex items-center justify-between pb-2 border-b border-[#385E31]/10">
+                  <div className="flex items-center gap-2"><BuildingIcon /> Business Details</div>
+                </h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                  <FieldRow label="Business Name" name="businessName" value={formData.businessName} isEditing={isEditing} colSpan onChange={handleInputChange} />
+                  <FieldRow label="Business Type" name="businessType" value={formData.businessType} isEditing={isEditing} onChange={handleInputChange} options={["Food & Beverage", "Retail", "Services", "Manufacturing", "Other"]} />
+                  <FieldRow label="Business Contact No." name="businessContactNo" value={formData.businessContactNo} isEditing={isEditing} onChange={handleInputChange} />
+                  <FieldRow label="Business Address" name="businessAddress" value={formData.businessAddress} isEditing={isEditing} colSpan onChange={handleInputChange} />
+                  
+                  {/* Documents Container */}
+                  <div className="col-span-1 sm:col-span-2 mt-2 pt-4 border-t border-[#385E31]/10 flex flex-col gap-3">
+                    <span className="text-[9.5px] font-bold text-[#385E31]/45 uppercase tracking-[0.08em]">Submitted Documents</span>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1 flex items-center justify-between bg-white border border-[#385E31]/15 p-2.5 rounded-lg overflow-hidden">
+                        <div className="flex items-center gap-2 text-[#385E31] min-w-0 flex-1 pr-2">
+                          <FileIcon /> <span className="text-xs font-semibold truncate" title={formData.businessPermitName}>{formData.businessPermitName}</span>
+                        </div>
+                        {isEditing ? (
+                          <button type="button" className="text-[10px] bg-[#385E31]/10 text-[#385E31] px-2 py-1 rounded font-bold hover:bg-[#385E31]/20 shrink-0">Upload</button>
+                        ) : (
+                          <span className="text-[10px] bg-green-500/10 text-green-700 px-2 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Valid</span>
+                        )}
+                      </div>
+                      <div className="flex-1 flex items-center justify-between bg-white border border-[#385E31]/15 p-2.5 rounded-lg overflow-hidden">
+                        <div className="flex items-center gap-2 text-[#385E31] min-w-0 flex-1 pr-2">
+                          <FileIcon /> <span className="text-xs font-semibold truncate" title={formData.ownerIdName}>{formData.ownerIdName}</span>
+                        </div>
+                        {isEditing ? (
+                          <button type="button" className="text-[10px] bg-[#385E31]/10 text-[#385E31] px-2 py-1 rounded font-bold hover:bg-[#385E31]/20 shrink-0">Upload</button>
+                        ) : (
+                          <span className="text-[10px] bg-green-500/10 text-green-700 px-2 py-0.5 rounded font-bold uppercase tracking-wide shrink-0">Valid</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── FOOTER ── */}
+            <div className="px-6 py-4 border-t border-[#385E31]/10 bg-[#FFFCEB] flex-shrink-0">
+              <div className="flex gap-2.5">
+                {isEditing ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={isSaving}
+                      className="flex-1 bg-transparent border border-[#385E31]/30 text-[#385E31] py-3 rounded-xl text-[13px] font-bold hover:bg-[#385E31]/5 transition-colors disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex-1 bg-[#385E31] text-[#FFFCEB] py-3 rounded-xl text-[13px] font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all disabled:opacity-60"
+                    >
+                      {isSaving ? (
+                        <>
+                          <LoaderIcon /> Saving…
+                        </>
+                      ) : (
+                        "Save Information"
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(true)}
+                      className="flex-1 bg-[#F7B71D] text-[#385E31] py-3 rounded-xl text-[13px] font-bold hover:brightness-105 transition-all"
+                    >
+                      Edit profile
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      title="Sign out"
+                      className="w-[46px] bg-transparent border-2 border-[#E91F22]/25 text-[#c0282a] rounded-xl flex items-center justify-center hover:bg-[#E91F22]/5 transition-colors shadow-sm"
+                    >
+                      <LogOutIcon />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }
