@@ -126,16 +126,18 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
 
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
-        <div className="w-full flex flex-col gap-1">
+      <div className="w-full flex flex-col gap-1">
           
           {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
-          <div
+          
+          {/*<div
             onClick={() => setActiveSection("store-settings")}
             className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-accent text-primary" : "text-sidebar-text"}`}
           >
             <img src="/icon-settings.svg" className="w-8 h-8" />
             <span className="text-base">Settings</span>
-          </div>
+          </div>*/}
+
           <button
             onClick={handleLogout}
             disabled={isLoggingOut}
