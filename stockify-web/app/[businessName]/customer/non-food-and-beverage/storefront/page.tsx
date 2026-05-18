@@ -12,6 +12,8 @@ import {
   Truck,
   MapPin,
   ChevronRight,
+  Clock,
+  Phone,
 } from "lucide-react";
 
 // --- Component Imports ---
@@ -20,7 +22,7 @@ import { ProductModal } from "@/components/modals/storefront/nfnb/nfnb-product-m
 import { CheckoutModal } from "@/components/modals/customer/checkout-modal";
 import type { NfnbProduct } from "@/components/cards/storefront/nfnb-product-card";
 import { CustomerHeader } from "@/components/headers/customer-header";
-import { toggleFavorite, fetchFavorites } from "@/lib/customer/customer-actions";
+import { toggleFavorite, fetchFavorites, fetchTopRatedProduct } from "@/lib/customer/customer-actions";
 
 // --- DB Hooks ---
 import { createClient } from "@/lib/supabase/client";
@@ -31,6 +33,7 @@ import {
 } from "@/backend/hooks/getStoreFront";
 import type { StorefrontTenant, ProductCategory } from "@/backend/hooks/getStoreFront";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import { fetchTenantSettings, type TenantSettings } from "@/lib/admin/settings-actions";
 
 // --- Static Banners ---
 const banners = [
@@ -76,6 +79,8 @@ export default function NfnbStorefront() {
 
   // ─── Data State ─────────────────────────────────────────────────────────────
   const [tenant, setTenant] = useState<StorefrontTenant | null>(null);
+  const [settings, setSettings] = useState<TenantSettings | null>(null);
+  const [topRatedProduct, setTopRatedProduct] = useState<any>(null);
   const [sfConfig, setSfConfig] = useState<StorefrontConfig | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<NfnbProduct[]>([]);
@@ -108,18 +113,22 @@ export default function NfnbStorefront() {
         const tenantData = await getStorefrontTenant(user.id);
         if (!tenantData) throw new Error("Could not load store information.");
 
-        const [cats, prods, favs, sf] = await Promise.all([
+        const [cats, prods, favs, sf, sett] = await Promise.all([
           getProductCategories(tenantData.tenant_id, "nfb_product"),
           getNfnbProducts(tenantData.tenant_id),
           fetchFavorites(),
           fetchStorefrontConfig(tenantData.tenant_id),
+          fetchTenantSettings(tenantData.tenant_id),
         ]);
 
         setTenant(tenantData);
         setSfConfig(sf);
+        setSettings(sett);
         setCategories(cats);
         setProducts(prods);
         setFavorites(favs);
+        
+        fetchTopRatedProduct(tenantData.tenant_id).then(setTopRatedProduct);
       } catch (err: any) {
         setError(err.message ?? "Something went wrong.");
       } finally {
@@ -238,16 +247,29 @@ export default function NfnbStorefront() {
     setIsModalOpen(true);
   };
 
+  const handleBannerClick = (banner: any) => {
+    if (banner.id === 'top-rated' && topRatedProduct) {
+      const prod = products.find(p => p.product_id === topRatedProduct.product_id);
+      if (prod) handleOpenProduct(prod);
+    }
+  };
+
   // ─── Derived Data ────────────────────────────────────────────────────────────
-  const categoryTabs = ["All Products", ...categories.map((c) => c.name)];
+  const categoryTabs = ["All Products", "My Favorites", ...categories.map((c) => c.name)];
 
   const filteredProducts = products.filter((p) => {
     // Normalize names for safer comparison
     const pCatName = p.category_name || "Uncategorized";
     const activeCat = activeCategory || "All Products";
 
-    const matchesCategory =
-      activeCat === "All Products" || pCatName === activeCat;
+    let matchesCategory = false;
+    if (activeCat === "All Products") {
+      matchesCategory = true;
+    } else if (activeCat === "My Favorites") {
+      matchesCategory = favorites.includes(p.product_id);
+    } else {
+      matchesCategory = pCatName === activeCat;
+    }
 
     const matchesSearch =
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -270,11 +292,11 @@ export default function NfnbStorefront() {
 
   // ─── Derived colors ──────────────────────────────────────────────────────
   const c = {
-    primary:   sfConfig?.color_primary   ?? "#385E31",
+    primary: sfConfig?.color_primary ?? "#385E31",
     secondary: sfConfig?.color_secondary ?? "#2A4725",
-    accent:    sfConfig?.color_accent    ?? "#F7B71D",
-    bg:        sfConfig?.color_background ?? "#FFFCEB",
-    text:      sfConfig?.color_text      ?? "#3A6131",
+    accent: sfConfig?.color_accent ?? "#F7B71D",
+    bg: sfConfig?.color_background ?? "#FFFCEB",
+    text: sfConfig?.color_text ?? "#3A6131",
     search_bar: (sfConfig as any)?.color_search_bar,
   };
 
@@ -285,23 +307,27 @@ export default function NfnbStorefront() {
       <div className="w-full flex justify-center py-2 px-4 gap-4 sm:gap-8 overflow-hidden whitespace-nowrap" style={{ backgroundColor: c.secondary }}>
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
-          <Truck size={14} />
-          <span className="hidden sm:inline">Free Shipping over ₱3,000</span>
-          <span className="sm:hidden">Free Ship ₱3k</span>
+          <Clock size={14} />
+          <span className="hidden sm:inline">Open: {settings?.operating_hours || "10:00 AM - 9:00 PM"}</span>
+          <span className="sm:hidden">{settings?.operating_hours || "10AM - 9PM"}</span>
         </motion.div>
         <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
-          <ShieldCheck size={14} />
-          <span>30-Day Returns</span>
+          <Phone size={14} />
+          <span>{settings?.contact_number || "+63 900 000 0000"}</span>
         </motion.div>
-        <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
-          <Package size={14} />
-          <span className="hidden sm:inline">Nationwide Delivery</span>
-          <span className="sm:hidden">PH Delivery</span>
-        </motion.div>
+        {settings?.nationwide_delivery && (
+          <>
+            <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
+              <Package size={14} />
+              <span className="hidden sm:inline">Nationwide Delivery</span>
+              <span className="sm:hidden">PH Delivery</span>
+            </motion.div>
+          </>
+        )}
       </div>
 
       <CustomerHeader
@@ -320,10 +346,25 @@ export default function NfnbStorefront() {
           className="w-full h-56 sm:h-72 rounded-[24px] relative overflow-hidden shadow-xl cursor-pointer">
 
           {(() => {
-            const activeBanners = sfConfig?.hero_banners?.length
+            const baseBanners = sfConfig?.hero_banners?.length
               ? sfConfig.hero_banners
               : banners;
+              
+            const activeBanners = [...baseBanners];
             
+            if (topRatedProduct) {
+              activeBanners.unshift({
+                id: 'top-rated',
+                type: 'text',
+                title: `★ Top Rated: ${topRatedProduct.name}`,
+                subtitle: `Rated ${topRatedProduct.average_rating.toFixed(1)}/5 stars by our customers!`,
+                font_color: '#FFFFFF',
+                bg_color_1: c.accent,
+                bg_color_2: c.primary,
+                image_url: null, // We can use text type to show gradients
+              } as any);
+            }
+
             return (
               <>
                 <motion.div className="flex w-full h-full"
@@ -331,9 +372,10 @@ export default function NfnbStorefront() {
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}>
                   {activeBanners.map((banner) => (
                     <div key={(banner as any).id ?? (banner as any).bgGradient}
-                      className="w-full h-full flex-shrink-0 relative flex items-center justify-center sm:justify-start sm:px-16"
+                      onClick={() => handleBannerClick(banner)}
+                      className="w-full h-full flex-shrink-0 relative flex items-center justify-center sm:justify-start sm:px-16 cursor-pointer"
                       style={{ background: (banner as any).type === "image" ? "none" : `linear-gradient(to bottom right, ${(banner as any).bg_color_1 || c.secondary}, ${(banner as any).bg_color_2 || c.primary})` }}>
-                      
+
                       {(banner as any).type === "image" && (banner as any).image_url ? (
                         <img src={(banner as any).image_url} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
                       ) : (
@@ -344,7 +386,7 @@ export default function NfnbStorefront() {
                               style={{ color: (banner as any).font_color ?? c.accent }}>
                               {(banner as any).title}
                             </h2>
-                            <p className="text-[15px] sm:text-[18px] font-medium max-w-[400px]" style={{ color: c.bg }}>
+                            <p className="text-[15px] sm:text-[18px] font-medium max-w-[400px] whitespace-pre-wrap break-words" style={{ color: c.bg }}>
                               {(banner as any).subtitle}
                             </p>
                           </div>
@@ -458,6 +500,7 @@ export default function NfnbStorefront() {
         product={selectedProduct}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        tenantId={tenant?.tenant_id || ""}
       />
 
       <CheckoutModal
