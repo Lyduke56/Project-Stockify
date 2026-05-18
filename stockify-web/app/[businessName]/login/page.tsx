@@ -6,33 +6,34 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getUserData } from "@/backend/hooks/getUserRole";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
+import { fetchStorefrontConfig } from "@/lib/admin/storefront-actions";
 
 
 // ─── Slideshow slides ────────────────────────────────────────────────────────
 const SLIDES = [
   {
     id: 0,
-    gradient: "linear-gradient(135deg, #1a3a14 0%, #2d5a25 40%, #385E31 70%, #4a7a3d 100%)",
-    pattern: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-    headline: "Manage Smarter,",
-    subline: "Grow Faster.",
-    accent: "#F7B71D",
+    gradient: "linear-gradient(135deg, var(--color-secondary, #2A4725) 0%, var(--color-primary, #385E31) 100%)",
+    pattern: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+    headline: "Never Miss",
+    subline: "A Restock Again.",
+    accent: "var(--color-accent, #E5AC24)",
   },
   {
     id: 1,
-    gradient: "linear-gradient(135deg, #0f2d0a 0%, #1e4a17 40%, #2a5c22 70%, #385E31 100%)",
-    pattern: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23F7B71D' fill-opacity='0.05' fill-rule='evenodd'%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3Ccircle cx='0' cy='0' r='20'/%3E%3Ccircle cx='80' cy='0' r='20'/%3E%3Ccircle cx='0' cy='80' r='20'/%3E%3Ccircle cx='80' cy='80' r='20'/%3E%3C/g%3E%3C/svg%3E")`,
-    headline: "Your Business,",
-    subline: "Your Control.",
-    accent: "#FFD980",
+    gradient: "linear-gradient(135deg, var(--color-primary, #385E31) 0%, var(--color-secondary, #2A4725) 100%)",
+    pattern: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23E5AC24' fill-opacity='0.25' fill-rule='evenodd'%3E%3Ccircle cx='40' cy='40' r='20'/%3E%3Ccircle cx='0' cy='0' r='20'/%3E%3Ccircle cx='80' cy='0' r='20'/%3E%3Ccircle cx='0' cy='80' r='20'/%3E%3Ccircle cx='80' cy='80' r='20'/%3E%3C/g%3E%3C/svg%3E")`,
+    headline: "Less Counting,",
+    subline: "More Cha-Ching.",
+    accent: "var(--color-accent, #E5AC24)",
   },
   {
     id: 2,
-    gradient: "linear-gradient(135deg, #243b1c 0%, #385E31 50%, #4f7a42 100%)",
-    pattern: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cpolygon points='50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5' fill='none' stroke='%23ffffff' stroke-opacity='0.04' stroke-width='1'/%3E%3C/svg%3E")`,
-    headline: "Every Item",
-    subline: "Tracked. Trusted.",
-    accent: "#F7B71D",
+    gradient: "linear-gradient(135deg, var(--color-secondary, #2A4725) 50%, var(--color-primary, #385E31) 100%)",
+    pattern: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cpolygon points='50,5 95,27.5 95,72.5 50,95 5,72.5 5,27.5' fill='none' stroke='%23ffffff' stroke-opacity='0.25' stroke-width='1'/%3E%3C/svg%3E")`,
+    headline: "Your Inventory’s",
+    subline: "New Best Friend.",
+    accent: "var(--color-accent, #E5AC24)",
   },
 ];
 
@@ -56,10 +57,10 @@ const containerVariants: Variants = {
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 15 },
-  show: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { type: "spring", stiffness: 300, damping: 24 } 
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 }
   },
 };
 
@@ -70,6 +71,26 @@ export default function BusinessLoginPage() {
 
   // ─── Slideshow state ───────────────────────────────────────────────────────
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [sfConfig, setSfConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      if (!businessName) return;
+      const supabase = createClient();
+
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .select("tenant_id")
+        .ilike("business_name", businessName.replace(/-/g, " "))
+        .single();
+
+      if (tenant?.tenant_id) {
+        const cfg = await fetchStorefrontConfig(tenant.tenant_id);
+        setSfConfig(cfg);
+      }
+    };
+    loadConfig();
+  }, [businessName]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -183,7 +204,14 @@ export default function BusinessLoginPage() {
   const slide = SLIDES[currentSlide];
 
   return (
-    <div className="relative w-full min-h-screen overflow-hidden flex items-center justify-center md:justify-end md:pr-[5%] lg:pr-[8%]">
+    <div
+      className="relative w-full min-h-screen overflow-hidden flex items-center justify-center md:justify-end md:pr-[5%] lg:pr-[8%]"
+      style={{
+        '--color-primary': sfConfig?.color_primary,
+        '--color-secondary': sfConfig?.color_secondary,
+        '--color-accent': sfConfig?.color_accent,
+      } as React.CSSProperties}
+    >
       {/* ── Animated Slideshow Background ── */}
       <AnimatePresence mode="wait">
         <motion.div
@@ -198,11 +226,6 @@ export default function BusinessLoginPage() {
             backgroundSize: "cover",
           }}
         >
-          {/* Texture overlay */}
-          <div
-            className="absolute inset-0"
-            style={{ backgroundImage: slide.pattern, backgroundRepeat: "repeat" }}
-          />
           {/* Noise grain */}
           <div
             className="absolute inset-0 opacity-20 mix-blend-overlay"
@@ -212,6 +235,11 @@ export default function BusinessLoginPage() {
           />
           {/* Vignette effect for depth */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
+          {/* Texture overlay (moved after vignette to prevent being covered) */}
+          <div
+            className="absolute inset-0"
+            style={{ backgroundImage: slide.pattern, backgroundRepeat: "repeat" }}
+          />
         </motion.div>
       </AnimatePresence>
 
@@ -226,16 +254,16 @@ export default function BusinessLoginPage() {
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             <h2 className="font-['Fredoka'] font-bold leading-[1.1] text-white tracking-wide drop-shadow-lg"
-                style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}>
+              style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}>
               {slide.headline}
             </h2>
             <h2 className="font-['Fredoka'] font-bold leading-[1.1] drop-shadow-lg"
-                style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", color: slide.accent }}>
+              style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", color: slide.accent }}>
               {slide.subline}
             </h2>
           </motion.div>
         </AnimatePresence>
-        
+
         {/* Slide dots */}
         <div className="flex gap-3 mt-8">
           {SLIDES.map((_, i) => (

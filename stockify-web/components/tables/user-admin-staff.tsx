@@ -13,12 +13,6 @@ interface StaffAdministrationTableProps {
 
 // ── constants ─────────────────────────────────────────────────────────────────
 
-const statusColors: Record<UserStatus, string> = {
-  Active:    "#385E31",
-  Inactive:  "#888888",
-  Suspended: "#E53333",
-};
-
 const COLUMNS = ["Name", "Email", "Role", "Status", "Actions"] as const;
 
 // Using a custom grid layout to better match the proportions of the reference image
@@ -34,7 +28,7 @@ export default function StaffAdministrationTable({
   if (loading) {
     return (
       <div className="w-full flex justify-center items-center py-10">
-        <span className="text-sm font-semibold text-[#385E31] animate-pulse">Loading staff records...</span>
+        <span className="text-sm font-semibold text-primary animate-pulse">Loading staff records...</span>
       </div>
     );
   }
@@ -43,21 +37,21 @@ export default function StaffAdministrationTable({
     return (
       <div className="w-full flex flex-col items-center gap-2 py-10">
         <span className="text-sm font-semibold text-[#E53333]">Failed to load staff: {error}</span>
-        <button onClick={refetch} className="text-xs underline text-[#385E31]">Retry</button>
+        <button onClick={refetch} className="text-xs underline text-primary">Retry</button>
       </div>
     );
   }
 
   return (
-    <div className="w-full rounded-[10px] overflow-hidden border border-[#385E31]" style={{ backgroundColor: "#FFFCF0" }}>
+    <div className="w-full rounded-[10px] overflow-hidden border border-primary bg-background">
       {/* Header */}
       <div 
-        className="grid w-full" 
-        style={{ backgroundColor: "#385E31", gridTemplateColumns: GRID_LAYOUT }}
+        className="grid w-full bg-primary" 
+        style={{ gridTemplateColumns: GRID_LAYOUT }}
       >
         {COLUMNS.map((col) => (
           <div key={col} className="px-4 py-3 flex justify-center items-center">
-            <span className="text-[16px] font-bold font-['Inter'] text-[#FFFCF0]">
+            <span className="text-[16px] font-bold font-['Inter'] text-background">
               {col}
             </span>
           </div>
@@ -67,7 +61,7 @@ export default function StaffAdministrationTable({
       {/* Rows */}
       {records.length === 0 ? (
         <div className="py-10 flex justify-center">
-          <span className="text-sm text-[#385E31]/60">No staff records found.</span>
+          <span className="text-sm text-primary/60">No staff records found.</span>
         </div>
       ) : (
         records.map((record) => (
@@ -90,31 +84,36 @@ function Row({ record, onEdit, onDelete }: { record: StaffRecord; onEdit?: () =>
 
   return (
     <div 
-      className="grid w-full border-t border-[#385E31]/10 items-center" 
+      className="grid w-full border-t border-primary/10 items-center" 
       style={{ gridTemplateColumns: GRID_LAYOUT }}
     >
       {/* Name */}
       <Cell>
-        <span className="text-sm font-medium text-[#385E31] text-center">{record.display_name}</span>
+        <span className="text-sm font-medium text-primary text-center">{record.display_name}</span>
       </Cell>
 
       {/* Email */}
       <Cell>
-        <span className="text-sm font-medium text-[#385E31] text-center">{record.email}</span>
+        <span className="text-sm font-medium text-primary text-center">{record.email}</span>
       </Cell>
 
       {/* Role */}
       <Cell>
-        <span className="text-sm font-medium text-[#385E31] text-center">{record.role}</span>
+        <span className="text-sm font-medium text-primary text-center">{record.role}</span>
       </Cell>
 
       {/* Status */}
       <Cell>
         <div 
-          className="px-4 py-1 rounded-full flex justify-center items-center min-w-[100px]"
-          style={{ backgroundColor: isAdmin ? statusColors["Active"] : statusColors[record.status] }}
+          className={`px-4 py-1 rounded-full flex justify-center items-center min-w-[100px] ${
+            isAdmin || record.status === "Active"
+              ? "bg-primary"
+              : record.status === "Inactive"
+              ? "bg-[#888888]"
+              : "bg-[#E53333]"
+          }`}
         >
-          <span className="text-[10px] font-bold text-[#FFFCF0]">
+          <span className="text-[10px] font-bold text-background">
             {isAdmin ? "Active" : record.status}
           </span>
         </div>

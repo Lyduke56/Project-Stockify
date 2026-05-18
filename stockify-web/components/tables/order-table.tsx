@@ -26,10 +26,10 @@ const TABS: FulfillmentStatus[] = ["Pending", "Processing", "Dispatched", "Recei
 const COLUMNS = ["ORDER ID", "DATE / TIME", "CUSTOMER", "TOTAL AMOUNT", "PAYMENT METHOD", "ACTIONS"];
 
 const TAB_META: Record<FulfillmentStatus, { bg: string; text: string; badge: string; icon: React.ReactNode }> = {
-  Pending: { bg: "bg-[#F7B71D]", text: "text-[#385E31]", badge: "bg-[#F7B71D]/20 text-[#8a6700]", icon: <Clock size={12} /> },
+  Pending: { bg: "bg-accent", text: "text-primary", badge: "bg-accent/20 text-[#8a6700]", icon: <Clock size={12} /> },
   Processing: { bg: "bg-blue-500", text: "text-white", badge: "bg-blue-100 text-blue-700", icon: <Package size={12} /> },
   Dispatched: { bg: "bg-purple-500", text: "text-white", badge: "bg-purple-100 text-purple-700", icon: <Truck size={12} /> },
-  Received: { bg: "bg-[#385E31]", text: "text-[#F7B71D]", badge: "bg-[#385E31]/10 text-[#385E31]", icon: <CheckCircle2 size={12} /> },
+  Received: { bg: "bg-primary", text: "text-accent", badge: "bg-primary/10 text-primary", icon: <CheckCircle2 size={12} /> },
   Reported: { bg: "bg-orange-500", text: "text-white", badge: "bg-orange-50 text-orange-600", icon: <AlertCircle size={12} /> },
   Cancelled: { bg: "bg-red-500", text: "text-white", badge: "bg-red-50 text-red-600", icon: <Ban size={12} /> },
 };
@@ -315,35 +315,35 @@ function OrderDetailModal({
         transition={{ type: "spring", stiffness: 340, damping: 28 }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
       >
-        <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[540px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
+        <div className="bg-background rounded-[24px] w-full max-w-[540px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 pt-6 pb-4">
             <div>
-              <p className="text-[#3A6131]/50 text-[11px] font-bold uppercase tracking-wider mb-0.5">Order</p>
-              <h2 className="text-[#3A6131] font-black text-[16px] font-mono">{order.order_id.slice(0, 8).toUpperCase()}</h2>
+              <p className="text-primary/50 text-[11px] font-bold uppercase tracking-wider mb-0.5">Order</p>
+              <h2 className="text-primary font-black text-[16px] font-mono">{order.order_id.slice(0, 8).toUpperCase()}</h2>
             </div>
             <div className="flex items-center gap-3">
               <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 ${meta.badge}`}>
                 {meta.icon} {order.fulfillment_status}
               </span>
-              <button onClick={onClose} className="w-8 h-8 rounded-full bg-[#3A6131]/8 hover:bg-[#3A6131]/15 flex items-center justify-center text-[#3A6131]/50">
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-primary/8 hover:bg-primary/15 flex items-center justify-center text-primary/50">
                 <X size={16} />
               </button>
             </div>
           </div>
 
           {/* Modal Tabs */}
-          <div className="flex px-6 border-b border-[#3A6131]/10 bg-white/50">
+          <div className="flex px-6 border-b border-primary/10 bg-white/50">
             <button 
               onClick={() => setActiveModalTab('details')}
-              className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all ${activeModalTab === 'details' ? 'border-[#385E31] text-[#385E31]' : 'border-transparent text-[#3A6131]/40 hover:text-[#3A6131]/60'}`}
+              className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all ${activeModalTab === 'details' ? 'border-primary text-primary' : 'border-transparent text-primary/40 hover:text-primary/60'}`}
             >
               Order Details
             </button>
             <button 
               onClick={() => setActiveModalTab('fulfillment')}
-              className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all ${activeModalTab === 'fulfillment' ? 'border-[#385E31] text-[#385E31]' : 'border-transparent text-[#3A6131]/40 hover:text-[#3A6131]/60'}`}
+              className={`px-4 py-3 text-[12px] font-black uppercase tracking-widest border-b-2 transition-all ${activeModalTab === 'fulfillment' ? 'border-primary text-primary' : 'border-transparent text-primary/40 hover:text-primary/60'}`}
             >
               Fulfillment
             </button>
@@ -356,54 +356,54 @@ function OrderDetailModal({
                 {/* Info row */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Customer</p>
-                    <p className="text-[#3A6131] font-bold text-[13px]">{order.customer_name}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary/40 mb-1">Customer</p>
+                    <p className="text-primary font-bold text-[13px]">{order.customer_name}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Payment</p>
-                    <p className="text-[#3A6131] font-bold text-[13px]">{order.payment_method}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary/40 mb-1">Payment</p>
+                    <p className="text-primary font-bold text-[13px]">{order.payment_method}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#3A6131]/40 mb-1">Total</p>
-                    <p className="text-[#F7B71D] font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary/40 mb-1">Total</p>
+                    <p className="text-accent font-black text-[15px]">₱{order.total_amount.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Customer Profile */}
-                <div className="bg-[#3A6131]/5 rounded-2xl p-4">
+                <div className="bg-primary/5 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <User size={12} className="text-[#3A6131]/60" />
-                    <p className="text-[11px] font-black uppercase tracking-wider text-[#3A6131]/60">Customer Profile</p>
+                    <User size={12} className="text-primary/60" />
+                    <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">Customer Profile</p>
                   </div>
                   {customerProfile ? (
                     <div className="flex flex-col gap-2">
                       {customerProfile.email && (
                         <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[#3A6131]/40 border border-[#3A6131]/10">
+                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-primary/40 border border-primary/10">
                             <Mail size={12} />
                           </div>
-                          <span className="text-[#3A6131] text-[13px] font-medium">{customerProfile.email}</span>
+                          <span className="text-primary text-[13px] font-medium">{customerProfile.email}</span>
                         </div>
                       )}
                       {customerProfile.contact_number && (
                         <div className="flex items-center gap-3">
-                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[#3A6131]/40 border border-[#3A6131]/10">
+                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-primary/40 border border-primary/10">
                             <Phone size={12} />
                           </div>
-                          <span className="text-[#3A6131] text-[13px] font-medium">{customerProfile.contact_number}</span>
+                          <span className="text-primary text-[13px] font-medium">{customerProfile.contact_number}</span>
                         </div>
                       )}
                       {customerProfile.address && (
                         <div className="flex items-start gap-3">
-                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-[#3A6131]/40 border border-[#3A6131]/10 shrink-0 mt-0.5">
+                          <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center text-primary/40 border border-primary/10 shrink-0 mt-0.5">
                             <MapPin size={12} />
                           </div>
-                          <span className="text-[#3A6131] text-[13px] font-medium leading-snug">{customerProfile.address}</span>
+                          <span className="text-primary text-[13px] font-medium leading-snug">{customerProfile.address}</span>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-[#3A6131]/30 py-2">
+                    <div className="flex items-center gap-2 text-primary/30 py-2">
                       <Loader2 size={12} className="animate-spin" />
                       <span className="text-[12px]">Retrieving profile…</span>
                     </div>
@@ -412,28 +412,28 @@ function OrderDetailModal({
 
                 {/* Items List */}
                 <div className="flex flex-col gap-3">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-[#3A6131]/60">Items ({items.length})</p>
+                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">Items ({items.length})</p>
                   {loading ? (
-                    <div className="flex items-center justify-center py-8 text-[#3A6131]/30 gap-2">
+                    <div className="flex items-center justify-center py-8 text-primary/30 gap-2">
                       <Loader2 size={18} className="animate-spin" /> Loading…
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">
                       {items.map((item, idx) => (
-                        <div key={item.order_item_id || `item-${idx}`} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-[#3A6131]/8 shadow-sm">
+                        <div key={item.order_item_id || `item-${idx}`} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-primary/8 shadow-sm">
                           <div className="flex-1 min-w-0">
-                            <p className="text-[#3A6131] font-bold text-[13px] truncate">
+                            <p className="text-primary font-bold text-[13px] truncate">
                               {item.item_name || `Item #${item.item_id.slice(0, 6)}`}
                             </p>
                             {item.size_label && (
-                              <span className="text-[10px] text-[#3A6131]/60 bg-[#3A6131]/8 px-2 py-0.5 rounded-full font-bold mt-1 inline-block uppercase">
+                              <span className="text-[10px] text-primary/60 bg-primary/8 px-2 py-0.5 rounded-full font-bold mt-1 inline-block uppercase">
                                 {item.size_label}
                               </span>
                             )}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-[#3A6131] font-bold text-[13px]">×{item.quantity}</p>
-                            <p className="text-[#F7B71D] font-black text-[12px]">₱{(item.unit_price * item.quantity).toFixed(2)}</p>
+                            <p className="text-primary font-bold text-[13px]">×{item.quantity}</p>
+                            <p className="text-accent font-black text-[12px]">₱{(item.unit_price * item.quantity).toFixed(2)}</p>
                           </div>
                         </div>
                       ))}
@@ -464,7 +464,7 @@ function OrderDetailModal({
                     <button
                       onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing"), "Order moved to Processing!")}
                       disabled={busy}
-                      className="w-full bg-[#F7B71D] text-[#385E31] py-4 rounded-xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                      className="w-full bg-accent text-primary py-4 rounded-xl font-black text-[14px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                     >
                       {busy ? <Loader2 size={18} className="animate-spin" /> : <Clock size={18} />} Mark as Processing
                     </button>
@@ -475,19 +475,19 @@ function OrderDetailModal({
                   <div className="flex flex-col gap-4">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/60 ml-1">Deliverer Name</label>
+                        <label className="text-[10px] font-black uppercase tracking-wider text-primary/60 ml-1">Deliverer Name</label>
                         <input
                           type="text" placeholder="e.g. John Doe" value={deliveryInfo.deliverer_name}
                           onChange={(e) => setDeliveryInfo(prev => ({ ...prev, deliverer_name: e.target.value }))}
-                          className="bg-white border border-[#3A6131]/10 rounded-xl px-4 py-3 text-[13px] text-[#3A6131] outline-none focus:border-purple-400 transition-colors"
+                          className="bg-white border border-primary/10 rounded-xl px-4 py-3 text-[13px] text-primary outline-none focus:border-purple-400 transition-colors"
                         />
                       </div>
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-[#3A6131]/60 ml-1">Reference ID (Opt)</label>
+                        <label className="text-[10px] font-black uppercase tracking-wider text-primary/60 ml-1">Reference ID (Opt)</label>
                         <input
                           type="text" placeholder="e.g. Lalamove-001" value={deliveryInfo.delivery_id}
                           onChange={(e) => setDeliveryInfo(prev => ({ ...prev, delivery_id: e.target.value }))}
-                          className="bg-white border border-[#3A6131]/10 rounded-xl px-4 py-3 text-[13px] text-[#3A6131] outline-none focus:border-purple-400 transition-colors"
+                          className="bg-white border border-primary/10 rounded-xl px-4 py-3 text-[13px] text-primary outline-none focus:border-purple-400 transition-colors"
                         />
                       </div>
                     </div>
@@ -503,27 +503,27 @@ function OrderDetailModal({
 
                 {/* Dispatched Section */}
                 {order.fulfillment_status === "Dispatched" && (
-                  <div className="flex flex-col gap-5 p-5 bg-[#385E31]/5 rounded-2xl border border-[#385E31]/10">
+                  <div className="flex flex-col gap-5 p-5 bg-primary/5 rounded-2xl border border-primary/10">
                     {/* Delivery Info Summary */}
                     <div className="flex flex-col gap-1 mb-2">
-                      <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/40">Active Delivery</p>
-                      <p className="text-[#3A6131] font-bold text-[14px]">{order.deliverer_name} {order.delivery_id && <span className="text-[12px] opacity-60 font-mono">({order.delivery_id})</span>}</p>
+                      <p className="text-[11px] font-black uppercase tracking-wider text-primary/40">Active Delivery</p>
+                      <p className="text-primary font-bold text-[14px]">{order.deliverer_name} {order.delivery_id && <span className="text-[12px] opacity-60 font-mono">({order.delivery_id})</span>}</p>
                     </div>
 
                     {/* 1. Delivery Proof Section */}
                     <div className="flex flex-col gap-3">
-                      <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">1. Proof of Success Delivery</p>
+                      <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">1. Proof of Success Delivery</p>
                       {!order.delivery_proof_url ? (
                         <div className="flex flex-col gap-3">
                           <input 
                             type="file" accept="image/*"
                             onChange={(e) => setDeliveryFile(e.target.files?.[0] || null)}
-                            className="text-[12px] text-[#3A6131] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[12px] file:font-bold file:bg-[#385E31] file:text-[#F7B71D] hover:file:opacity-90"
+                            className="text-[12px] text-primary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[12px] file:font-bold file:bg-primary file:text-accent hover:file:opacity-90"
                           />
                           <button
                             onClick={handleDeliveryProof}
                             disabled={busy || !deliveryFile}
-                            className="w-full bg-[#385E31] text-[#F7B71D] py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full bg-primary text-accent py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
                           >
                             {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Delivery Proof
                           </button>
@@ -533,7 +533,7 @@ function OrderDetailModal({
                           <div className="flex items-center gap-2 text-green-700 font-bold text-[12px] bg-green-100/50 p-3 rounded-xl">
                             <CheckCircle2 size={16} /> Delivery Proof Verified
                           </div>
-                          <div className="relative aspect-video bg-[#385E31]/5 rounded-xl border border-[#385E31]/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#385E31]/20 transition-all"
+                          <div className="relative aspect-video bg-primary/5 rounded-xl border border-primary/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
                             onClick={() => {
                               logOrderView(order.order_id, tenantId, "PROOFS");
                               window.open(order.delivery_proof_url!, "_blank");
@@ -546,19 +546,19 @@ function OrderDetailModal({
 
                     {/* 2. Payment Proof Section (COD Only) */}
                     {order.payment_method === "Cash-on-Delivery" && (
-                      <div className="flex flex-col gap-3 pt-4 border-t border-[#385E31]/10">
-                        <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">2. Proof of Payment (Cash)</p>
+                      <div className="flex flex-col gap-3 pt-4 border-t border-primary/10">
+                        <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">2. Proof of Payment (Cash)</p>
                         {!order.proof_of_payment_url ? (
                           <div className="flex flex-col gap-3">
                             <input 
                               type="file" accept="image/*"
                               onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-                              className="text-[12px] text-[#3A6131] file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[12px] file:font-bold file:bg-[#F7B71D] file:text-[#385E31] hover:file:opacity-90"
+                              className="text-[12px] text-primary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[12px] file:font-bold file:bg-accent file:text-primary hover:file:opacity-90"
                             />
                             <button
                               onClick={handlePaymentProof}
                               disabled={busy || !paymentFile}
-                              className="w-full bg-[#F7B71D] text-[#385E31] py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
+                              className="w-full bg-accent text-primary py-3 rounded-xl font-black text-[13px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                               {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Payment Proof
                             </button>
@@ -568,7 +568,7 @@ function OrderDetailModal({
                           <div className="flex items-center gap-2 text-green-700 font-bold text-[12px] bg-green-100/50 p-3 rounded-xl">
                             <CheckCircle2 size={16} /> Payment Recorded
                           </div>
-                          <div className="relative aspect-video bg-[#385E31]/5 rounded-xl border border-[#385E31]/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#385E31]/20 transition-all"
+                          <div className="relative aspect-video bg-primary/5 rounded-xl border border-primary/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/20 transition-all"
                             onClick={() => {
                               logOrderView(order.order_id, tenantId, "PAYMENT");
                               window.open(order.proof_of_payment_url!, "_blank");
@@ -586,7 +586,7 @@ function OrderDetailModal({
                 {(order.fulfillment_status === "Cancelled" || order.fulfillment_status === "Reported") && (
                   <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
                     <p className="text-[11px] font-black uppercase tracking-wider text-red-500 mb-2">Issue / Cancellation Reason</p>
-                    <p className="text-[#3A6131] text-[13px] font-medium leading-relaxed italic">
+                    <p className="text-primary text-[13px] font-medium leading-relaxed italic">
                       "{order.cancel_reason || "No reason provided."}"
                     </p>
                   </div>
@@ -606,7 +606,7 @@ function OrderDetailModal({
                         placeholder="e.g. Verified delivery proof with rider, or preparing re-delivery..."
                         value={resolutionRemarks}
                         onChange={(e) => setResolutionRemarks(e.target.value)}
-                        className="w-full bg-white border border-orange-200 rounded-xl px-4 py-3 text-[13px] text-[#3A6131] outline-none focus:ring-2 focus:ring-orange-400 min-h-[80px] resize-none"
+                        className="w-full bg-white border border-orange-200 rounded-xl px-4 py-3 text-[13px] text-primary outline-none focus:ring-2 focus:ring-orange-400 min-h-[80px] resize-none"
                       />
                     </div>
                     
@@ -641,15 +641,15 @@ function OrderDetailModal({
 
                 {/* General Status Text */}
                 {(order.fulfillment_status === "Received" || order.fulfillment_status === "Cancelled") && (
-                  <div className="text-center py-4 bg-[#3A6131]/5 rounded-2xl">
-                    <p className="text-[#3A6131]/40 text-[14px] font-bold">This order is {order.fulfillment_status.toLowerCase()}.</p>
+                  <div className="text-center py-4 bg-primary/5 rounded-2xl">
+                    <p className="text-primary/40 text-[14px] font-bold">This order is {order.fulfillment_status.toLowerCase()}.</p>
                   </div>
                 )}
               </div>
             )}
           </div>
           {/* Fixed Footer for Actions (Sticky at bottom) */}
-          <div className="px-6 py-4 bg-white border-t border-[#3A6131]/10 flex flex-col gap-3">
+          <div className="px-6 py-4 bg-white border-t border-primary/10 flex flex-col gap-3">
             {/* Feedback Message */}
             {feedback && (
               <motion.div
@@ -666,7 +666,7 @@ function OrderDetailModal({
               <button
                 onClick={() => act(() => processAndCompleteOrder(order.order_id), "Order received & transaction completed!")}
                 disabled={busy || (order.payment_method === "Cash-on-Delivery" && !order.proof_of_payment_url)}
-                className="w-full bg-[#385E31] text-[#F7B71D] py-4 rounded-2xl font-black text-[15px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-[#385E31]/20"
+                className="w-full bg-primary text-accent py-4 rounded-2xl font-black text-[15px] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-primary/20"
               >
                 {busy ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
                 Complete Transaction
@@ -762,7 +762,7 @@ export default function OrdersTable() {
       {/* ── Sliding Tab Navigation ── */}
       <div className="w-full flex justify-center mb-8">
         <div className="relative flex w-full h-[45px] items-center my-2">
-          <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
+          <div className="absolute inset-0 border-2 border-primary rounded-[8px] pointer-events-none" />
           <div
             className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${TAB_META[activeTab].bg}`}
             style={{
@@ -776,13 +776,13 @@ export default function OrdersTable() {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 h-full z-20 text-center font-bold text-[14px] transition-colors duration-300 cursor-pointer ${isActive ? TAB_META[tab].text : "text-[#385E31]"
+                className={`flex-1 h-full z-20 text-center font-bold text-[14px] transition-colors duration-300 cursor-pointer ${isActive ? TAB_META[tab].text : "text-primary"
                   }`}
               >
                 <span className="relative">
                   {tab}
                   {tabCounts[tab] > 0 && (
-                    <span className={`ml-1.5 text-[11px] font-black px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25" : "bg-[#385E31]/10"}`}>
+                    <span className={`ml-1.5 text-[11px] font-black px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/25" : "bg-primary/10"}`}>
                       {tabCounts[tab]}
                     </span>
                   )}
@@ -802,9 +802,9 @@ export default function OrdersTable() {
               placeholder="Search by order ID or customer…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/70 outline-none font-medium text-[13px]"
+              className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/70 outline-none font-medium text-[13px]"
             />
-            <div className="absolute right-4 top-3 text-[#385E31]">
+            <div className="absolute right-4 top-3 text-primary">
               <Search size={16} />
             </div>
           </div>
@@ -813,24 +813,24 @@ export default function OrdersTable() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all disabled:opacity-50"
+            className="p-2.5 rounded-full border border-primary text-primary hover:bg-primary/10 transition-all disabled:opacity-50"
             title="Refresh"
           >
             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
           </button>
-          <div className="text-[#385E31] font-bold text-sm border border-[#385E31]/30 px-4 py-2 rounded-full">
+          <div className="text-primary font-bold text-sm border border-primary/30 px-4 py-2 rounded-full">
             {filtered.length} Orders
           </div>
         </div>
       </div>
 
       {/* ── Table ── */}
-      <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-hidden shadow-sm">
+      <div className="w-full bg-background rounded-[10px] border border-primary flex flex-col overflow-hidden shadow-sm">
 
         {/* Header */}
-        <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
+        <div className="w-full flex bg-primary px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
-            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">
+            <div key={col} className="flex-1 text-center text-background text-[13px] font-bold">
               {col}
             </div>
           ))}
@@ -838,11 +838,11 @@ export default function OrdersTable() {
 
         {/* Body */}
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-[#3A6131]/40 gap-3">
+          <div className="flex items-center justify-center py-16 text-primary/40 gap-3">
             <Loader2 size={22} className="animate-spin" /> Loading orders…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#385E31]/40 gap-3">
+          <div className="flex flex-col items-center justify-center py-16 text-primary/40 gap-3">
             <Package size={40} strokeWidth={1} />
             <p className="font-medium text-[14px]">
               No {activeTab.toLowerCase()} orders{search ? ` matching "${search}"` : ""}.
@@ -860,37 +860,37 @@ export default function OrdersTable() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.18 }}
-                  className={`w-full flex px-4 py-[14px] items-center hover:bg-[#3A6131]/3 transition-colors ${!isLast ? "border-b border-[#385E31]/10" : ""
+                  className={`w-full flex px-4 py-[14px] items-center hover:bg-primary/3 transition-colors ${!isLast ? "border-b border-primary/10" : ""
                     }`}
                 >
                   {/* ORDER ID */}
                   <div className="flex-1 text-center">
                     <button
                       onClick={() => setViewOrder(order)}
-                      className="text-[#3A6131] text-[13px] font-black font-mono hover:text-[#F7B71D] hover:underline transition-colors"
+                      className="text-primary text-[13px] font-black font-mono hover:text-accent hover:underline transition-colors"
                     >
                       {order.order_id.slice(0, 8).toUpperCase()}
                     </button>
                   </div>
 
                   {/* DATE / TIME */}
-                  <div className="flex-1 text-center text-[#3A6131]/70 text-[13px] font-medium">
+                  <div className="flex-1 text-center text-primary/70 text-[13px] font-medium">
                     {formatDate(order.created_at)}
                   </div>
 
                   {/* CUSTOMER */}
-                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold truncate px-1">
+                  <div className="flex-1 text-center text-primary text-[13px] font-bold truncate px-1">
                     {order.customer_name}
                   </div>
 
                   {/* TOTAL AMOUNT */}
-                  <div className="flex-1 text-center text-[#3A6131] text-[13px] font-black">
+                  <div className="flex-1 text-center text-primary text-[13px] font-black">
                     ₱{order.total_amount.toFixed(2)}
                   </div>
 
                   {/* PAYMENT METHOD */}
                   <div className="flex-1 flex justify-center">
-                    <span className="text-[12px] font-bold bg-[#3A6131]/8 text-[#3A6131] px-2.5 py-1 rounded-full">
+                    <span className="text-[12px] font-bold bg-primary/8 text-primary px-2.5 py-1 rounded-full">
                       {order.payment_method === "QR Code" ? "QR Code" : order.payment_method === "Cash-on-Delivery" ? "Cash on Delivery" : order.payment_method}
                     </span>
                   </div>
@@ -920,5 +920,4 @@ export default function OrdersTable() {
         />
       )}
     </div>
-  );
-}
+  );}

@@ -12,6 +12,8 @@ import OrdersSection from "@/components/sections/employee/orders";
 import TransactionsSection from "@/components/sections/employee/transactions";  
 import SettingsSection from "@/components/sections/employee/store-settings";
 import IngredientsSection from "@/components/sections/employee/ingredients";
+import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import { createClient } from "@/lib/supabase/client";
 
 // Removed the import type { SectionKey } from... line above! 
 // This file is the "source of truth" for this type.
@@ -39,6 +41,27 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
+  const [config, setConfig] = useState<StorefrontConfig | null>(null);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (userData?.tenant_id) {
+        const cfg = await fetchStorefrontConfig(userData.tenant_id);
+        setConfig(cfg);
+      }
+    };
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -91,7 +114,14 @@ export default function EmployeeDashboard() {
   const handleOpenSettings = () => setIsSettingsOpen(true);
 
   return (
-    <div className="flex min-h-screen bg-[#FFFCEB]">
+    <div className="flex min-h-screen" style={{
+      backgroundColor: config?.color_background ?? "#FFFCEB",
+      '--color-primary': config?.color_primary ?? "#385E31",
+      '--color-secondary': config?.color_secondary ?? "#2A4725",
+      '--color-accent': config?.color_accent ?? "#F7B71D",
+      '--color-text': config?.color_text ?? "#3A6131",
+      '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
+    } as React.CSSProperties}>
       <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} />
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">

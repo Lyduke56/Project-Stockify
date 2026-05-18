@@ -19,7 +19,7 @@ export default function NavbarEmployee({
   const router = useRouter();
 
   return (
-    <nav className="relative w-full h-[55px] px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
+    <nav className="relative w-full h-[55px] px-12 bg-[var(--color-accent)] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
       
       {/* LEFT SIDE: Logo & Brand */}
       <div 
@@ -33,7 +33,7 @@ export default function NavbarEmployee({
             className="h-9 w-auto"
           />
         </div>
-        <div className="text-[#385E31] text-3xl font-bold font-fredoka tracking-tight">
+        <div className="text-[var(--color-primary)] text-3xl font-bold font-fredoka tracking-tight">
           STOCKIFY
         </div>
       </div>

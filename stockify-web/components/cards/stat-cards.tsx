@@ -19,19 +19,25 @@ export default function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`w-80 p-5 bg-[#385E31] rounded-[10px] flex flex-col gap-3 shadow-md ${className}`}
+      className={`w-80 p-5 bg-primary rounded-[10px] flex flex-col gap-3 shadow-md ${className}`}
     >
       {/* Title */}
-      <div className="text-[#FFFCEB] text-[18px] font-bold font-['Inter']">
+      <div 
+        className="text-[18px] font-bold font-['Inter']"
+        style={{ color: 'var(--color-sidebar-text, #FFF9D7)' }}
+      >
         {title}
       </div>
 
       {/* Inner Content Box */}
-      <div className="w-full pt-4 pb-4 bg-[#FFFCEB] rounded-[5px] flex flex-col items-center justify-center">
+      <div 
+        className="w-full pt-4 pb-4 rounded-[5px] flex flex-col items-center justify-center"
+        style={{ backgroundColor: 'var(--color-sidebar-text, #FFF9D7)' }}
+      >
         
         {/* Icon & Value Row */}
         <div className="flex items-center justify-center gap-3">
-          <div className="w-16 h-16 text-[#385E31] shrink-0 flex items-center justify-center">
+          <div className="w-16 h-16 text-primary shrink-0 flex items-center justify-center">
             {icon ? (
               icon
             ) : svgName ? (
@@ -61,14 +67,14 @@ export default function StatCard({
             )}
           </div>
 
-          <div className="text-[#385E31] text-[3.8rem] leading-none font-black font-['Inter'] tracking-tight">
+          <div className="text-primary text-[3.8rem] leading-none font-black font-['Inter'] tracking-tight">
             {value}
           </div>
         </div>
 
         {/* Trend Text */}
         {trendText && (
-          <div className="mt-2 text-[#385E31] text-[13px] font-medium font-['Inter']">
+          <div className="mt-2 text-primary text-[13px] font-medium font-['Inter']">
             {trendText}
           </div>
         )}

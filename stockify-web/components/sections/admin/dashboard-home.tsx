@@ -63,10 +63,10 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
         transition={{ duration: 0.4, delay: 0.1 }}
         className="w-full flex flex-col items-center mb-8 gap-2"
       >
-        <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase text-center mt-5">
+        <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase text-center mt-5">
           Admin Dashboard
         </h1>
-        <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
+        <div className="w-full max-w-[900px] h-1.5 bg-accent rounded-full" />
       </motion.div>
 
       {/* Main Content Area */}
@@ -79,7 +79,7 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
           transition={{ duration: 0.4, ease: "easeOut", delay: 0.15 }}
           className="mb-6"
         >
-          <h2 className="text-[#385E31] text-4xl font-bold">
+          <h2 className="text-primary text-4xl font-bold">
             Hello, {loading ? "..." : (data?.shopStatus?.shopName?.split(' ')[0] || "Client")}!
           </h2>
           <p className="text-stone-400 font-medium mt-1">
@@ -124,11 +124,11 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
           className="w-full flex flex-col gap-6 mt-2"
         >
-          <div className="w-full h-[3px] bg-[#385E31]/20 rounded-full" />
+          <div className="w-full h-[3px] bg-primary/20 rounded-full" />
           
           {loading ? (
             <div className="w-full flex justify-center py-10">
-              <Loader2 className="animate-spin text-[#385E31]" size={40} />
+              <Loader2 className="animate-spin text-primary" size={40} />
             </div>
           ) : (
             <ShopStatus
@@ -146,4 +146,4 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
       </div>
     </div>
   );
-}
+}

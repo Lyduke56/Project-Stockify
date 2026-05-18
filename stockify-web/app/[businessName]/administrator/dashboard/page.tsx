@@ -13,6 +13,8 @@ import AdminSettingsSection from "@/components/sections/admin/client-settings";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientSettingsModal from "@/components/modals/client-settings-modal";
+import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import { createClient } from "@/lib/supabase/client";
 
 export type SectionKey =
   | "dashboard"
@@ -21,8 +23,6 @@ export type SectionKey =
   | "store-settings"
   | "admin-settings";
 
-// Removed static SECTIONS to allow passing props in the render method
-
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
@@ -30,6 +30,27 @@ export default function AdminDashboard() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [config, setConfig] = useState<StorefrontConfig | null>(null);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (userData?.tenant_id) {
+        const cfg = await fetchStorefrontConfig(userData.tenant_id);
+        setConfig(cfg);
+      }
+    };
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     const querySection = searchParams.get("section") as SectionKey;
@@ -45,7 +66,14 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FFFCF0]">
+    <div className="flex min-h-screen" style={{
+      backgroundColor: config?.color_background ?? "#FFFCF0",
+      '--color-primary': config?.color_primary ?? "#385E31",
+      '--color-secondary': config?.color_secondary ?? "#2A4725",
+      '--color-accent': config?.color_accent ?? "#F7B71D",
+      '--color-text': config?.color_text ?? "#3A6131",
+      '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
+    } as React.CSSProperties}>
       <SidebarAdmin activeSection={activeSection} setActiveSection={handleSetSection} />
       
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-14 pt-5 pb-12">

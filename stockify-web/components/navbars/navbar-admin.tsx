@@ -17,7 +17,7 @@ export default function NavbarAdmin({
 }: NavbarAdminProps) {
 
   return (
-    <nav className="relative w-full h-[48px] px-4 md:px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
+    <nav className="relative w-full h-[48px] px-4 md:px-12 bg-accent rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
       
       {/* LEFT SIDE: Logo and Brand Name */}
       <div 
@@ -31,7 +31,7 @@ export default function NavbarAdmin({
             className="h-7 md:h-9 w-auto"
           />
         </div>
-        <div className="text-[#385E31] text-xl md:text-3xl font-bold font-fredoka">
+        <div className="text-primary text-xl md:text-3xl font-bold font-fredoka">
           STOCKIFY
         </div>
       </div>

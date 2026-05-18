@@ -26,7 +26,7 @@ const ACTION_COLORS: Record<string, string> = {
   DELETE:   "bg-red-100 text-red-700",
   CANCEL:   "bg-red-100 text-red-600",
   RESTOCK:  "bg-amber-100 text-amber-700",
-  COMPLETE: "bg-[#385E31]/10 text-[#385E31]",
+  COMPLETE: "bg-primary/10 text-primary",
   STATUS:   "bg-purple-100 text-purple-700",
 };
 
@@ -96,13 +96,13 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
         transition={{ type: "spring", stiffness: 360, damping: 30 }}
         className="fixed inset-0 z-[301] flex items-center justify-center p-4 pointer-events-none"
       >
-        <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[500px] shadow-2xl pointer-events-auto overflow-hidden max-h-[88dvh] flex flex-col">
+        <div className="bg-background rounded-[24px] w-full max-w-[500px] shadow-2xl pointer-events-auto overflow-hidden max-h-[88dvh] flex flex-col">
 
           {/* Header */}
-          <div className="bg-[#385E31] px-6 py-5 flex items-center justify-between shrink-0">
+          <div className="bg-primary px-6 py-5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                <FileText size={17} className="text-[#F7B71D]" />
+                <FileText size={17} className="text-accent" />
               </div>
               <div>
                 <h2 className="text-white font-black text-[15px]">Activity Details</h2>
@@ -133,14 +133,14 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
             </div>
 
             {/* Core fields */}
-            <div className="bg-white border border-[#385E31]/10 rounded-2xl overflow-hidden divide-y divide-[#385E31]/8">
+            <div className="bg-white border border-primary/10 rounded-2xl overflow-hidden divide-y divide-primary/8">
 
               {/* Entity name */}
               <div className="flex items-start gap-3 px-4 py-3">
-                <Tag size={14} className="text-[#385E31]/50 mt-0.5 shrink-0" />
+                <Tag size={14} className="text-primary/50 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] font-black text-[#385E31]/40 uppercase tracking-wider">Entity</p>
-                  <p className="text-[#385E31] font-bold text-[13px] mt-0.5">
+                  <p className="text-[10px] font-black text-primary/40 uppercase tracking-wider">Entity</p>
+                  <p className="text-primary font-bold text-[13px] mt-0.5">
                     {log.entity_name ?? "—"}
                   </p>
                 </div>
@@ -148,10 +148,10 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
 
               {/* User */}
               <div className="flex items-start gap-3 px-4 py-3">
-                <User size={14} className="text-[#385E31]/50 mt-0.5 shrink-0" />
+                <User size={14} className="text-primary/50 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] font-black text-[#385E31]/40 uppercase tracking-wider">Performed By</p>
-                  <p className="text-[#385E31] font-bold text-[13px] mt-0.5">
+                  <p className="text-[10px] font-black text-primary/40 uppercase tracking-wider">Performed By</p>
+                  <p className="text-primary font-bold text-[13px] mt-0.5">
                     {log.user_name || "System"}
                   </p>
                 </div>
@@ -159,21 +159,21 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
 
               {/* Date / Time */}
               <div className="flex items-start gap-3 px-4 py-3">
-                <Calendar size={14} className="text-[#385E31]/50 mt-0.5 shrink-0" />
+                <Calendar size={14} className="text-primary/50 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10px] font-black text-[#385E31]/40 uppercase tracking-wider">Timestamp</p>
-                  <p className="text-[#385E31] font-bold text-[13px] mt-0.5">{date}</p>
-                  <p className="text-[#385E31]/60 text-[11px] font-medium">{time}</p>
+                  <p className="text-[10px] font-black text-primary/40 uppercase tracking-wider">Timestamp</p>
+                  <p className="text-primary font-bold text-[13px] mt-0.5">{date}</p>
+                  <p className="text-primary/60 text-[11px] font-medium">{time}</p>
                 </div>
               </div>
 
               {/* Entity ID */}
               {log.entity_id && (
                 <div className="flex items-start gap-3 px-4 py-3">
-                  <Hash size={14} className="text-[#385E31]/50 mt-0.5 shrink-0" />
+                  <Hash size={14} className="text-primary/50 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-[10px] font-black text-[#385E31]/40 uppercase tracking-wider">Entity ID</p>
-                    <p className="text-[#385E31]/60 font-mono text-[11px] mt-0.5 break-all">
+                    <p className="text-[10px] font-black text-primary/40 uppercase tracking-wider">Entity ID</p>
+                    <p className="text-primary/60 font-mono text-[11px] mt-0.5 break-all">
                       {log.entity_id}
                     </p>
                   </div>
@@ -185,27 +185,27 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
             {detailEntries.length > 0 && (
               <>
                 <div className="flex items-center gap-2">
-                  <Info size={13} className="text-[#385E31]/50" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/50">
+                  <Info size={13} className="text-primary/50" />
+                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/50">
                     Additional Details
                   </p>
                 </div>
 
-                <div className="bg-white border border-[#385E31]/10 rounded-2xl overflow-hidden divide-y divide-[#385E31]/8">
+                <div className="bg-white border border-primary/10 rounded-2xl overflow-hidden divide-y divide-primary/8">
                   {detailEntries.map(({ key, value, raw }) => (
                     <div key={key} className="flex items-start justify-between gap-4 px-4 py-3">
-                      <p className="text-[#385E31]/50 text-[11px] font-bold uppercase tracking-wide shrink-0">
+                      <p className="text-primary/50 text-[11px] font-bold uppercase tracking-wide shrink-0">
                         {key}
                       </p>
                       <p className={`text-right text-[13px] font-black break-all ${
                         typeof raw === "number"
-                          ? "text-[#385E31]"
+                          ? "text-primary"
                           : raw === null
-                          ? "text-[#385E31]/30 italic font-medium"
-                          : "text-[#385E31]"
+                          ? "text-primary/30 italic font-medium"
+                          : "text-primary"
                       }`}>
                         {raw === null ? "none" : typeof raw === "object" ? (
-                          <span className="font-mono text-[11px] font-normal text-[#385E31]/60 whitespace-pre-wrap text-left block">
+                          <span className="font-mono text-[11px] font-normal text-primary/60 whitespace-pre-wrap text-left block">
                             {value}
                           </span>
                         ) : value}
@@ -217,7 +217,7 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
             )}
 
             {detailEntries.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-6 text-[#385E31]/30 gap-2">
+              <div className="flex flex-col items-center justify-center py-6 text-primary/30 gap-2">
                 <Info size={24} strokeWidth={1.5} />
                 <p className="text-[12px] font-medium">No additional details recorded.</p>
               </div>
@@ -225,10 +225,10 @@ function DetailModal({ log, onClose }: { log: AuditLog; onClose: () => void }) {
           </div>
 
           {/* Footer */}
-          <div className="px-6 pb-6 pt-4 border-t border-[#385E31]/10 shrink-0">
+          <div className="px-6 pb-6 pt-4 border-t border-primary/10 shrink-0">
             <button
               onClick={onClose}
-              className="w-full py-3 rounded-2xl bg-[#385E31] text-[#F7B71D] font-black text-[13px] hover:opacity-90 transition-opacity"
+              className="w-full py-3 rounded-2xl bg-primary text-accent font-black text-[13px] hover:opacity-90 transition-opacity"
             >
               Close
             </button>
@@ -259,17 +259,17 @@ function LogRow({
 
   return (
     <div
-      className={`w-full grid grid-cols-6 px-4 py-[13px] items-center hover:bg-[#3A6131]/[0.03] transition-colors ${
-        !isLast ? "border-b border-[#385E31]/10" : ""
+      className={`w-full grid grid-cols-6 px-4 py-[13px] items-center hover:bg-primary/[0.03] transition-colors ${
+        !isLast ? "border-b border-primary/10" : ""
       }`}
     >
       {/* Date */}
-      <div className="text-center text-[#3A6131]/70 text-[11px] font-medium">
+      <div className="text-center text-primary/70 text-[11px] font-medium">
         {formatDate(log.created_at)}
       </div>
 
       {/* User */}
-      <div className="text-center text-[#3A6131] text-[12px] font-bold truncate px-1">
+      <div className="text-center text-primary text-[12px] font-bold truncate px-1">
         {log.user_name || "System"}
       </div>
 
@@ -288,7 +288,7 @@ function LogRow({
       </div>
 
       {/* Entity Name */}
-      <div className="text-center text-[#3A6131] text-[12px] font-medium truncate px-1">
+      <div className="text-center text-primary text-[12px] font-medium truncate px-1">
         {log.entity_name ?? log.entity_id?.slice(0, 8).toUpperCase() ?? "—"}
       </div>
 
@@ -297,13 +297,13 @@ function LogRow({
         {log.details && Object.keys(log.details).length > 0 ? (
           <button
             onClick={() => onViewDetails(log)}
-            className="px-3 py-1.5 rounded-full bg-[#385E31] text-[#F7B71D] text-[10px] font-black hover:opacity-80 active:scale-95 transition-all flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-full bg-primary text-accent text-[10px] font-black hover:opacity-80 active:scale-95 transition-all flex items-center gap-1.5"
           >
             <FileText size={11} />
             View
           </button>
         ) : (
-          <span className="text-[#3A6131]/25 text-[11px]">—</span>
+          <span className="text-primary/25 text-[11px]">—</span>
         )}
       </div>
     </div>
@@ -371,9 +371,9 @@ export default function AuditLogsTable() {
             placeholder="Search by action, user, or entity…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/70 outline-none font-medium text-[13px]"
+            className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/70 outline-none font-medium text-[13px]"
           />
-          <div className="absolute right-4 top-3 text-[#385E31]"><Search size={16} /></div>
+          <div className="absolute right-4 top-3 text-primary"><Search size={16} /></div>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
           {entityTypes.map((type) => (
@@ -382,8 +382,8 @@ export default function AuditLogsTable() {
               onClick={() => setFilterType(type)}
               className={`px-4 py-2 rounded-full text-[12px] font-bold border transition-all capitalize ${
                 filterType === type
-                  ? "bg-[#385E31] text-white border-transparent"
-                  : "border-[#385E31] text-[#385E31] hover:bg-[#385E31]/5"
+                  ? "bg-primary text-white border-transparent"
+                  : "border-primary text-primary hover:bg-primary/5"
               }`}
             >
               {type}
@@ -392,7 +392,7 @@ export default function AuditLogsTable() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all disabled:opacity-50"
+            className="p-2.5 rounded-full border border-primary text-primary hover:bg-primary/10 transition-all disabled:opacity-50"
           >
             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
           </button>
@@ -400,19 +400,19 @@ export default function AuditLogsTable() {
       </div>
 
       {/* Table */}
-      <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-hidden shadow-sm">
-        <div className="w-full grid grid-cols-6 bg-[#385E31] px-4 py-3 rounded-t-[8px]">
+      <div className="w-full bg-background rounded-[10px] border border-primary flex flex-col overflow-hidden shadow-sm">
+        <div className="w-full grid grid-cols-6 bg-primary px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
-            <div key={col} className="text-center text-[#FFFCEB] text-[13px] font-bold">{col}</div>
+            <div key={col} className="text-center text-background text-[13px] font-bold">{col}</div>
           ))}
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 text-[#3A6131]/40 gap-3">
+          <div className="flex items-center justify-center py-16 text-primary/40 gap-3">
             <Loader2 size={22} className="animate-spin" /> Loading audit logs…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#385E31]/40 gap-3">
+          <div className="flex flex-col items-center justify-center py-16 text-primary/40 gap-3">
             <ShieldCheck size={40} strokeWidth={1} />
             <p className="font-medium text-[14px]">
               {search || filterType !== "all" ? "No matching log entries." : "No audit logs yet."}
@@ -430,7 +430,7 @@ export default function AuditLogsTable() {
         )}
       </div>
 
-      <p className="text-center text-[#3A6131]/30 text-[11px] font-medium mt-3">
+      <p className="text-center text-primary/30 text-[11px] font-medium mt-3">
         Showing {filtered.length} of {logs.length} entries (last 500)
       </p>
 
