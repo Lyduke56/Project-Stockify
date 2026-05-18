@@ -25,7 +25,6 @@ export default function EmployeeStockNotifications() {
                 onOpenSettings={() => console.log("Open settings clicked")}
                 activeSection={activeSection}
                 setActiveSection={setActiveSection}
-                onOpenSettings={() => console.log("Open settings clicked")}
               />
         
               {/* RIGHT SIDE: Main Content */}
