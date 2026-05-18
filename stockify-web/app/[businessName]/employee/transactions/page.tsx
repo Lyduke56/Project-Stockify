@@ -21,7 +21,8 @@ export default function EmployeeTransactions() {
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
     
           {/* LEFT SIDE: Fixed Sidebar */}
-          <SidebarEmployee 
+          <SidebarEmployee
+            onOpenSettings={() => console.log("Open settings clicked")}
             activeSection={activeSection}
             setActiveSection={setActiveSection}
             onOpenSettings={() => console.log("Open settings clicked")}

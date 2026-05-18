@@ -22,6 +22,7 @@ export default function EmployeeAuditLogs() {
             activeSection={activeSection}
             onOpenSettings={() => console.log("Open settings clicked")}
             setActiveSection={setActiveSection}
+            onOpenSettings={() => console.log("Open settings clicked")}
           />
     
           {/* RIGHT SIDE: Main Content */}

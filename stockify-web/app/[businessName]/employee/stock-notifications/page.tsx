@@ -22,6 +22,7 @@ export default function EmployeeStockNotifications() {
         
               {/* LEFT SIDE: Fixed Sidebar */}
               <SidebarEmployee
+                onOpenSettings={() => console.log("Open settings clicked")}
                 activeSection={activeSection}
                 setActiveSection={setActiveSection}
                 onOpenSettings={() => console.log("Open settings clicked")}
