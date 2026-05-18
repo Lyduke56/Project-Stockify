@@ -5,34 +5,24 @@ import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { getUserData } from "@/backend/hooks/getUserRole";
 import { createClient } from "@/lib/supabase/client";
-import { getCurrentUserContext, type BusinessType } from "@/lib/employee/inventory";
+import { getCurrentUserContext } from "@/lib/employee/inventory";
 import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
-
-// ── Permissions ──────────────────────────────────────────────
-
-const MANAGER_ONLY_SECTIONS = new Set<SectionKey>([
-  "audit-logs",
-  "transactions",
-]);
-
-const FNB_ONLY_SECTIONS = new Set<SectionKey>([
-  "ingredients", // This corresponds to "Stock Inventory"
-]);
-
-// ── Component ────────────────────────────────────────────────
 
 interface SidebarEmployeeProps {
   activeSection:    SectionKey;
   setActiveSection: (section: SectionKey) => void;
+  onOpenSettings:   () => void; // Added property prop hook callback to target settings modal overlay
 }
 
-export default function SidebarEmployee({ activeSection, setActiveSection }: SidebarEmployeeProps) {
+export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings }: SidebarEmployeeProps) {
   const router   = useRouter();
   const supabase = createClient();
 
   const [role,         setRole]         = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null);
   const [loading,      setLoading]      = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -43,15 +33,26 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
           return;
         }
 
-        const [userRole, ctx] = await Promise.all([
+        const [userRole, ctx, bName] = await Promise.all([
           getUserData(user.id),
           getCurrentUserContext(),
+          getBusinessNameByUserId(user.id),
         ]);
-
-        console.log("DEBUG - Database Business Type:", ctx?.businessType);
         
         setRole(userRole);
-        if (ctx) setBusinessType(ctx.businessType);
+        
+        if (ctx && ctx.businessType) {
+          setBusinessType(ctx.businessType.toString());
+        }
+        
+        if (bName) {
+          if (typeof bName === "object" && bName !== null) {
+            const resolvedName = (bName as any).business_name || (bName as any).businessName || "";
+            setBusinessName(resolvedName);
+          } else {
+            setBusinessName(bName);
+          }
+        }
       } catch (err) {
         console.error("Sidebar init error:", err);
       } finally {
@@ -61,9 +62,6 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
     init();
   }, [supabase.auth]);
 
-  // ── Logic ──────────────────────────────────────────────────
-
-  // We trim and lowercase to handle "Food and Beverage", "food and beverage", or "Food and Beverage "
   const cleanType = businessType?.toLowerCase().trim() || "";
   const isFnb = cleanType === "food & beverage";
   const isEmployee = role?.toLowerCase() === "employee";
@@ -78,16 +76,25 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
   ];
 
   const navItems = allNavItems.filter((item) => {
-    // 1. Hide manager sections from employees
-    if (isEmployee && MANAGER_ONLY_SECTIONS.has(item.section as SectionKey)) return false;
-
-    // 2. Hide "ingredients" if the tenant is NOT F&B
-    if (FNB_ONLY_SECTIONS.has(item.section as SectionKey) && !isFnb) return false;
-
+    if (isEmployee && (item.section === "audit-logs" || item.section === "transactions")) return false;
+    if (item.section === "ingredients" && !isFnb) return false;
     return true;
   });
 
-  // ── Render ─────────────────────────────────────────────────
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      const fallbackTarget = businessName ? encodeURIComponent(businessName.trim()) : "";
+      window.location.href = fallbackTarget ? `http://localhost:3000/${fallbackTarget}/login` : "http://localhost:3000/";
+    } catch (error) {
+      console.error("Logout execution error:", error);
+      setIsLoggingOut(false);
+    }
+  };
 
   if (loading || role === null) return null;
 
@@ -120,23 +127,23 @@ export default function SidebarEmployee({ activeSection, setActiveSection }: Sid
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
+          
+          {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
           <div
             onClick={() => setActiveSection("store-settings")}
             className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-accent text-primary" : "text-sidebar-text"}`}
           >
             <img src="/icon-settings.svg" className="w-8 h-8" />
-            <span className="font-semibold">Settings</span>
+            <span className="text-base">Settings</span>
           </div>
           <div
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.replace("/");
-            }}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
             className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
           >
-            <img src="/icon-logout.svg" className="w-8 h-8" />
-            <span className="font-semibold">Logout</span>
-          </div>
+            <img src="/icon-logout.svg" className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} />
+            <span className="text-base">{isLoggingOut ? "Logging out..." : "Logout"}</span>
+          </button>
         </div>
       </div>
     </div>

@@ -9,13 +9,14 @@ import DashboardSection from "@/components/sections/admin/dashboard-home";
 import UserAdminSection from "@/components/sections/admin/user-admin";
 import StorefrontSection from "@/components/sections/admin/storefront";
 import StoreSettingsSection from "@/components/sections/admin/store-settings";
-import AdminSettingsSection from "@/components/sections/admin/client-settings";
+import AdminSettingsModal from "@/components/sections/admin/client-settings"; 
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientSettingsModal from "@/components/modals/client-settings-modal";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
 import { createClient } from "@/lib/supabase/client";
 
+// 🟢 FIX 1: Keep "admin-settings" in SectionKey so SidebarAdmin and URL params don't break types
 export type SectionKey =
   | "dashboard"
   | "user-admin"
@@ -25,8 +26,11 @@ export type SectionKey =
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
+  
+  // Track the underlying main workspace view background tab 
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   
+  // Controlling the visibility states of our interactive floating modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -55,14 +59,31 @@ export default function AdminDashboard() {
   useEffect(() => {
     const querySection = searchParams.get("section") as SectionKey;
     const validSections: SectionKey[] = ["dashboard", "user-admin", "storefront", "store-settings", "admin-settings"];
-    if (querySection && validSections.includes(querySection) && querySection !== activeSection) {
-      setActiveSection(querySection);
+    
+    if (querySection && validSections.includes(querySection)) {
+      if (querySection === "admin-settings") {
+        // If the URL parameters trigger the settings view, open the overlay screen directly
+        setIsSettingsOpen(true);
+      } else if (querySection !== activeSection) {
+        setActiveSection(querySection);
+      }
     }
   }, [searchParams, activeSection]);
 
   const handleSetSection = (section: SectionKey) => {
-    setActiveSection(section); 
+    if (section === "admin-settings") {
+      setIsSettingsOpen(true);
+    } else {
+      setActiveSection(section); 
+    }
     window.history.pushState(null, "", `?section=${section}`); 
+  };
+
+  // Safe fallback to manage closing the modal overlay and restoring url path cleanups
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+    // Restore the browser url view parameters cleanly back to the underlying core panel state
+    window.history.pushState(null, "", `?section=${activeSection}`);
   };
 
   return (
@@ -81,9 +102,10 @@ export default function AdminDashboard() {
           setActiveSection={handleSetSection}
           openProfile={() => setIsProfileOpen(true)}
           openNotifs={() => setIsNotifsOpen(true)}
-          openSettings={() => setIsSettingsOpen(true)}
+          openSettings={() => handleSetSection("admin-settings")}
         />
         
+        {/* Underlay Dashboard Core Content Main View Grid Block */}
         <main className="p-5">
           {activeSection === "dashboard" && (
             <DashboardSection onManageShop={() => handleSetSection("store-settings")} />
@@ -91,13 +113,15 @@ export default function AdminDashboard() {
           {activeSection === "user-admin" && <UserAdminSection />}
           {activeSection === "storefront" && <StorefrontSection />}
           {activeSection === "store-settings" && <StoreSettingsSection />}
-          {activeSection === "admin-settings" && <AdminSettingsSection />}
         </main>
       </div>
 
+      {/* Floating Application Overlay Screen Windows Layer Portal */}
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} />
-      <ClientSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      
+      {/* Floating settings screen wrapper element */}
+      <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} />
     </div>
   );
 }

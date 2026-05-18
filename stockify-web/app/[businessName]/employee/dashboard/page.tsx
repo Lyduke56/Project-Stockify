@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
 
@@ -10,13 +11,15 @@ import AuditLogsSection from "@/components/sections/employee/audit-logs";
 import ProductsSection from "@/components/sections/employee/products";
 import OrdersSection from "@/components/sections/employee/orders";
 import TransactionsSection from "@/components/sections/employee/transactions";  
-import SettingsSection from "@/components/sections/employee/store-settings";
 import IngredientsSection from "@/components/sections/employee/ingredients";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
 import { createClient } from "@/lib/supabase/client";
 
-// Removed the import type { SectionKey } from... line above! 
-// This file is the "source of truth" for this type.
+import NotificationModal from "@/components/modals/notification-modal";
+import EmployeeProfileModal from "@/components/modals/new-employee-modal";
+// MAKE SURE TO IMPORT YOUR GENERIC SUPERADMIN SETTINGS/PASSWORD COMPONENT SHEET HERE
+import EmployeeSettingsModal from "@/components/modals/navbar-modals/settings"; 
+
 export type SectionKey =
   | "dashboard"
   | "audit-logs"
@@ -24,8 +27,7 @@ export type SectionKey =
   | "ingredients"
   | "orders"
   | "transactions"
-  | "analytics"
-  | "store-settings";
+  | "analytics";
 
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "dashboard":     <DashboardSection />,
@@ -34,12 +36,12 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "ingredients":   <IngredientsSection />,
   "orders":        <OrdersSection />,
   "transactions":  <TransactionsSection />,
-  "analytics":     <div />, // Analytics is a separate page
-  "store-settings": <SettingsSection />
+  "analytics":     <div />, 
 };
 
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
+  const supabase = createClient();
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
 
@@ -65,7 +67,6 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     const handlePopState = () => {
-      // Look at the URL and update our state to match
       const params = new URLSearchParams(window.location.search);
       const section = params.get("section") as SectionKey;
       if (section && SECTIONS[section]) {
@@ -82,8 +83,6 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
-        // If the page is being loaded from the browser cache (back button)
-        // reload the window to trigger a middleware session check
         window.location.reload();
       }
     };
@@ -107,8 +106,6 @@ export default function EmployeeDashboard() {
     window.history.replaceState(null, "", `?section=${section}`);
   };
 
-  // --- ADDED THESE MISSING FUNCTIONS ---
-  // These connect your Navbar buttons to your modal state!
   const handleOpenProfile = () => setIsProfileOpen(true);
   const handleOpenNotifs = () => setIsNotifsOpen(true);
   const handleOpenSettings = () => setIsSettingsOpen(true);
@@ -126,7 +123,7 @@ export default function EmployeeDashboard() {
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee
-         setActiveSection={setActiveSection}
+         setActiveSection={handleSetSection}
          openProfile={handleOpenProfile} 
          openNotifs={handleOpenNotifs}
          openSettings={handleOpenSettings}
@@ -137,11 +134,25 @@ export default function EmployeeDashboard() {
         </main>
       </div>
 
-      {/* MODALS RENDER HERE */}
-      {/* Once you uncomment these, the Navbar buttons will make them pop up! */}
-      {/* <EmployeeProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} /> */}
-      {/* <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} /> */}
-      {/* <EmployeeSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} /> */}
+      {/*  WORKING PROFILE MODAL LAYER */}
+      <EmployeeProfileModal 
+        isOpen={isProfileOpen} 
+        onClose={() => setIsProfileOpen(false)} 
+      />
+
+      {/*  WORKING NOTIFICATION MODAL LAYER */}
+      <NotificationModal 
+        isOpen={isNotifsOpen} 
+        onClose={() => setIsNotifsOpen(false)} 
+        role="employee"
+        tenantId={tenantId}
+      />
+
+      {/*  WIRED UP UNIFIED SETTINGS MODAL OVERLAY */}
+      <EmployeeSettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)} 
+      />
     </div>
   );
 }
