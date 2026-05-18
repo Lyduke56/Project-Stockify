@@ -21,6 +21,7 @@ export default function EmployeeOrders() {
       <SidebarEmployee 
         activeSection={activeSection}
         setActiveSection={setActiveSection}
+        onOpenSettings={() => console.log("Open settings clicked")}
       />
       
       {/* RIGHT SIDE: Main Content */}

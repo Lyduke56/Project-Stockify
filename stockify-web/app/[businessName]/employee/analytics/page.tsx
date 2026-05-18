@@ -21,6 +21,7 @@ export default function EmployeeAnalytics() {
           <SidebarEmployee 
             activeSection={activeSection}
             setActiveSection={setActiveSection}
+            onOpenSettings={() => console.log("Open settings clicked")}
           />
     
           {/* RIGHT SIDE: Main Column */}
