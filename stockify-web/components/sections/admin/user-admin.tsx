@@ -21,6 +21,11 @@ export default function UserAdminSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [tableKey, setTableKey] = useState(0);
+  
+  // Delete state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }: any) => {
@@ -32,6 +37,28 @@ export default function UserAdminSection() {
     setTableKey((k) => k + 1);
     setIsModalOpen(false);
   }
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/admin/delete-employee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userToDelete.user_id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete employee.");
+      
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      setTableKey((k) => k + 1);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete employee.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -95,7 +122,14 @@ export default function UserAdminSection() {
 
         {/* Table Container */}
         <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] overflow-hidden shadow-sm">
-          <StaffAdminTable key={tableKey} userId={userId ?? ""} />
+          <StaffAdminTable 
+            key={tableKey} 
+            userId={userId ?? ""} 
+            onDelete={(record) => {
+              setUserToDelete(record);
+              setIsDeleteModalOpen(true);
+            }}
+          />
         </div>
       </motion.div>
 
@@ -135,6 +169,40 @@ export default function UserAdminSection() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleEmployeeCreated}
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setIsDeleteModalOpen(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-[#FFFCEB] rounded-2xl w-full max-w-md mx-4 shadow-2xl pointer-events-auto p-8 flex flex-col gap-6 border border-[#385E31]/20">
+              <h2 className="text-[#385E31] text-2xl font-bold uppercase tracking-widest text-center">
+                Confirm Delete
+              </h2>
+              <div className="h-1 w-full bg-[#F7B71D] rounded-full opacity-60" />
+              <p className="text-[#385E31] text-center font-medium">
+                Are you sure you want to delete account of <b>{userToDelete?.display_name}</b>? This action cannot be undone.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="px-8 py-2 rounded-full bg-red-600 text-white font-bold hover:bg-red-700 active:scale-95 transition disabled:opacity-60"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                  className="px-8 py-2 rounded-full bg-[#E5AC24] text-[#24481F] font-bold hover:brightness-80 active:scale-95 transition disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </motion.div>
   );
 }

@@ -124,9 +124,6 @@ function Row({ record, onEdit, onDelete }: { record: StaffRecord; onEdit?: () =>
       <Cell>
         {!isAdmin && (
           <div className="flex items-center gap-4">
-            <button onClick={onEdit} className="hover:scale-110 transition-transform">
-              <img src="/icon-edit.svg" alt="Edit" className="w-4 h-4 icon-green" />
-            </button>
             <button onClick={onDelete} className="hover:scale-110 transition-transform">
               <img src="/icon-delete.svg" alt="Delete" className="w-4 h-4 icon-green" />
             </button>
