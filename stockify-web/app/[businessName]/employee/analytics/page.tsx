@@ -20,6 +20,7 @@ export default function EmployeeAnalytics() {
           {/* LEFT SIDE: Fixed Sidebar */}
           <SidebarEmployee 
             activeSection={activeSection}
+            onOpenSettings={() => console.log("Open settings clicked")}
             setActiveSection={setActiveSection}
           />
     

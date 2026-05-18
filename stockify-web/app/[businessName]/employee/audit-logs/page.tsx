@@ -20,6 +20,7 @@ export default function EmployeeAuditLogs() {
           {/* Passed the props here */}
           <SidebarEmployee 
             activeSection={activeSection}
+            onOpenSettings={() => console.log("Open settings clicked")}
             setActiveSection={setActiveSection}
           />
     

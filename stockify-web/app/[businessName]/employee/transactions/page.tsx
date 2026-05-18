@@ -24,6 +24,7 @@ export default function EmployeeTransactions() {
           <SidebarEmployee 
             activeSection={activeSection}
             setActiveSection={setActiveSection}
+            onOpenSettings={() => console.log("Open settings clicked")}
           />
           {/* RIGHT SIDE: Main Content */}
           <div className="flex-1 flex flex-col h-full overflow-y-auto px-20 pt-5 pb-12">
