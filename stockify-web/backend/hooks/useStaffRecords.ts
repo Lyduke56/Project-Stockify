@@ -64,6 +64,7 @@ export function useStaffRecords(userId: string | null): UseStaffRecordsResult {
             "user_id, display_name, first_name, last_name, email, role, is_active"
           )
           .eq("tenant_id", resolvedTenantId)
+          .in("role", ["Administrator", "Manager", "Employee", "Superadmin"])
           .order("created_at", { ascending: true });
 
         if (tenantErr) throw new Error(tenantErr.message);

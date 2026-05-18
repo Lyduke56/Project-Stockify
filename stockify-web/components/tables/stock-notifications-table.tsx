@@ -37,7 +37,7 @@ const FILTER_OPTIONS = ["All", "Good", "Low", "Critical"];
 
 const STOCK_STYLES: Record<StockStatus, string> = {
   Good:     "bg-[#4CAF50] text-white",
-  Low:      "bg-[#F7B71D] text-[#385E31]",
+  Low:      "bg-accent text-primary",
   Critical: "bg-[#E53935] text-white",
 };
 
@@ -52,8 +52,8 @@ function StockBadge({ status }: { status: StockStatus }) {
 // ─── Notification Status Dropdown ─────────────────────────────────────────────
 
 const NOTIF_STYLES: Record<NotificationStatus, string> = {
-  Notified:  "border-[#385E31] text-[#385E31]",
-  Pending:   "border-[#F7B71D] text-[#b37f00]",
+  Notified:  "border-primary text-primary",
+  Pending:   "border-accent text-[#b37f00]",
   Dismissed: "border-gray-400 text-gray-500",
 };
 
@@ -68,7 +68,7 @@ function NotifDropdown({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as NotificationStatus)}
-      className={`border rounded-full px-3 py-0.5 text-xs font-semibold bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F7B71D] ${NOTIF_STYLES[value]}`}
+      className={`border rounded-full px-3 py-0.5 text-xs font-semibold bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent ${NOTIF_STYLES[value]}`}
     >
       <option value="Notified">Notified</option>
       <option value="Pending">Pending</option>
@@ -90,7 +90,7 @@ function ProductImage({ src, alt }: { src: string; alt: string }) {
           // Fallback if image doesn't exist
           (e.target as HTMLImageElement).style.display = "none";
           (e.target as HTMLImageElement).parentElement!.innerHTML = `
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#385E31" stroke-width="1.8">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="text-primary">
               <rect x="3" y="3" width="18" height="18" rx="3"/>
               <circle cx="8.5" cy="8.5" r="1.5"/>
               <path d="M21 15l-5-5L5 21"/>
@@ -113,7 +113,7 @@ function ViewModal({ item, onClose }: { item: StockItem; onClose: () => void }) 
         className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-[#385E31] text-xl font-extrabold mb-5">Item Details</h3>
+        <h3 className="text-primary text-xl font-extrabold mb-5">Item Details</h3>
 
         {/* Product image preview */}
         <div className="w-24 h-24 rounded-xl overflow-hidden bg-[#e8f0e5] mx-auto mb-5 flex items-center justify-center">
@@ -138,7 +138,7 @@ function ViewModal({ item, onClose }: { item: StockItem; onClose: () => void }) 
           ] as [string, string][]).map(([label, value]) => (
             <div key={label} className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-400 font-semibold">{label}</span>
-              <span className="text-[#385E31] font-bold">
+              <span className="text-primary font-bold">
                 {label === "Stock Status" ? (
                   <StockBadge status={value as StockStatus} />
                 ) : (
@@ -151,7 +151,7 @@ function ViewModal({ item, onClose }: { item: StockItem; onClose: () => void }) 
 
         <button
           onClick={onClose}
-          className="mt-6 w-full bg-[#385E31] text-white font-bold py-2.5 rounded-xl hover:bg-[#2e4e28] transition-colors"
+          className="mt-6 w-full bg-primary text-white font-bold py-2.5 rounded-xl hover:bg-secondary transition-colors"
         >
           Close
         </button>
@@ -199,7 +199,7 @@ export default function StockNotifications() {
             placeholder="Search by Transaction ID"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[#385E31] rounded-lg pl-9 pr-10 py-2 text-sm text-[#385E31] placeholder-[#a8c8a0] bg-white focus:outline-none focus:ring-2 focus:ring-[#F7B71D] transition"
+            className="w-full border border-primary rounded-lg pl-9 pr-10 py-2 text-sm text-primary placeholder-primary/50 bg-white focus:outline-none focus:ring-2 focus:ring-accent transition"
           />
           <img
             src="/search.svg"
@@ -210,11 +210,11 @@ export default function StockNotifications() {
 
         {/* Filter */}
         <div className="flex items-center gap-2 ml-auto">
-          <span className="text-[#385E31] text-sm font-semibold whitespace-nowrap">Filter by:</span>
+          <span className="text-primary text-sm font-semibold whitespace-nowrap">Filter by:</span>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="border border-[#385E31] rounded-lg px-3 py-2 text-sm text-[#385E31] bg-white font-medium focus:outline-none focus:ring-2 focus:ring-[#F7B71D] cursor-pointer"
+            className="border border-primary rounded-lg px-3 py-2 text-sm text-primary bg-white font-medium focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer"
           >
             {FILTER_OPTIONS.map((o) => <option key={o}>{o}</option>)}
           </select>
@@ -229,7 +229,7 @@ export default function StockNotifications() {
               {["Image", "Item ID", "Item Name", "Stock Status", "Notification Status", "Action"].map((col) => (
                 <th
                   key={col}
-                  className="bg-[#385E31] text-white font-bold px-5 py-3 text-center first:rounded-tl-xl last:rounded-tr-xl whitespace-nowrap"
+                  className="bg-primary text-white font-bold px-5 py-3 text-center first:rounded-tl-xl last:rounded-tr-xl whitespace-nowrap"
                 >
                   {col}
                 </th>
@@ -239,7 +239,7 @@ export default function StockNotifications() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-[#a8c8a0] font-semibold bg-white">
+                <td colSpan={6} className="text-center py-12 text-primary/50 font-semibold bg-white">
                   No stock notifications found.
                 </td>
               </tr>
@@ -248,8 +248,8 @@ export default function StockNotifications() {
                 <tr
                   key={item.id}
                   className={`border-b border-[#e9e9d8] transition-colors duration-100 ${
-                    idx % 2 === 0 ? "bg-[#FFFCEB]" : "bg-[#FFFCEB]"
-                  } hover:bg-[#F7B71D]/10`}
+                    idx % 2 === 0 ? "bg-background" : "bg-background"
+                  } hover:bg-accent/10`}
                 >
                   {/* Image */}
                   <td className="px-5 py-3 text-center">
@@ -257,12 +257,12 @@ export default function StockNotifications() {
                   </td>
 
                   {/* Item ID */}
-                  <td className="px-5 py-3 text-center text-[#385E31] font-medium whitespace-nowrap">
+                  <td className="px-5 py-3 text-center text-primary font-medium whitespace-nowrap">
                     {item.itemId}
                   </td>
 
                   {/* Item Name */}
-                  <td className="px-5 py-3 text-center text-[#385E31] font-semibold">
+                  <td className="px-5 py-3 text-center text-primary font-semibold">
                     {item.itemName}
                   </td>
 
@@ -283,7 +283,7 @@ export default function StockNotifications() {
                   <td className="px-5 py-3 text-center">
                     <button
                       onClick={() => setViewItem(item)}
-                      className="bg-[#F7B71D] hover:bg-[#e0a519] text-[#385E31] text-xs font-bold px-5 py-1.5 rounded-lg transition-colors duration-150"
+                      className="bg-accent hover:opacity-90 text-primary text-xs font-bold px-5 py-1.5 rounded-lg transition-colors duration-150"
                     >
                       View
                     </button>
@@ -296,7 +296,7 @@ export default function StockNotifications() {
       </div>
 
       {/* ── Record Count ── */}
-      <p className="text-xs text-[#a8c8a0] font-medium">
+      <p className="text-xs text-primary/50 font-medium">
         Showing {filtered.length} of {MOCK_ITEMS.length} items
       </p>
 

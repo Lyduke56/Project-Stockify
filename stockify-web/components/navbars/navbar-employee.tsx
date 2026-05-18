@@ -97,8 +97,7 @@ export default function NavbarEmployee({
   };
 
   return (
-    /* RESPONSIVE UPGRADE: Added px-4 md:px-12 to optimize spacing across screens */
-    <nav className="relative w-full h-[55px] px-4 md:px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
+    <nav className="relative w-full h-[55px] px-12 bg-[var(--color-accent)] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
       
       {/* Brand Group */}
       <div 
@@ -108,8 +107,7 @@ export default function NavbarEmployee({
         <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
           <img src="/stockify-logo-1.svg" alt="Stockify Logo" className="h-7 md:h-9 w-auto" />
         </div>
-        {/* RESPONSIVE UPGRADE: text-xl on mobile scaling to text-3xl on desktop frames */}
-        <div className="text-[#385E31] text-xl md:text-3xl font-bold font-fredoka tracking-tight">
+        <div className="text-[var(--color-primary)] text-3xl font-bold font-fredoka tracking-tight">
           STOCKIFY
         </div>
       </div>

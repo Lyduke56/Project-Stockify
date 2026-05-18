@@ -99,7 +99,8 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
   if (loading || role === null) return null;
 
   return (
-    <div className="w-64 h-screen pt-6 pb-8 bg-[#385E31] shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
+    <div className="w-64 h-screen pt-6 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
+
       <div className="flex flex-col gap-1">
         {navItems.map((item) => (
           <div
@@ -107,8 +108,8 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
             onClick={() => setActiveSection(item.section as SectionKey)}
             className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${
               activeSection === item.section
-                ? "bg-[#E5AD24] text-[#385E31] shadow-md font-bold"
-                : "bg-transparent text-[#FFF9D7] hover:bg-[#368028] font-semibold"
+                ? "bg-accent text-primary shadow-md font-bold"
+                : "bg-transparent text-sidebar-text hover:bg-secondary font-semibold"
             }`}
           >
             <div className="w-8 h-8 flex items-center justify-center shrink-0">
@@ -129,17 +130,16 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
           
           {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
           <div
-            onClick={onOpenSettings}
-            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-[#FFF9D7] hover:bg-[#368028] font-semibold transition-all duration-200"
+            onClick={() => setActiveSection("store-settings")}
+            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-accent text-primary" : "text-sidebar-text"}`}
           >
             <img src="/icon-settings.svg" className="w-8 h-8" />
             <span className="text-base">Settings</span>
           </div>
-          
-          <button
+          <div
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-[#FFF9D7] hover:bg-[#368028] border-0 bg-transparent text-left font-semibold disabled:opacity-50 transition-all duration-200"
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
           >
             <img src="/icon-logout.svg" className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} />
             <span className="text-base">{isLoggingOut ? "Logging out..." : "Logout"}</span>

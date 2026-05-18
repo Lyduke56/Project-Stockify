@@ -38,10 +38,10 @@ export default function ProductsSection() {
 
       {/* Header */}
       <div className="w-full flex flex-col items-center mt-2 mb-10">
-        <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+        <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
           Products Inventory
         </h1>
-        <div className="w-[900px] max-w-full h-1.5 bg-[#F7B71D] mt-1 rounded-full" />
+        <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
 
         {/* Business type badge */}
         {ctx && (

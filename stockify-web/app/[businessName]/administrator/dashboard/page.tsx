@@ -12,6 +12,9 @@ import StoreSettingsSection from "@/components/sections/admin/store-settings";
 import AdminSettingsModal from "@/components/sections/admin/client-settings"; 
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 import NotificationModal from "@/components/modals/notification-modal";
+import ClientSettingsModal from "@/components/modals/client-settings-modal";
+import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import { createClient } from "@/lib/supabase/client";
 
 // 🟢 FIX 1: Keep "admin-settings" in SectionKey so SidebarAdmin and URL params don't break types
 export type SectionKey =
@@ -19,7 +22,7 @@ export type SectionKey =
   | "user-admin"
   | "storefront"
   | "store-settings"
-  | "admin-settings"; 
+  | "admin-settings";
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
@@ -30,7 +33,28 @@ export default function AdminDashboard() {
   // Controlling the visibility states of our interactive floating modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); 
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [config, setConfig] = useState<StorefrontConfig | null>(null);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (userData?.tenant_id) {
+        const cfg = await fetchStorefrontConfig(userData.tenant_id);
+        setConfig(cfg);
+      }
+    };
+    loadConfig();
+  }, []);
 
   useEffect(() => {
     const querySection = searchParams.get("section") as SectionKey;
@@ -63,13 +87,15 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FFFCF0]">
-      {/* 🟢 FIX 2: Explicitly pass your unified type tracking here, matching your existing sidebar component contract */}
-      <SidebarAdmin 
-        activeSection={isSettingsOpen ? "admin-settings" : activeSection} 
-        setActiveSection={handleSetSection} 
-        openSettings={() => handleSetSection("admin-settings")} 
-      />
+    <div className="flex min-h-screen" style={{
+      backgroundColor: config?.color_background ?? "#FFFCF0",
+      '--color-primary': config?.color_primary ?? "#385E31",
+      '--color-secondary': config?.color_secondary ?? "#2A4725",
+      '--color-accent': config?.color_accent ?? "#F7B71D",
+      '--color-text': config?.color_text ?? "#3A6131",
+      '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
+    } as React.CSSProperties}>
+      <SidebarAdmin activeSection={activeSection} setActiveSection={handleSetSection} />
       
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-14 pt-5 pb-12">
         <NavbarAdmin 
