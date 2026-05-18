@@ -13,7 +13,6 @@ import OrdersSection from "@/components/sections/employee/orders";
 import TransactionsSection from "@/components/sections/employee/transactions";  
 import IngredientsSection from "@/components/sections/employee/ingredients";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
-import { createClient } from "@/lib/supabase/client";
 
 import NotificationModal from "@/components/modals/notification-modal";
 import EmployeeProfileModal from "@/components/modals/new-employee-modal";
@@ -28,6 +27,8 @@ export type SectionKey =
   | "orders"
   | "transactions"
   | "analytics";
+
+const [tenantId, setTenantId] = useState<string | null>(null);
 
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "dashboard":     <DashboardSection />,
@@ -119,7 +120,7 @@ export default function EmployeeDashboard() {
       '--color-text': config?.color_text ?? "#3A6131",
       '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
     } as React.CSSProperties}>
-      <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} />
+      <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} onOpenSettings={() => console.log("Open settings clicked")} />
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee

@@ -136,7 +136,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
             <img src="/icon-settings.svg" className="w-8 h-8" />
             <span className="text-base">Settings</span>
           </div>
-          <div
+          <button
             onClick={handleLogout}
             disabled={isLoggingOut}
             className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
