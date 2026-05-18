@@ -495,11 +495,11 @@ export default function StorefrontSection() {
                               value={banner.subtitle}
                               onChange={(e) => updateBanner(banner.id, "subtitle", e.target.value)}
                               placeholder="e.g. Order now!"
-                              maxLength={150}
+                              maxLength={80}
                               className="border border-[#385E31]/40 rounded-2xl px-4 py-2 bg-transparent text-[#385E31] outline-none text-sm resize-none h-20"
                             />
                             <div className="text-[10px] text-[#385E31]/60 text-right pr-2">
-                              {banner.subtitle.length}/150
+                              {banner.subtitle.length}/80
                             </div>
                           </div>
                         </div>
