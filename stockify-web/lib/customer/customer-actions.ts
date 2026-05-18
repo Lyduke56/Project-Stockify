@@ -88,3 +88,98 @@ export async function createCustomerNotification(params: {
     });
   return { error: error?.message ?? null };
 }
+
+export async function fetchReviews(productId: string, productType: 'fnb' | 'nfb') {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("product_reviews")
+    .select("*, users(display_name)")
+    .eq("product_id", productId)
+    .eq("product_type", productType)
+    .order("created_at", { ascending: false });
+  return { data, error: error?.message ?? null };
+}
+
+export async function submitReview(params: {
+  tenantId: string;
+  productId: string;
+  productType: 'fnb' | 'nfb';
+  rating: number;
+  comment?: string;
+}) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "You must be logged in to leave a review." };
+
+  const { error } = await supabase
+    .from("product_reviews")
+    .insert({
+      tenant_id: params.tenantId,
+      user_id: user.id,
+      product_id: params.productId,
+      product_type: params.productType,
+      rating: params.rating,
+      comment: params.comment,
+    });
+  return { error: error?.message ?? null };
+}
+
+export async function deleteReview(reviewId: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("product_reviews")
+    .delete()
+    .eq("review_id", reviewId);
+  return { error: error?.message ?? null };
+}
+
+export async function updateReview(reviewId: string, rating: number, comment?: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("product_reviews")
+    .update({ rating, comment, updated_at: new Date().toISOString() })
+    .eq("review_id", reviewId);
+  return { error: error?.message ?? null };
+}
+
+export async function fetchTopRatedProduct(tenantId: string) {
+  const supabase = createClient();
+  const { data: reviews, error } = await supabase
+    .from("product_reviews")
+    .select("product_id, product_type, rating")
+    .eq("tenant_id", tenantId);
+    
+  if (error || !reviews || reviews.length === 0) return null;
+  
+  const summary: Record<string, { sum: number, count: number, type: string }> = {};
+  reviews.forEach((r: any) => {
+    const key = r.product_id;
+    if (!summary[key]) summary[key] = { sum: 0, count: 0, type: r.product_type };
+    summary[key].sum += r.rating;
+    summary[key].count += 1;
+  });
+  
+  let topProductId = null;
+  let topAvg = 0;
+  let topType = '';
+  
+  for (const id in summary) {
+    const avg = summary[id].sum / summary[id].count;
+    if (avg > topAvg) {
+      topAvg = avg;
+      topProductId = id;
+      topType = summary[id].type;
+    }
+  }
+  
+  if (!topProductId) return null;
+  
+  const table = topType === 'fnb' ? 'products' : 'nfb_products';
+  const { data: product } = await supabase
+    .from(table)
+    .select("*")
+    .eq("product_id", topProductId)
+    .single();
+    
+  return product ? { ...product, average_rating: topAvg, total_reviews: summary[topProductId].count, product_type: topType } : null;
+}

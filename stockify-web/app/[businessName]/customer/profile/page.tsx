@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   User,
@@ -20,6 +20,9 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { CustomerHeader } from "@/components/headers/customer-header";
 import { getStorefrontTenant } from "@/backend/hooks/getStoreFront";
+import { ProductModal } from "@/components/modals/storefront/nfnb/nfnb-product-modal";
+import { ShoppingBag } from "lucide-react";
+import { fetchFavorites } from "@/lib/customer/customer-actions";
 
 export default function CustomerProfilePage() {
   const params = useParams();
@@ -32,6 +35,9 @@ export default function CustomerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // New state
+  const [orderCount, setOrderCount] = useState(0);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -41,9 +47,17 @@ export default function CustomerProfilePage() {
       return;
     }
 
-    const [profileRes, tenantRes] = await Promise.all([
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [profileRes, tenantRes, countRes] = await Promise.all([
       supabase.from("users").select("*").eq("user_id", user.id).single(),
-      getStorefrontTenant(user.id)
+      getStorefrontTenant(user.id),
+      supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("customer_id", user.id)
+        .gte("created_at", thirtyDaysAgo.toISOString())
     ]);
 
     if (!profileRes.error && profileRes.data) {
@@ -52,8 +66,15 @@ export default function CustomerProfilePage() {
     if (tenantRes) {
       setTenant(tenantRes);
     }
+    if (!countRes.error) {
+      setOrderCount(countRes.count ?? 0);
+    }
     setLoading(false);
   };
+
+
+
+
 
   useEffect(() => {
     fetchProfile();
@@ -97,6 +118,8 @@ export default function CustomerProfilePage() {
         tenantLogo={tenant?.logo_url ?? undefined}
         tenantName={tenant?.business_name}
         showSearch={false}
+        showCart={false}
+        isNfnb={tenant?.business_type === "non-food-and-beverage"}
       />
 
       {/* Top Banner */}
@@ -191,16 +214,6 @@ export default function CustomerProfilePage() {
           {/* Quick Actions Footer */}
           <div className="bg-[#385E31]/5 px-8 py-6 flex flex-wrap gap-4 justify-between border-t border-[#385E31]/5">
             <div className="flex gap-4">
-              <ActionButton
-                icon={<Heart size={20} />}
-                label="Favorites"
-                onClick={() => router.push(`/${businessName}/customer/food-and-beverage/storefront?favorites=true`)}
-              />
-              <ActionButton
-                icon={<Bell size={20} />}
-                label="Alerts"
-                onClick={() => { }}
-              />
             </div>
             <button
               onClick={handleLogout}
@@ -211,6 +224,8 @@ export default function CustomerProfilePage() {
           </div>
         </motion.div>
 
+
+
         {/* Info Cards */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-white p-6 rounded-[24px] border border-[#385E31]/5 shadow-sm">
@@ -218,7 +233,7 @@ export default function CustomerProfilePage() {
               <Package size={20} className="text-[#F7B71D]" /> Recent Activity
             </h3>
             <p className="text-[#8C9B85] text-sm leading-relaxed">
-              You have placed 0 orders in the last 30 days. Keep exploring our menu to find your favorites!
+              You have placed {orderCount} orders in the last 30 days. Keep exploring our menu to find your favorites!
             </p>
           </div>
           <div className="bg-white p-6 rounded-[24px] border border-[#385E31]/5 shadow-sm">
@@ -231,6 +246,8 @@ export default function CustomerProfilePage() {
           </div>
         </div>
       </div>
+
+
     </div>
   );
 }

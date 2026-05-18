@@ -157,10 +157,10 @@ export default function StoreSettingsSection() {
             <div className="absolute top-0 left-0 w-1.5 h-full bg-[#385E31]" />
             <div className="flex flex-col gap-1 mb-2">
               <h3 className="text-[#385E31] text-[18px] font-black uppercase">
-                Payment Methods
+                Payment & Delivery
               </h3>
               <p className="text-[#385E31]/60 text-sm font-medium">
-                Select which checkout options are available.
+                Select which checkout and delivery options are available.
               </p>
             </div>
 
@@ -168,6 +168,7 @@ export default function StoreSettingsSection() {
               {[
                 { label: "Enable Cash-on-Delivery (COD)", key: "cod_enabled" },
                 { label: "Enable QR Code Payment", key: "qr_enabled" },
+                { label: "Enable Nationwide Delivery", key: "nationwide_delivery" },
               ].map((method) => (
                 <div 
                   key={method.key}

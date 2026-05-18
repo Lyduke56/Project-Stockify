@@ -13,6 +13,7 @@ import {
   MapPin,
   ChevronRight,
   Phone,
+  Package,
 } from "lucide-react";
 
 // --- Component Imports ---
@@ -303,13 +304,17 @@ export default function FnbStorefront() {
           <Phone size={14} />
           <span>{settings?.contact_number || "+63 900 000 0000"}</span>
         </motion.div>
-        <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
-          <Truck size={14} />
-          <span className="hidden sm:inline">Delivery starts at ₱25</span>
-          <span className="sm:hidden">₱25 Delivery</span>
-        </motion.div>
+        {settings?.nationwide_delivery && (
+          <>
+            <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
+              <Package size={14} />
+              <span className="hidden sm:inline">Nationwide Delivery</span>
+              <span className="sm:hidden">PH Delivery</span>
+            </motion.div>
+          </>
+        )}
       </div>
 
       <CustomerHeader
@@ -353,7 +358,7 @@ export default function FnbStorefront() {
                               style={{ color: (banner as any).font_color ?? c.accent }}>
                               {(banner as any).title}
                             </h2>
-                            <p className="text-[15px] sm:text-[18px] font-medium max-w-[400px]" style={{ color: c.bg }}>
+                            <p className="text-[15px] sm:text-[18px] font-medium max-w-[400px] whitespace-pre-wrap break-words" style={{ color: c.bg }}>
                               {(banner as any).subtitle}
                             </p>
                           </div>
