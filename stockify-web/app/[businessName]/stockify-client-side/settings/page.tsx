@@ -45,7 +45,7 @@ export default function ClientSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden font-['Inter']">
+    <div className="min-h-screen bg-[#FFFFFF] flex overflow-x-hidden font-['Inter']">
       {/* Make sure active is set to "settings" to highlight it in the sidebar */}
       <SidebarClient active="settings" />
 

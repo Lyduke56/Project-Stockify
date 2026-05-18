@@ -90,19 +90,16 @@ export default function TenantManagement() {
     const fetchAllStats = async () => {
       try {
         const [activeRes, pendingRes, suspendedRes, terminatedRes] = await Promise.all([
-          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", true),
-          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", false),
-          supabase.from("suspended_tenants").select("*", { count: "exact", head: true }),
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("subscription_status", "Active"),
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("subscription_status", "Pending"),
+          supabase.from("tenants").select("*", { count: "exact", head: true }).eq("subscription_status", "Suspended"),
           supabase.from("terminated_business").select("*", { count: "exact", head: true }),
         ]);
 
-        const totalActiveVerified = activeRes.count   || 0;
-        const totalSuspended      = suspendedRes.count || 0;
-
         setStats({
-          active:     totalActiveVerified - totalSuspended,
+          active:     activeRes.count    || 0,
           pending:    pendingRes.count    || 0,
-          suspended:  totalSuspended,
+          suspended:  suspendedRes.count  || 0,
           terminated: terminatedRes.count || 0,
         });
       } catch (error) {

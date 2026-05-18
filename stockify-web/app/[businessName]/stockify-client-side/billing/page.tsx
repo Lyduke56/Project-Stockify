@@ -219,7 +219,7 @@ export default function ClientBillingPage() {
 
   if (sessionReady && sessionError) {
     return (
-      <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden font-['Inter']">
+      <div className="min-h-screen bg-[#FFFFFF] flex overflow-x-hidden font-['Inter']">
         <SidebarClient active="billing" />
         <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
           <div className="mx-auto w-full max-w-6xl space-y-8">
@@ -239,7 +239,7 @@ export default function ClientBillingPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden font-['Inter']">
+    <div className="min-h-screen bg-[#FFFFFF] flex overflow-x-hidden font-['Inter']">
       <SidebarClient active="billing" />
 
       <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">

@@ -30,14 +30,30 @@ interface FnbProductCardProps {
   onOpenModal: (product: FnbProduct) => void;
   isFavorite?: boolean;
   onToggleFavorite?: (productId: string) => void;
+  colors?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    bg: string;
+    text: string;
+  };
 }
 
 export const FnbProductCard = ({ 
   product, 
   onOpenModal,
   isFavorite = false,
-  onToggleFavorite
+  onToggleFavorite,
+  colors
 }: FnbProductCardProps) => {
+  const c = colors || {
+    primary: "#385E31",
+    secondary: "#2A4725",
+    accent: "#F7B71D",
+    bg: "#FFFCEB",
+    text: "#3A6131"
+  };
+
   const hasSizes    = product.sizes.length > 0;
   const isAvailable = hasSizes
     ? product.sizes.some((s) => s.max_yield > 0)
@@ -63,10 +79,12 @@ export const FnbProductCard = ({
         },
       }}
       onClick={() => onOpenModal(product)}
-      className="bg-[#FFFCEB] border border-[#385E31]/20 rounded-[10px] p-5 flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+      className="border rounded-[10px] p-5 flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+      style={{ backgroundColor: c.bg, borderColor: c.primary + "33" }}
     >
       {/* Image / Fallback */}
-      <div className="w-full aspect-square flex items-center justify-center mb-4 bg-gradient-to-b from-[#385E31]/5 to-transparent rounded-[8px] group-hover:scale-105 transition-transform duration-300 overflow-hidden relative">
+      <div className="w-full aspect-square flex items-center justify-center mb-4 rounded-[8px] group-hover:scale-105 transition-transform duration-300 overflow-hidden relative"
+        style={{ background: `linear-gradient(to bottom, ${c.primary}0D, transparent)` }}>
         {product.image_url ? (
           <img
             src={product.image_url.split('?')[0]}  
@@ -78,7 +96,7 @@ export const FnbProductCard = ({
             }}
           />
         ) : null}
-        <Coffee size={72} className="text-[#385E31]/25" style={product.image_url ? { display: 'none' } : {}} />
+        <Coffee size={72} style={product.image_url ? { display: 'none' } : { color: c.primary + "40" }} />
         {!isAvailable && (
           <div className="absolute inset-0 bg-white/60 rounded-[8px] flex items-center justify-center">
             <span className="text-red-500 font-bold text-[11px] bg-red-50 border border-red-100 px-2.5 py-1 rounded-full">
@@ -87,31 +105,29 @@ export const FnbProductCard = ({
           </div>
         )}
         {hasSizes && (
-          <div className="absolute top-2 left-2 bg-[#385E31] text-[#F7B71D] text-[10px] font-black px-2 py-0.5 rounded-full">
+          <div className="absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: c.primary, color: c.accent }}>
             {product.sizes.length} sizes
           </div>
         )}
       </div>
 
       <div className="flex flex-col flex-1">
-        <h3 className="text-[#385E31] text-[16px] font-extrabold mb-1 line-clamp-1">
+        <h3 className="text-[16px] font-extrabold mb-1 line-clamp-1" style={{ color: c.text }}>
           {product.name}
         </h3>
-        <p className="text-[#385E31]/70 text-[12px] font-medium leading-relaxed mb-4 flex-1 line-clamp-2">
+        <p className="text-[12px] font-medium leading-relaxed mb-4 flex-1 line-clamp-2" style={{ color: c.text, opacity: 0.7 }}>
           {product.description ?? "No description available."}
         </p>
 
         <div className="flex justify-between items-end mb-5">
           <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-[11px] font-bold border ${
-              isAvailable
-                ? "bg-[#FFFCEB] border-[#385E31]/10 text-[#385E31]"
-                : "bg-red-50 border-red-100 text-red-400"
-            }`}
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-[11px] font-bold border ${!isAvailable ? "bg-red-50 border-red-100 text-red-400" : ""}`}
+            style={isAvailable ? { backgroundColor: c.bg, borderColor: c.primary + "1A", color: c.primary } : {}}
           >
             {availabilityLabel}
           </div>
-          <div className="text-[#385E31] text-[18px] font-black tracking-tight">
+          <div className="text-[18px] font-black tracking-tight" style={{ color: c.primary }}>
             {displayPrice}
           </div>
         </div>
@@ -120,15 +136,15 @@ export const FnbProductCard = ({
           <button
             disabled={!isAvailable}
             onClick={(e) => { e.stopPropagation(); onOpenModal(product); }}
-            className="flex-1 bg-[#385E31] text-[#FFFCEB] flex justify-center items-center gap-2 py-2.5 rounded-[8px] font-bold text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 flex justify-center items-center gap-2 py-2.5 rounded-[8px] font-bold text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ backgroundColor: c.primary, color: c.bg }}
           >
             <Plus size={16} /> {hasSizes ? "Choose Size" : "Add to Cart"}
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(product.product_id); }}
-            className={`w-11 h-11 border border-[#385E31]/30 rounded-[8px] flex items-center justify-center transition-colors ${
-              isFavorite ? "bg-red-50 text-red-500 border-red-200" : "text-[#385E31] hover:bg-[#385E31]/5"
-            }`}
+            className={`w-11 h-11 border rounded-[8px] flex items-center justify-center transition-colors ${isFavorite ? "bg-red-50 text-red-500 border-red-200" : "hover:brightness-95"}`}
+            style={!isFavorite ? { color: c.primary, borderColor: c.primary + "4D" } : {}}
           >
             <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
           </button>
