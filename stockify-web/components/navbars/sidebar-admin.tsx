@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { createClient } from "@/lib/supabase/client";
-import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page";
+import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page"; // Adjusted import trajectory matching your dashboard path
 import LogoutModal from "../modals/logout-modal";
 
 interface NavItemProps {
@@ -39,11 +39,13 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
 interface SidebarAdminProps {
   activeSection: SectionKey;
   setActiveSection: (section: SectionKey) => void;
+  openSettings: () => void; // 🟢 ADDED: Prop to trigger opening the Settings Modal
 }
 
 export default function SidebarAdmin({
   activeSection,
   setActiveSection,
+  openSettings, // 🟢 ADDED
 }: SidebarAdminProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -93,20 +95,8 @@ export default function SidebarAdmin({
     },
   ];
 
-  const bottomNavItems: {
-    label: string;
-    iconFileName: string;
-    section: SectionKey;
-  }[] = [
-    {
-      label: "Settings",
-      iconFileName: "icon-settings",
-      section: "admin-settings",
-    },
-  ];
-
   const handleLogout = async () => {
-    await supabase.auth.signOut(); // ✅ proper logout
+    await supabase.auth.signOut();
     setShowLogoutModal(false);
     router.push("/");
   };
@@ -131,24 +121,22 @@ export default function SidebarAdmin({
         <div className="w-48 h-px bg-white/10" />
 
         <div className="w-full flex flex-col gap-1">
-          {bottomNavItems.map((item) => (
-            <NavItem
-              key={item.label}
-              label={item.label}
-              iconFileName={item.iconFileName}
-              isActive={activeSection === item.section}
-              onClick={() => setActiveSection(item.section)}
-            />
-          ))}
+          {/*  CHANGED: Rendered explicitly as an action handler rather than mapping over an array with type mismatch problems */}
+          <NavItem
+    label="Settings"
+    iconFileName="icon-settings"
+    isActive={activeSection === ("admin-settings" as any)} 
+    onClick={openSettings} 
+  />
 
           {/* Logout */}
           <NavItem
-            label="Logout"
-            iconFileName="icon-logout"
-            isActive={false}
-            onClick={() => setShowLogoutModal(true)} // ✅ open modal instead
-          />
-        </div>
+    label="Logout"
+    iconFileName="icon-logout"
+    isActive={false}
+    onClick={() => setShowLogoutModal(true)}
+  />
+</div>
       </div>
 
       {/* Logout Modal */}
