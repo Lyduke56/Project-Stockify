@@ -24,6 +24,7 @@ export interface StorefrontConfig {
   color_background: string;
   color_text: string;
   color_search_bar?: string;
+  color_sidebar_text?: string;
   /** Typography */
   font_family: string;
   /** Legacy single-banner fields (kept for DB compat) */
@@ -39,13 +40,15 @@ export interface StorefrontConfig {
 const DEFAULTS: Omit<StorefrontConfig, "tenant_id"> = {
   color_primary: "#385E31",
   color_secondary: "#2A4725",
-  color_accent: "#F7B71D",
+  color_accent: "#E5AC24",
   color_background: "#FFFCEB",
   color_text: "#3A6131",
+  color_search_bar: "#2A4725",
+  color_sidebar_text: "#FFF9D7",
   font_family: "Inter",
   hero_banner_type: "text",
   hero_banner_image_url: null,
-  hero_banner_font_color: "#F7B71D",
+  hero_banner_font_color: "#E5AC24",
   hero_banners: null,
   logo_url: null,
 };
@@ -88,8 +91,7 @@ export async function updateStorefrontConfig(
   const supabase = createClient();
   const { error } = await supabase
     .from("tenant_storefront")
-    .upsert({ tenant_id: tenantId, ...patch })
-    .eq("tenant_id", tenantId);
+    .upsert({ tenant_id: tenantId, ...patch });
 
   return { error: error?.message ?? null };
 }

@@ -77,8 +77,9 @@ export default function NavbarAdmin({
   }, [tenantId]);
 
   return (
-    <nav className="relative w-full h-[48px] px-4 md:px-12 bg-[#F7B71D] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
-      {/* LEFT SIDE: Logo and Brand */}
+    <nav className="relative w-full h-[48px] px-4 md:px-12 bg-accent rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
+      
+      {/* LEFT SIDE: Logo and Brand Name */}
       <div 
         className="flex items-center gap-1.5 cursor-pointer select-none" 
         onClick={() => setActiveSection("dashboard")}
@@ -86,40 +87,48 @@ export default function NavbarAdmin({
         <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
           <img src="/stockify-logo-1.svg" alt="Stockify Icon" className="h-7 md:h-9 w-auto" />
         </div>
-        <div className="text-[#385E31] text-xl md:text-3xl font-bold font-fredoka">
+        <div className="text-primary text-xl md:text-3xl font-bold font-fredoka">
           STOCKIFY
         </div>
       </div>
 
       {/* RIGHT SIDE: Navigation Icons */}
       <div className="flex items-center gap-4 md:gap-8">
-        <button
-          onClick={() => setActiveSection("dashboard")} 
-          className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
-          title="Home"
-        >
-          <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
-        </button>
+  <button
+    onClick={() => setActiveSection("dashboard")} 
+    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+    title="Home"
+  >
+    <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
+  </button>
 
         {/* Notifications Icon */}
         <div className="relative flex items-center justify-center">
-          <button
-            onClick={() => {
-              openNotifs();
-              setNotifCount(0); // Clear visual indicator badge counter when opened
-            }} 
-            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
-            title="Notifications"
-          >
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
-          </button>
-          
-          {notifCount > 0 && (
-            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
-              {notifCount > 9 ? "9+" : notifCount}
-            </div>
-          )}
-        </div>
+    <button
+      onClick={() => {
+        openNotifs();
+        setNotifCount(0);
+      }} 
+      className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+      title="Notifications"
+    >
+      <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
+    </button>
+    
+    {notifCount > 0 && (
+      <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+        {notifCount > 9 ? "9+" : notifCount}
+      </div>
+    )}
+  </div>
+
+  <button
+    onClick={openSettings} 
+    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+    title="System Settings"
+  >
+    <img src="/icon-settings.svg" alt="Settings" className="w-full h-full object-contain" />
+  </button>
 
         <button
           onClick={openProfile} 

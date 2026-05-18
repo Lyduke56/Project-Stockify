@@ -37,6 +37,8 @@ interface CustomerHeaderProps {
   tenantName?: string;
   onSearch?: (query: string) => void;
   showSearch?: boolean;
+  showCart?: boolean;
+  isNfnb?: boolean;
   colors?: {
     primary: string;
     secondary: string;
@@ -53,6 +55,8 @@ export function CustomerHeader({
   tenantName,
   onSearch,
   showSearch = true,
+  showCart = true,
+  isNfnb: propIsNfnb,
   colors
 }: CustomerHeaderProps) {
   const router = useRouter();
@@ -61,7 +65,7 @@ export function CustomerHeader({
   const { cartCount } = useCart();
 
   // Determine the current business category path (fnb or nfnb)
-  const isNfnb = pathname.includes("non-food-and-beverage");
+  const isNfnb = propIsNfnb !== undefined ? propIsNfnb : pathname.includes("non-food-and-beverage");
   const categoryPath = isNfnb ? "non-food-and-beverage" : "food-and-beverage";
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -382,21 +386,23 @@ export function CustomerHeader({
           </div>
 
           {/* Cart */}
-          <motion.button
-            onClick={() => router.push(`/${businessName}/customer/${categoryPath}/storefront?checkout=true`)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-10 h-10 rounded-[10px] flex items-center justify-center hover:opacity-80 relative"
-            style={{ color: c.accent }}
-          >
-            <ShoppingCart size={22} />
-            {cartCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 text-[10px] font-bold flex items-center justify-center rounded-full border"
-                style={{ backgroundColor: c.accent, color: c.primary, borderColor: c.primary }}>
-                {cartCount}
-              </span>
-            )}
-          </motion.button>
+          {showCart && (
+            <motion.button
+              onClick={() => router.push(`/${businessName}/customer/${categoryPath}/storefront?checkout=true`)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="w-10 h-10 rounded-[10px] flex items-center justify-center hover:opacity-80 relative"
+              style={{ color: c.accent }}
+            >
+              <ShoppingCart size={22} />
+              {cartCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 text-[10px] font-bold flex items-center justify-center rounded-full border"
+                  style={{ backgroundColor: c.accent, color: c.primary, borderColor: c.primary }}>
+                  {cartCount}
+                </span>
+              )}
+            </motion.button>
+          )}
 
           {/* User Profile Menu */}
           <div className="relative">
@@ -430,14 +436,6 @@ export function CustomerHeader({
                         icon={<Package size={16} />}
                         label="Order History"
                         onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/orders`); }}
-                      />
-                      <MenuButton
-                        icon={<Heart size={16} />}
-                        label="My Favorites"
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          router.push(`/${businessName}/customer/${categoryPath}/storefront?favorites=true`);
-                        }}
                       />
                       <div className="h-px bg-[#385E31]/5 my-2" />
                       <button

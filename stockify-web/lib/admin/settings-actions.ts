@@ -10,6 +10,7 @@ export interface TenantSettings {
   gcash_qr_url: string | null;
   cod_enabled: boolean;
   qr_enabled: boolean;
+  nationwide_delivery: boolean;
 }
 
 export async function fetchTenantSettings(tenantId: string): Promise<TenantSettings | null> {
@@ -32,7 +33,8 @@ export async function fetchTenantSettings(tenantId: string): Promise<TenantSetti
         contact_number: "+63 900 000 0000",
         operating_hours: "10:00 AM - 9:00 PM",
         cod_enabled: true,
-        qr_enabled: true
+        qr_enabled: true,
+        nationwide_delivery: true
       };
       const { data: created } = await supabase.from("tenant_settings").insert(defaultSettings).select().single();
       return created;

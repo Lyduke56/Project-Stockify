@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-const ROLE_OPTIONS = ["Manager", "Employee"];
+const ROLE_OPTIONS = ["Administrator", "Manager", "Employee"];
 
 interface NewEmployeeModalProps {
   isOpen: boolean;
@@ -80,6 +81,47 @@ export default function NewEmployeeModal({ isOpen, onClose, onSuccess }: NewEmpl
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [success, setSuccess] = useState("");
+  
+  const [counts, setCounts] = useState({
+    Administrator: 0,
+    Manager: 0,
+    Employee: 0
+  });
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRoleCounts();
+    }
+  }, [isOpen]);
+
+  const fetchRoleCounts = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("tenant_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (userData?.tenant_id) {
+      const { data: users } = await supabase
+        .from("users")
+        .select("role")
+        .eq("tenant_id", userData.tenant_id);
+
+      if (users) {
+        const roles = users.map((u: any) => u.role);
+        setCounts({
+          Administrator: roles.filter((r: string) => r === 'Administrator').length,
+          Manager: roles.filter((r: string) => r === 'Manager').length,
+          Employee: roles.filter((r: string) => r === 'Employee').length
+        });
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -216,9 +258,14 @@ export default function NewEmployeeModal({ isOpen, onClose, onSuccess }: NewEmpl
                 className="w-full px-4 py-2 rounded-xl bg-[#FFD980] text-[#7A6200] font-medium outline-none border-2 border-transparent focus:border-[#385E31] transition appearance-none cursor-pointer disabled:opacity-60"
               >
                 <option value="" disabled>Role</option>
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
+                {ROLE_OPTIONS.map((r) => {
+                  const isFull = counts[r as keyof typeof counts] >= 1;
+                  return (
+                    <option key={r} value={r} disabled={isFull}>
+                      {r} {isFull ? "(Limit Reached)" : ""}
+                    </option>
+                  );
+                })}
               </select>
               <svg className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M4 6l4 4 4-4" stroke="#7A6200" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

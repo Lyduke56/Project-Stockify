@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import StockifyButton from "@/components/buttons/button-get-started";
 
 interface ShopStatusProps {
   shopName?: string;
@@ -23,11 +22,11 @@ export default function ShopStatus({
   onManageShop,
 }: ShopStatusProps) {
   return (
-    <div className="w-full px-5 py-5 rounded-xl border-[3px] border-lime-900/50 flex flex-col gap-4">
+    <div className="w-full px-5 py-5 rounded-xl border-[3px] border-primary/50 flex flex-col gap-4 bg-[#FFFCEB]">
       
       {/* Header */}
-      <p className="text-lime-800 text-base font-medium font-['Inter']">Shop Status</p>
-      <p className="text-gray-500 text-sm font-normal font-['Inter']">Overview of your shop status</p>
+      <p className="text-primary text-base font-medium font-['Inter']">Shop Status</p>
+      <p className="text-primary/50 text-sm font-normal font-['Inter']">Overview of your shop status</p>
 
       {/* Row */}
       <div className="flex items-center justify-between">
@@ -37,8 +36,8 @@ export default function ShopStatus({
           <div className="flex items-center gap-2">
             {/* Shop icon */}
             <img src="/icon-storefront2.svg" alt="shop" className="w-4 h-4" />
-            <span className="text-lime-800 text-sm font-semibold font-['Inter']">{clientName}</span>
-            <span className="px-1.5 py-0.5 rounded-md border border-lime-800/30 text-neutral-950 text-[10px] font-medium font-['Inter']">
+            <span className="text-primary text-sm font-semibold font-['Inter']">{clientName}</span>
+            <span className="px-1.5 py-0.5 rounded-md border border-primary/30 text-primary text-[10px] font-medium font-['Inter']">
               {shopName}
             </span>
           </div>
@@ -46,7 +45,7 @@ export default function ShopStatus({
             {/* Item count */}
             <div className="flex items-center gap-1">
               <img src="/icon-store-settings2.svg" alt="items" className="w-3.5 h-3.5 opacity-70" />
-              <span className="text-lime-800/70 text-xs font-['Inter']">{itemCount} items</span>
+              <span className="text-primary/70 text-xs font-['Inter']">{itemCount} items</span>
             </div>
             {/* Low stock warning */}
             <div className="flex items-center gap-1">
@@ -58,19 +57,19 @@ export default function ShopStatus({
         {/* RIGHT: Stats + button */}
         <div className="flex items-center gap-6">
           <div className="flex flex-col items-center">
-            <span className="text-lime-800 text-xl font-bold font-['Inter']">{revenue}</span>
-            <span className="text-lime-800/50 text-[10px] font-['Inter']">Revenue</span>
+            <span className="text-primary text-xl font-bold font-['Inter']">{revenue}</span>
+            <span className="text-primary/50 text-[10px] font-['Inter']">Revenue</span>
           </div>
           <div className="flex flex-col items-center">
-            <span className="text-lime-800 text-xl font-bold font-['Inter']">{orders}</span>
-            <span className="text-lime-800/50 text-[10px] font-['Inter']">Orders</span>
+            <span className="text-primary text-xl font-bold font-['Inter']">{orders}</span>
+            <span className="text-primary/50 text-[10px] font-['Inter']">Orders</span>
           </div>
-          <StockifyButton
-            label="Manage Shop"
+          <button
             onClick={onManageShop}
-            variant="primary"
-            className="!w-auto !h-auto px-6 py-1.5 !text-xs !rounded-xl !shadow-sm"
-          />
+            className="w-auto h-auto px-6 py-1.5 text-xs rounded-xl shadow-sm bg-accent text-primary font-bold hover:opacity-90 active:scale-95 transition-all"
+          >
+            Manage Shop
+          </button>
         </div>
 
       </div>

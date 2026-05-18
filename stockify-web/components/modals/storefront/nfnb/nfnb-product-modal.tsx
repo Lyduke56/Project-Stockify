@@ -6,13 +6,17 @@ import { X, Plus, Minus, Package, ShoppingCart, Check, ChevronRight } from "luci
 import type { NfnbProduct, NfnbVariantOption, NfnbVariantType } from "@/components/cards/storefront/nfnb-product-card";
 import { useCart } from "@/lib/customer/cart-context";
 
+import { ProductReviews } from "./product-reviews";
+
 interface ProductModalProps {
   product: NfnbProduct | null;
   isOpen: boolean;
   onClose: () => void;
+  tenantId: string;
+  readOnly?: boolean;
 }
 
-export const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
+export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = false }: ProductModalProps) => {
   const { addToCart } = useCart();
   const [qty, setQty]   = useState(1);
   const [added, setAdded] = useState(false);
@@ -235,7 +239,7 @@ export const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) =>
                   ))}
 
                   {/* ── Qty + Add ──────────────────────────────────── */}
-                  {inStock && allSelected && (
+                  {!readOnly && inStock && allSelected && (
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2 bg-[#385E31]/5 border border-[#385E31]/10 rounded-[10px] px-2 py-1.5">
                         <button
@@ -278,6 +282,13 @@ export const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) =>
                       <ChevronRight size={14} /> Select all options to continue
                     </p>
                   )}
+
+                  {/* Reviews Section */}
+                  <ProductReviews 
+                    productId={product.product_id} 
+                    productType="nfb" 
+                    tenantId={tenantId} 
+                  />
                 </div>
               </div>
             </div>
