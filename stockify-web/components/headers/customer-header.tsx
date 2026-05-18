@@ -37,6 +37,14 @@ interface CustomerHeaderProps {
   tenantName?: string;
   onSearch?: (query: string) => void;
   showSearch?: boolean;
+  colors?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    bg: string;
+    text: string;
+    search_bar?: string;
+  };
 }
 
 export function CustomerHeader({
@@ -44,7 +52,8 @@ export function CustomerHeader({
   tenantLogo,
   tenantName,
   onSearch,
-  showSearch = true
+  showSearch = true,
+  colors
 }: CustomerHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -61,6 +70,14 @@ export function CustomerHeader({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [reportingOrder, setReportingOrder] = useState<{ id: string, order_id: string } | null>(null);
+
+  const c = colors || {
+    primary: "#385E31",
+    secondary: "#2A4725",
+    accent: "#F7B71D",
+    bg: "#FFFCEB",
+    text: "#3A6131"
+  };
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -229,8 +246,8 @@ export function CustomerHeader({
 
   return (
     <header
-      className={`w-full sticky top-0 z-50 transition-all duration-300 ${isScrolled ? "bg-[#385E31] shadow-lg" : "bg-[#385E31]"
-        }`}
+      className={`w-full sticky top-0 z-50 transition-all duration-300 ${isScrolled ? "shadow-lg" : ""}`}
+      style={{ backgroundColor: c.primary }}
     >
       <div className="w-full max-w-[1470px] mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-4">
         {/* Logo Section */}
@@ -239,7 +256,8 @@ export function CustomerHeader({
           whileHover={{ scale: 1.02 }}
           className="flex items-center gap-3 cursor-pointer min-w-max"
         >
-          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#F7B71D]/10 rounded-xl flex items-center justify-center text-[#F7B71D]">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: c.accent + "1A", color: c.accent }}>
             {tenantLogo ? (
               <img src={tenantLogo} alt={tenantName} className="w-full h-full object-cover rounded-xl" />
             ) : (
@@ -247,10 +265,11 @@ export function CustomerHeader({
             )}
           </div>
           <div className="hidden sm:flex flex-col">
-            <h1 className="text-[#F7B71D] text-[18px] sm:text-[20px] font-extrabold tracking-wide uppercase leading-tight">
+            <h1 className="text-[18px] sm:text-[20px] font-extrabold tracking-wide uppercase leading-tight"
+              style={{ color: c.accent }}>
               {tenantName ?? businessName?.replace(/-/g, " ")}
             </h1>
-            <p className="text-[#F7B71D]/80 text-[11px] font-medium flex items-center gap-1">
+            <p className="text-[11px] font-medium flex items-center gap-1" style={{ color: c.accent + "CC" }}>
               <MapPin size={10} /> Cebu City, PH
             </p>
           </div>
@@ -259,12 +278,13 @@ export function CustomerHeader({
         {/* Search Bar */}
         {showSearch && (
           <div className="flex-1 max-w-2xl hidden md:flex items-center relative group">
-            <Search className="absolute left-4 text-[#FFFCEB]/50 group-focus-within:text-[#F7B71D] transition-colors" size={18} />
+            <Search className="absolute left-4 transition-colors" size={18} style={{ color: c.bg + "80" }} />
             <input
               type="text"
               onChange={(e) => onSearch?.(e.target.value)}
               placeholder="Search for coffee, pastries..."
-              className="w-full bg-[#2A4725]/50 border border-[#FFFCEB]/10 rounded-[12px] pl-11 pr-4 py-2.5 text-[14px] text-[#FFFCEB] placeholder:text-[#FFFCEB]/50 focus:outline-none focus:border-[#F7B71D]/50 focus:bg-[#2A4725] transition-all"
+              className="w-full border rounded-[12px] pl-11 pr-4 py-2.5 text-[14px] focus:outline-none transition-all placeholder-opacity-50"
+              style={{ backgroundColor: (c as any).search_bar || c.secondary + "80", borderColor: c.bg + "1A", color: c.bg }}
             />
           </div>
         )}
@@ -277,11 +297,13 @@ export function CustomerHeader({
               onClick={() => setShowNotifications(!showNotifications)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`w-10 h-10 rounded-[10px] flex items-center justify-center text-[#F7B71D] hover:bg-[#F7B71D]/10 transition-colors ${showNotifications ? 'bg-[#F7B71D]/10' : ''}`}
+              className={`w-10 h-10 rounded-[10px] flex items-center justify-center transition-colors`}
+              style={{ color: c.accent, backgroundColor: showNotifications ? c.accent + "1A" : "transparent" }}
             >
               <Bell size={22} />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2 border-[#385E31]">
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 text-white text-[9px] font-black flex items-center justify-center rounded-full border-2"
+                  style={{ backgroundColor: "red", borderColor: c.primary }}>
                   {unreadCount}
                 </span>
               )}
@@ -364,11 +386,13 @@ export function CustomerHeader({
             onClick={() => router.push(`/${businessName}/customer/${categoryPath}/storefront?checkout=true`)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[#F7B71D] hover:bg-[#F7B71D]/10 relative"
+            className="w-10 h-10 rounded-[10px] flex items-center justify-center hover:opacity-80 relative"
+            style={{ color: c.accent }}
           >
             <ShoppingCart size={22} />
             {cartCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-[#F7B71D] text-[#385E31] text-[10px] font-bold flex items-center justify-center rounded-full border border-[#385E31]">
+              <span className="absolute top-1 right-1 w-4 h-4 text-[10px] font-bold flex items-center justify-center rounded-full border"
+                style={{ backgroundColor: c.accent, color: c.primary, borderColor: c.primary }}>
                 {cartCount}
               </span>
             )}
@@ -380,7 +404,8 @@ export function CustomerHeader({
               onClick={() => setShowUserMenu(!showUserMenu)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className={`w-10 h-10 border-2 border-[#F7B71D]/50 hover:border-[#F7B71D] rounded-[10px] flex items-center justify-center text-[#F7B71D] bg-[#2A4725]/30 ml-2 transition-all ${showUserMenu ? 'scale-110 border-[#F7B71D]' : ''}`}
+              className={`w-10 h-10 border-2 rounded-[10px] flex items-center justify-center ml-2 transition-all ${showUserMenu ? 'scale-110' : ''}`}
+              style={{ color: c.accent, backgroundColor: c.secondary + "4D", borderColor: showUserMenu ? c.accent : c.accent + "80" }}
             >
               <User size={18} />
             </motion.button>

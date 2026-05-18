@@ -87,7 +87,7 @@ export default function ClientDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden font-['Inter']">
+    <div className="min-h-screen bg-[#FFFFFF] flex overflow-x-hidden font-['Inter']">
       <SidebarClient active="dashboard" />
 
       <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">

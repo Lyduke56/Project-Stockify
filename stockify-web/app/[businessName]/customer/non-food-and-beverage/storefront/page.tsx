@@ -30,6 +30,7 @@ import {
   getNfnbProducts,
 } from "@/backend/hooks/getStoreFront";
 import type { StorefrontTenant, ProductCategory } from "@/backend/hooks/getStoreFront";
+import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 // --- Static Banners ---
 const banners = [
@@ -75,6 +76,7 @@ export default function NfnbStorefront() {
 
   // ─── Data State ─────────────────────────────────────────────────────────────
   const [tenant, setTenant] = useState<StorefrontTenant | null>(null);
+  const [sfConfig, setSfConfig] = useState<StorefrontConfig | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<NfnbProduct[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -106,13 +108,15 @@ export default function NfnbStorefront() {
         const tenantData = await getStorefrontTenant(user.id);
         if (!tenantData) throw new Error("Could not load store information.");
 
-        const [cats, prods, favs] = await Promise.all([
+        const [cats, prods, favs, sf] = await Promise.all([
           getProductCategories(tenantData.tenant_id, "nfb_product"),
           getNfnbProducts(tenantData.tenant_id),
-          fetchFavorites()
+          fetchFavorites(),
+          fetchStorefrontConfig(tenantData.tenant_id),
         ]);
 
         setTenant(tenantData);
+        setSfConfig(sf);
         setCategories(cats);
         setProducts(prods);
         setFavorites(favs);
@@ -264,38 +268,36 @@ export default function NfnbStorefront() {
     );
   }
 
+  // ─── Derived colors ──────────────────────────────────────────────────────
+  const c = {
+    primary:   sfConfig?.color_primary   ?? "#385E31",
+    secondary: sfConfig?.color_secondary ?? "#2A4725",
+    accent:    sfConfig?.color_accent    ?? "#F7B71D",
+    bg:        sfConfig?.color_background ?? "#FFFCEB",
+    text:      sfConfig?.color_text      ?? "#3A6131",
+    search_bar: (sfConfig as any)?.color_search_bar,
+  };
+
   return (
-    <div className="min-h-screen w-full bg-[#FFFCEB] font-['Inter'] flex flex-col overflow-x-hidden text-[#3A6131]">
+    <div className="min-h-screen w-full font-['Inter'] flex flex-col overflow-x-hidden" style={{ backgroundColor: c.bg, color: c.text }}>
 
       {/* ── Top Status Bar ── */}
-      <div className="w-full bg-[#2A4725] flex justify-center py-2 px-4 gap-4 sm:gap-8 overflow-hidden whitespace-nowrap">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex items-center gap-2 text-[#F7B71D] text-[11px] sm:text-[12px] font-medium"
-        >
+      <div className="w-full flex justify-center py-2 px-4 gap-4 sm:gap-8 overflow-hidden whitespace-nowrap" style={{ backgroundColor: c.secondary }}>
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
           <Truck size={14} />
           <span className="hidden sm:inline">Free Shipping over ₱3,000</span>
           <span className="sm:hidden">Free Ship ₱3k</span>
         </motion.div>
-        <div className="w-px h-4 bg-[#F7B71D]/30" />
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center gap-2 text-[#F7B71D] text-[11px] sm:text-[12px] font-medium"
-        >
+        <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+          className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
           <ShieldCheck size={14} />
           <span>30-Day Returns</span>
         </motion.div>
-        <div className="w-px h-4 bg-[#F7B71D]/30" />
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex items-center gap-2 text-[#F7B71D] text-[11px] sm:text-[12px] font-medium"
-        >
+        <div className="w-px h-4" style={{ backgroundColor: c.accent + "50" }} />
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          className="flex items-center gap-2 text-[11px] sm:text-[12px] font-medium" style={{ color: c.accent }}>
           <Package size={14} />
           <span className="hidden sm:inline">Nationwide Delivery</span>
           <span className="sm:hidden">PH Delivery</span>
@@ -307,88 +309,81 @@ export default function NfnbStorefront() {
         tenantLogo={tenant?.logo_url ?? undefined}
         tenantName={tenant?.business_name}
         onSearch={setSearchQuery}
+        colors={c}
       />
 
       {/* ── Main Content ── */}
       <main className="flex-1 w-full max-w-[1300px] mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-8">
 
         {/* Hero Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full h-56 sm:h-72 rounded-[24px] relative overflow-hidden shadow-xl cursor-pointer"
-        >
-          <motion.div
-            className="flex w-full h-full"
-            animate={{ x: `-${currentSlide * 100}%` }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          >
-            {banners.map((banner) => (
-              <div
-                key={banner.id}
-                className={`w-full h-full flex-shrink-0 bg-gradient-to-br ${banner.bgGradient} relative flex items-center justify-center sm:justify-start sm:px-16`}
-              >
-                <div className="absolute right-[-10%] top-[-20%] w-[300px] h-[300px] bg-[#FFFCEB]/5 rounded-full blur-3xl pointer-events-none" />
-                <div className="relative z-10 flex flex-col items-center sm:items-start text-center sm:text-left px-6">
-                  <h2 className="text-[#F7B71D] text-[28px] sm:text-[40px] font-black uppercase tracking-tight mb-2 drop-shadow-md">
-                    {banner.title}
-                  </h2>
-                  <p className="text-[#FFF9D7] text-[15px] sm:text-[18px] font-medium max-w-[400px]">
-                    {banner.subtitle}
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="mt-6 bg-[#F7B71D] text-[#2A4725] px-6 py-2.5 rounded-full font-bold text-[14px] flex items-center gap-2 shadow-lg"
-                  >
-                    Shop Collection <ChevronRight size={16} />
-                  </motion.button>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          className="w-full h-56 sm:h-72 rounded-[24px] relative overflow-hidden shadow-xl cursor-pointer">
+
+          {(() => {
+            const activeBanners = sfConfig?.hero_banners?.length
+              ? sfConfig.hero_banners
+              : banners;
+            
+            return (
+              <>
+                <motion.div className="flex w-full h-full"
+                  animate={{ x: `-${Math.min(currentSlide, activeBanners.length - 1) * 100}%` }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}>
+                  {activeBanners.map((banner) => (
+                    <div key={(banner as any).id ?? (banner as any).bgGradient}
+                      className="w-full h-full flex-shrink-0 relative flex items-center justify-center sm:justify-start sm:px-16"
+                      style={{ background: (banner as any).type === "image" ? "none" : `linear-gradient(to bottom right, ${(banner as any).bg_color_1 || c.secondary}, ${(banner as any).bg_color_2 || c.primary})` }}>
+                      
+                      {(banner as any).type === "image" && (banner as any).image_url ? (
+                        <img src={(banner as any).image_url} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <>
+                          <div className="absolute right-[-10%] top-[-20%] w-[300px] h-[300px] rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: c.bg + "1A" }} />
+                          <div className="relative z-10 flex flex-col items-center sm:items-start text-center sm:text-left px-6">
+                            <h2 className="text-[28px] sm:text-[40px] font-black uppercase tracking-tight mb-2 drop-shadow-md"
+                              style={{ color: (banner as any).font_color ?? c.accent }}>
+                              {(banner as any).title}
+                            </h2>
+                            <p className="text-[15px] sm:text-[18px] font-medium max-w-[400px]" style={{ color: c.bg }}>
+                              {(banner as any).subtitle}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </motion.div>
+                <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 z-20">
+                  {activeBanners.map((_, idx) => (
+                    <button key={idx} onClick={() => setCurrentSlide(idx)}
+                      className={`transition-all duration-300 rounded-full ${currentSlide === idx ? "w-6 h-2" : "w-2 h-2 hover:opacity-80"}`}
+                      style={{ backgroundColor: currentSlide === idx ? c.accent : c.bg + "66" }} />
+                  ))}
                 </div>
-              </div>
-            ))}
-          </motion.div>
-          <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 z-20">
-            {banners.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentSlide(idx)}
-                className={`transition-all duration-300 rounded-full ${currentSlide === idx
-                    ? "w-6 h-2 bg-[#F7B71D]"
-                    : "w-2 h-2 bg-[#FFFCEB]/40 hover:bg-[#FFFCEB]/80"
-                  }`}
-              />
-            ))}
-          </div>
+              </>
+            );
+          })()}
         </motion.div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-4 sticky top-[72px] sm:top-[80px] z-30 bg-[#FFFCEB]/95 backdrop-blur-md pt-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex flex-col gap-4 sticky top-[72px] sm:top-[80px] z-30 backdrop-blur-md pt-4 -mx-4 px-4 sm:mx-0 sm:px-0" style={{ backgroundColor: c.bg + "F2" }}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 className="text-[24px] font-bold text-[#3A6131]">Collections</h2>
-            <button className="flex items-center gap-2 bg-white border border-[#3A6131]/20 text-[#3A6131] px-5 py-2.5 rounded-full text-[14px] font-bold shadow-sm hover:bg-[#F7B71D]/10 transition-colors">
+            <h2 className="text-[24px] font-bold" style={{ color: c.text }}>Collections</h2>
+            <button className="flex items-center gap-2 bg-white border text-[14px] font-bold shadow-sm px-5 py-2.5 rounded-full transition-colors"
+              style={{ borderColor: c.text + "33", color: c.text }}>
               <SlidersHorizontal size={20} /> Filters & Sorting
             </button>
           </div>
           <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-hide">
             {categoryTabs.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className="relative whitespace-nowrap px-6 py-2.5 rounded-full text-[14px] font-bold transition-colors z-10"
-              >
-                {activeCategory === cat ? (
-                  <span className="text-[#3A6131] relative z-10">{cat}</span>
-                ) : (
-                  <span className="text-[#3A6131]/60 hover:text-[#3A6131] relative z-10">
-                    {cat}
-                  </span>
-                )}
+              <button key={cat} onClick={() => setActiveCategory(cat)}
+                className="relative whitespace-nowrap px-6 py-2.5 rounded-full text-[14px] font-bold transition-colors z-10">
+                <span className="relative z-10" style={{ color: activeCategory === cat ? c.text : c.text + "99" }}>{cat}</span>
                 {activeCategory === cat && (
-                  <motion.div
-                    layoutId="activeCategoryBg"
-                    className="absolute inset-0 bg-[#FFD980] rounded-full z-0 shadow-sm border border-[#F7B71D]/30"
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  />
+                  <motion.div layoutId="activeCategoryBg"
+                    className="absolute inset-0 rounded-full z-0 shadow-sm"
+                    style={{ backgroundColor: c.accent }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }} />
                 )}
               </button>
             ))}
@@ -427,6 +422,7 @@ export default function NfnbStorefront() {
                       onOpenModal={handleOpenProduct}
                       isFavorite={favorites.includes(product.product_id)}
                       onToggleFavorite={handleToggleFavorite}
+                      colors={c}
                     />
                   </motion.div>
                 ))}

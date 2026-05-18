@@ -9,9 +9,8 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    // 1. Fetch Tenant Counts
     const [activeRes, pendingRes, suspendedRes] = await Promise.all([
-      supabase.from("tenants").select("*", { count: "exact", head: true }).eq("is_active", true),
+      supabase.from("tenants").select("*", { count: "exact", head: true }).eq("subscription_status", "Active"),
       supabase.from("tenants").select("*", { count: "exact", head: true }).eq("subscription_status", "Pending"),
       supabase.from("tenants").select("*", { count: "exact", head: true }).eq("subscription_status", "Suspended"),
     ]);
