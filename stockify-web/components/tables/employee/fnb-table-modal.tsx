@@ -204,7 +204,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
         {/* Header */}
         <div className="w-full flex bg-primary px-2 py-3 rounded-t-[8px] min-w-[900px]">
           {COLUMNS.map((col) => (
-            <div key={col.label} className={`flex text-[var(--color-sidebar-text,#FFF9D7)] text-[11px] font-bold items-center uppercase tracking-wide ${col.className}`}>
+            <div key={col.label} className={`flex text-[var(--color-sidebar-text,#FFF9D7)] text-[12px] font-bold items-center uppercase tracking-wide ${col.className}`}>
               {col.label}
             </div>
           ))}

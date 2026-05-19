@@ -41,9 +41,9 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
   const supabase = createClient();
+  const [tenantId, setTenantId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
-  const [tenantId, setTenantId] = useState<string>("");
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -58,7 +58,6 @@ export default function EmployeeDashboard() {
         .single();
 
       if (userData?.tenant_id) {
-        setTenantId(userData.tenant_id);
         const cfg = await fetchStorefrontConfig(userData.tenant_id);
         setConfig(cfg);
       }
@@ -120,7 +119,7 @@ export default function EmployeeDashboard() {
       '--color-text': config?.color_text ?? "#3A6131",
       '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
     } as React.CSSProperties}>
-      <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} onOpenSettings={handleOpenSettings} />
+      <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} onOpenSettings={() => console.log("Open settings clicked")} />
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee
