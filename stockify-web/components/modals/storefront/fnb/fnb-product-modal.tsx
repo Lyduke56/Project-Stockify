@@ -5,14 +5,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Coffee, ShoppingCart, Check, ChevronRight } from "lucide-react";
 import type { FnbProduct, FnbProductSize } from "@/components/cards/storefront/fnb-product-card";
 import { useCart } from "@/lib/customer/cart-context";
+import { ProductReviews } from "../nfnb/product-reviews";
 
 interface ProductModalProps {
   product: FnbProduct | null;
   isOpen: boolean;
   onClose: () => void;
+  tenantId: string;
 }
 
-export const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) => {
+export const ProductModal = ({ product, isOpen, onClose, tenantId }: ProductModalProps) => {
   const { addToCart } = useCart();
   const [qty, setQty]               = useState(1);
   const [added, setAdded]           = useState(false);
@@ -236,6 +238,13 @@ export const ProductModal = ({ product, isOpen, onClose }: ProductModalProps) =>
                       <ChevronRight size={14} /> Select a size to continue
                     </p>
                   )}
+
+                  {/* Reviews Section */}
+                  <ProductReviews 
+                    productId={product.product_id} 
+                    productType="fnb" 
+                    tenantId={tenantId} 
+                  />
                 </div>
               </div>
             </div>

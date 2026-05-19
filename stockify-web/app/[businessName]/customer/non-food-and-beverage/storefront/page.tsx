@@ -128,7 +128,7 @@ export default function NfnbStorefront() {
         setProducts(prods);
         setFavorites(favs);
         
-        fetchTopRatedProduct(tenantData.tenant_id).then(setTopRatedProduct);
+        fetchTopRatedProduct(tenantData.tenant_id, "nfb").then(setTopRatedProduct);
       } catch (err: any) {
         setError(err.message ?? "Something went wrong.");
       } finally {

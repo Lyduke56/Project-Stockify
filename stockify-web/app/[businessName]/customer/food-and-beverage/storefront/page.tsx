@@ -22,7 +22,7 @@ import { ProductModal } from "@/components/modals/storefront/fnb/fnb-product-mod
 import { CheckoutModal } from "@/components/modals/customer/checkout-modal";
 import type { FnbProduct } from "@/components/cards/storefront/fnb-product-card";
 import { CustomerHeader } from "@/components/headers/customer-header";
-import { toggleFavorite, fetchFavorites } from "@/lib/customer/customer-actions";
+import { toggleFavorite, fetchFavorites, fetchTopRatedProduct } from "@/lib/customer/customer-actions";
 
 // --- DB Hooks ---
 import { createClient } from "@/lib/supabase/client";
@@ -81,6 +81,7 @@ export default function FnbStorefront() {
   const [tenant, setTenant] = useState<StorefrontTenant | null>(null);
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [sfConfig, setSfConfig] = useState<StorefrontConfig | null>(null);
+  const [topRatedProduct, setTopRatedProduct] = useState<any>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
   const [products, setProducts] = useState<FnbProduct[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -126,6 +127,8 @@ export default function FnbStorefront() {
         setCategories(cats);
         setProducts(prods);
         setFavorites(favs);
+
+        fetchTopRatedProduct(tenantData.tenant_id, "fnb").then(setTopRatedProduct);
       } catch (err: any) {
         setError(err.message ?? "Something went wrong.");
       } finally {
@@ -247,6 +250,13 @@ export default function FnbStorefront() {
     setIsModalOpen(true);
   };
 
+  const handleBannerClick = (banner: any) => {
+    if (banner.id === 'top-rated' && topRatedProduct) {
+      const prod = products.find(p => p.product_id === topRatedProduct.product_id);
+      if (prod) handleOpenProduct(prod);
+    }
+  };
+
   // ─── Derived Data ────────────────────────────────────────────────────────────
   const categoryTabs = ["All Products", "My Favorites", ...categories.map((c) => c.name)];
 
@@ -334,9 +344,24 @@ export default function FnbStorefront() {
 
           {/* Determine which banners to show */}
           {(() => {
-            const activeBanners = sfConfig?.hero_banners?.length
+            const baseBanners = sfConfig?.hero_banners?.length
               ? sfConfig.hero_banners
               : banners; // static fallback
+              
+            const activeBanners = [...baseBanners];
+            
+            if (topRatedProduct && topRatedProduct.product_type === 'fnb') {
+              activeBanners.unshift({
+                id: 'top-rated',
+                type: 'text',
+                title: `★ Top Rated: ${topRatedProduct.name}`,
+                subtitle: `Rated ${topRatedProduct.average_rating.toFixed(1)}/5 stars by our customers!`,
+                font_color: '#FFFFFF',
+                bg_color_1: c.accent,
+                bg_color_2: c.primary,
+                image_url: null,
+              } as any);
+            }
             
             return (
               <>
@@ -345,7 +370,8 @@ export default function FnbStorefront() {
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}>
                   {activeBanners.map((banner) => (
                     <div key={(banner as any).id ?? (banner as any).bgGradient}
-                      className="w-full h-full flex-shrink-0 relative flex items-center justify-center sm:justify-start sm:px-16"
+                      onClick={() => handleBannerClick(banner)}
+                      className="w-full h-full flex-shrink-0 relative flex items-center justify-center sm:justify-start sm:px-16 cursor-pointer"
                       style={{ background: (banner as any).type === "image" ? "none" : `linear-gradient(to bottom right, ${(banner as any).bg_color_1 || c.secondary}, ${(banner as any).bg_color_2 || c.primary})` }}>
                       
                       {(banner as any).type === "image" && (banner as any).image_url ? (
@@ -472,6 +498,7 @@ export default function FnbStorefront() {
         product={selectedProduct}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        tenantId={tenant?.tenant_id || ""}
       />
 
       <CheckoutModal

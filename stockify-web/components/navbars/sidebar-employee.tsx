@@ -130,13 +130,13 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
           
           {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
           <div
-            onClick={() => setActiveSection("store-settings")}
-            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-accent text-primary" : "text-sidebar-text"}`}
+            onClick={onOpenSettings}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
           >
             <img src="/icon-settings.svg" className="w-8 h-8" />
             <span className="text-base">Settings</span>
           </div>
-          <div
+          <button
             onClick={handleLogout}
             disabled={isLoggingOut}
             className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
