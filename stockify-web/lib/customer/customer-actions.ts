@@ -142,12 +142,18 @@ export async function updateReview(reviewId: string, rating: number, comment?: s
   return { error: error?.message ?? null };
 }
 
-export async function fetchTopRatedProduct(tenantId: string) {
+export async function fetchTopRatedProduct(tenantId: string, productType?: 'fnb' | 'nfb') {
   const supabase = createClient();
-  const { data: reviews, error } = await supabase
+  let query = supabase
     .from("product_reviews")
     .select("product_id, product_type, rating")
     .eq("tenant_id", tenantId);
+    
+  if (productType) {
+    query = query.eq("product_type", productType);
+  }
+  
+  const { data: reviews, error } = await query;
     
   if (error || !reviews || reviews.length === 0) return null;
   
