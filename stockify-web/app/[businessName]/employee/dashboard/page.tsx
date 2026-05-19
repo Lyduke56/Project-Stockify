@@ -28,8 +28,6 @@ export type SectionKey =
   | "transactions"
   | "analytics";
 
-const [tenantId, setTenantId] = useState<string | null>(null);
-
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
   "dashboard":     <DashboardSection />,
   "audit-logs":    <AuditLogsSection />,
@@ -43,6 +41,7 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
   const supabase = createClient();
+  const [tenantId, setTenantId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
 

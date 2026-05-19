@@ -138,7 +138,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
       <div ref={tableRef} className="w-full bg-transparent rounded-[10px] border border-primary flex flex-col overflow-visible shadow-sm">
         <div className="w-full flex bg-primary px-2 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
-            <div key={col.label} className={`flex text-[var(--color-sidebar-text,#FFF9D7)] text-[13px] font-bold items-center ${col.className}`}>{col.label}</div>
+            <div key={col.label} className={`flex text-[var(--color-sidebar-text,#FFF9D7)] text-[12px] font-bold items-center ${col.className}`}>{col.label}</div>
           ))}
         </div>
 

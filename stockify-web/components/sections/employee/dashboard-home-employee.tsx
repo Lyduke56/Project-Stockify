@@ -8,7 +8,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
-import { Loader2, RefreshCw, AlertTriangle, Package, TrendingUp } from "lucide-react";
+import { Loader2, AlertTriangle, Package, TrendingUp } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -198,15 +198,14 @@ export default function DashboardSection() {
   const [tenantId, setTenantId] = useState("");
   const [data,     setData]     = useState<DashboardData | null>(null);
   const [loading,  setLoading]  = useState(true);
-  const [refresh,  setRefresh]  = useState(false);
 
   const load = useCallback(async (tid: string) => {
     const result = await fetchDashboardData(tid);
     setData(result);
     setLoading(false);
-    setRefresh(false);
-    }, []);
+  }, []);
 
+  // 1. Initial Load & Auth
   useEffect(() => {
     const init = async () => {
       const supabase = createClient();
@@ -214,24 +213,31 @@ export default function DashboardSection() {
       if (!user) return;
       const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", user.id).single();
       if (!u?.tenant_id) return;
+      
       setTenantId(u.tenant_id);
       load(u.tenant_id);
     };
     init();
   }, [load]);
 
-  const handleRefresh = () => {
+  // 2. Silent Background Auto-Refresh (Polling)
+  useEffect(() => {
     if (!tenantId) return;
-    setRefresh(true);
-    load(tenantId);
-  };
+
+    // Refresh data every 30 seconds (30000ms)
+    const intervalId = setInterval(() => {
+      load(tenantId);
+    }, 30000);
+
+    return () => clearInterval(intervalId); // Cleanup interval on unmount
+  }, [tenantId, load]);
 
   const stats = data?.stats;
 
   return (
     <div className="w-full flex flex-col font-['Inter']">
 
-      {/* Header */}
+      {/* Header (Refresh button removed) */}
       <div className="w-full flex flex-col items-center mt-2 mb-10">
         <div className="w-full flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
@@ -240,26 +246,11 @@ export default function DashboardSection() {
             </h1>
             <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading || refresh}
-            className="mt-2 p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all disabled:opacity-40"
-            title="Refresh dashboard"
-          >
-            <RefreshCw size={16} className={refresh ? "animate-spin" : ""} />
-          </button>
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Revenue"
-          value={loading ? "—" : formatCurrency(stats?.totalRevenue ?? 0)}
-          trendText="All-time completed orders"
-          className="w-full"
-          svgName="employee-icons/piggybank"
-        />
+      {/* Stat cards - Updated Grid Layout */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="Total Orders"
           value={loading ? "—" : (stats?.totalOrders ?? 0).toString()}
