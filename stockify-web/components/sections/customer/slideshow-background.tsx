@@ -31,14 +31,26 @@ const SLIDES = [
 ];
 
 const SLIDE_DURATION = 5000;
+const easeOutQuint: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 interface Props {
-  /** Override the left-side headline copy per page */
   slides?: typeof SLIDES;
+  // Still accepted so existing call sites don't break, but no longer used
+  // for clipPath logic — the root div's backgroundColor handles the flash.
+  hasHydrated?: boolean;
 }
 
 export default function SlideshowBackground({ slides = SLIDES }: Props) {
   const [current, setCurrent] = useState(0);
+  // Track whether this is the very first mount so slide 0 paints instantly
+  // and subsequent transitions crossfade at normal speed.
+  const [isFirstMount, setIsFirstMount] = useState(true);
+
+  useEffect(() => {
+    // After the first frame, allow crossfades on slide transitions
+    const raf = requestAnimationFrame(() => setIsFirstMount(false));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setCurrent((p) => (p + 1) % slides.length), SLIDE_DURATION);
@@ -49,14 +61,20 @@ export default function SlideshowBackground({ slides = SLIDES }: Props) {
 
   return (
     <>
-      {/* Animated layer */}
+      {/* ── Animated background layer ── */}
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.id}
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.97 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{
+            // First mount: instant paint (duration 0) — the dark backgroundColor
+            // on the root div is already showing, so no wipe or fade needed.
+            // Slide transitions: snappy 0.5s crossfade.
+            duration: isFirstMount ? 0 : 0.5,
+            ease: "easeOut",
+          }}
           className="absolute inset-0 z-0"
           style={{ background: slide.gradient }}
         >
@@ -75,25 +93,26 @@ export default function SlideshowBackground({ slides = SLIDES }: Props) {
         </motion.div>
       </AnimatePresence>
 
-      {/* Left headline — desktop only */}
-      <div className="absolute left-8 md:left-16 bottom-1/3 z-10 hidden md:block pointer-events-none">
+      {/* ── Left headline — desktop only ── */}
+      {/* Always mounted so it never causes a layout shift; only inner text swaps */}
+      <div className="absolute left-8 md:left-[8%] lg:left-[10%] bottom-[20%] z-10 hidden md:block pointer-events-none max-w-[50%]">
         <AnimatePresence mode="wait">
           <motion.div
             key={`hl-${slide.id}`}
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: -40 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ duration: 0.65, ease: easeOutQuint, delay: 0.15 }}
           >
             <p
               className="font-['Fredoka'] font-bold leading-tight text-white/90"
-              style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)" }}
+              style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}
             >
               {slide.headline}
             </p>
             <p
               className="font-['Fredoka'] font-bold leading-tight"
-              style={{ fontSize: "clamp(2rem, 4vw, 3.5rem)", color: slide.accent }}
+              style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)", color: slide.accent }}
             >
               {slide.subline}
             </p>
