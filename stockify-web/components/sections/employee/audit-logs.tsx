@@ -13,13 +13,11 @@ export default function EmployeeAuditLogs() {
           <div className="flex-1 flex flex-col w-full font-['Inter']">
     
             {/* Header */}
-            {/* Reduced mt-10 to mt-2 to match your other screens */}
             <div className="w-full flex flex-col items-center mt-2 mb-10">
-              <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+              <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
                 Audit Logs
               </h1>
-              {/* Added max-w-full here to prevent horizontal scrolling on small screens */}
-              <div className="w-[900px] max-w-full h-1.5 bg-[#F7B71D] mt-1 rounded-full"></div>
+              <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full"></div>
             </div>
 
             <AuditLogs />

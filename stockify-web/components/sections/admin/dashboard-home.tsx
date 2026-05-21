@@ -63,29 +63,14 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
         transition={{ duration: 0.4, delay: 0.1 }}
         className="w-full flex flex-col items-center mb-8 gap-2"
       >
-        <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase text-center mt-5">
+        <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase text-center mt-5">
           Admin Dashboard
         </h1>
-        <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
+        <div className="w-full max-w-[900px] h-1.5 bg-accent rounded-full" />
       </motion.div>
 
       {/* Main Content Area */}
       <div className="flex flex-col w-full">
-        
-        {/* Greeting - Fades in right after header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut", delay: 0.15 }}
-          className="mb-6"
-        >
-          <h2 className="text-[#385E31] text-4xl font-bold">
-            Hello, {loading ? "..." : (data?.shopStatus?.shopName?.split(' ')[0] || "Client")}!
-          </h2>
-          <p className="text-stone-400 font-medium mt-1">
-            {loading ? "Loading shop details..." : data?.shopStatus?.shopName}
-          </p>
-        </motion.div>
 
         {/* Stat Cards - Staggered Spring Animation */}
         <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -95,6 +80,7 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
               value={loading ? <Loader2 className="animate-spin" size={32} /> : data?.activeNewCustomers.toString() ?? "0"} 
               svgName="AC_active"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
+              trendText="Newly registered active users" 
             />
           </motion.div>
           
@@ -104,6 +90,7 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
               value={loading ? <Loader2 className="animate-spin" size={32} /> : formatCurrency(data?.monthlyRevenue ?? 0)} 
               svgName="AC_peso"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[3.8rem]" 
+              trendText="Total revenue for the current month"
             />
           </motion.div>
           
@@ -113,6 +100,7 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
               value={loading ? <Loader2 className="animate-spin" size={32} /> : data?.totalSuccessTransactions.toString() ?? "0"} 
               svgName="AC_orders"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
+              trendText="Successfully completed orders"
             />
           </motion.div>
         </div>
@@ -124,11 +112,11 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
           className="w-full flex flex-col gap-6 mt-2"
         >
-          <div className="w-full h-[3px] bg-[#385E31]/20 rounded-full" />
+          <div className="w-full h-[3px] bg-primary/20 rounded-full" />
           
           {loading ? (
             <div className="w-full flex justify-center py-10">
-              <Loader2 className="animate-spin text-[#385E31]" size={40} />
+              <Loader2 className="animate-spin text-primary" size={40} />
             </div>
           ) : (
             <ShopStatus
@@ -146,4 +134,4 @@ export default function DashboardHome({ onManageShop }: DashboardHomeProps) {
       </div>
     </div>
   );
-}
+}

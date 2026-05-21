@@ -20,8 +20,8 @@ export default function EmployeeAnalytics() {
           {/* LEFT SIDE: Fixed Sidebar */}
           <SidebarEmployee 
             activeSection={activeSection}
-            setActiveSection={setActiveSection}
             onOpenSettings={() => console.log("Open settings clicked")}
+            setActiveSection={setActiveSection}
           />
     
           {/* RIGHT SIDE: Main Column */}

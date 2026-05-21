@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { createClient } from "@/lib/supabase/client";
-import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page"; // Adjusted import trajectory matching your dashboard path
+import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page";
 import LogoutModal from "../modals/logout-modal";
 
 interface NavItemProps {
@@ -20,8 +20,8 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
       onClick={onClick}
       className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer transition-all duration-200 ${
         isActive
-          ? "bg-[#E5AD24] text-[#385E31] shadow-md font-bold"
-          : "bg-transparent text-[#FFF9D7] hover:bg-[#368028] font-semibold"
+          ? "bg-accent text-primary shadow-md font-bold"
+          : "bg-transparent text-sidebar-text hover:bg-secondary font-semibold"
       }`}
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
@@ -39,13 +39,13 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
 interface SidebarAdminProps {
   activeSection: SectionKey;
   setActiveSection: (section: SectionKey) => void;
-  openSettings: () => void; // 🟢 ADDED: Prop to trigger opening the Settings Modal
+  openSettings: () => void;
 }
 
 export default function SidebarAdmin({
   activeSection,
   setActiveSection,
-  openSettings, // 🟢 ADDED
+  openSettings, 
 }: SidebarAdminProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -102,7 +102,7 @@ export default function SidebarAdmin({
   };
 
   return (
-    <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
+    <div className="w-64 h-screen pt-12 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
       {/* Top Navigation */}
       <div className="flex flex-col gap-1">
         {adminNavItems.map((item) => (
@@ -121,22 +121,22 @@ export default function SidebarAdmin({
         <div className="w-48 h-px bg-white/10" />
 
         <div className="w-full flex flex-col gap-1">
-          {/*  CHANGED: Rendered explicitly as an action handler rather than mapping over an array with type mismatch problems */}
+          {/* Settings Tab */}
           <NavItem
-    label="Settings"
-    iconFileName="icon-settings"
-    isActive={activeSection === ("admin-settings" as any)} 
-    onClick={openSettings} 
-  />
+            label="Settings"
+            iconFileName="icon-settings"
+            isActive={activeSection === ("admin-settings" as any)} 
+            onClick={openSettings} 
+          />
 
           {/* Logout */}
           <NavItem
-    label="Logout"
-    iconFileName="icon-logout"
-    isActive={false}
-    onClick={() => setShowLogoutModal(true)}
-  />
-</div>
+            label="Logout"
+            iconFileName="icon-logout"
+            isActive={false}
+            onClick={() => setShowLogoutModal(true)}
+          />
+        </div>
       </div>
 
       {/* Logout Modal */}

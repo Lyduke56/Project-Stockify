@@ -1,7 +1,16 @@
 "use client";
 
 import React from "react";
-import StockifyButton from "@/components/buttons/button-get-started";
+import { 
+  Activity,
+  TrendingUp,
+  ShoppingBag,
+  AlertTriangle,
+  Box,
+  ArrowUpRight,
+  Sparkles,
+  BarChart3
+} from "lucide-react";
 
 interface ShopStatusProps {
   shopName?: string;
@@ -22,55 +31,131 @@ export default function ShopStatus({
   orders = 124,
   onManageShop,
 }: ShopStatusProps) {
+
+  const MetricRow = ({
+    icon: Icon,
+    label,
+    value,
+    valueClass = "text-[#3A6131]",
+    badge,
+  }: {
+    icon: React.ElementType;
+    label: string;
+    value: React.ReactNode;
+    valueClass?: string;
+    badge?: React.ReactNode;
+  }) => (
+    <div className="flex items-center justify-between py-3 border-b border-[#3A6131]/10 last:border-0">
+      <div className="flex items-center gap-3 text-[#3A6131]/60">
+        <div className="w-8 h-8 rounded-[6px] bg-[#3A6131]/10 flex items-center justify-center">
+          <Icon size={16} className="text-[#3A6131]" />
+        </div>
+        <span className="text-sm font-medium font-['Inter']">{label}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        {badge}
+        <span className={`text-sm font-bold font-['Inter'] ${valueClass}`}>{value}</span>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full px-5 py-5 rounded-xl border-[3px] border-lime-900/50 flex flex-col gap-4">
-      
-      {/* Header */}
-      <p className="text-lime-800 text-base font-medium font-['Inter']">Shop Status</p>
-      <p className="text-gray-500 text-sm font-normal font-['Inter']">Overview of your shop status</p>
+    <div className="w-full rounded-[10px] overflow-hidden shadow-md">
 
-      {/* Row */}
-      <div className="flex items-center justify-between">
-
-        {/* LEFT: Shop identity */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            {/* Shop icon */}
-            <img src="/icon-storefront2.svg" alt="shop" className="w-4 h-4" />
-            <span className="text-lime-800 text-sm font-semibold font-['Inter']">{clientName}</span>
-            <span className="px-1.5 py-0.5 rounded-md border border-lime-800/30 text-neutral-950 text-[10px] font-medium font-['Inter']">
-              {shopName}
-            </span>
+      {/* Header band */}
+      <div className="bg-[#3A6131] px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-[8px] bg-[#FFFCEB]/15 flex items-center justify-center">
+            <Activity size={18} className="text-[#FFFCEB]" />
           </div>
-          <div className="flex items-center gap-3 pl-0.5">
-            {/* Item count */}
-            <div className="flex items-center gap-1">
-              <img src="/icon-store-settings2.svg" alt="items" className="w-3.5 h-3.5 opacity-70" />
-              <span className="text-lime-800/70 text-xs font-['Inter']">{itemCount} items</span>
+          <div>
+            <h2 className="text-[#FFFCEB] font-bold text-[18px] leading-tight font-['Inter']">Shop Status</h2>
+            <p className="text-[#FFFCEB]/60 text-xs mt-0.5 font-['Inter']">Real-time inventory & admin overview</p>
+          </div>
+        </div>
+        <button
+          onClick={onManageShop}
+          className="flex items-center gap-1.5 bg-[#FFFCEB]/15 hover:bg-[#FFFCEB]/25 text-[#FFFCEB] text-sm font-semibold font-['Inter'] px-4 py-2 rounded-[8px] transition-colors"
+        >
+          Manage Shop
+          <ArrowUpRight size={15} />
+        </button>
+      </div>
+
+      {/* 3-panel body */}
+      <div className="bg-[#FFFCEB] p-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* Panel 1: Shop Identity */}
+        <div className="lg:col-span-1 bg-[#F5F0D8] rounded-[10px] p-5 flex flex-col justify-between border border-[#3A6131]/10">
+          <div>
+            <div className="w-11 h-11 rounded-[8px] bg-[#3A6131] flex items-center justify-center mb-4">
+              <ShoppingBag size={22} className="text-[#FFFCEB]" />
             </div>
-            {/* Low stock warning */}
-            <div className="flex items-center gap-1">
-              <span className="text-orange-600 text-xs font-['Inter']">⚠ {lowStockCount} low stock</span>
-            </div>
+            <h3 className="text-lg font-bold text-[#3A6131] leading-tight font-['Inter']">
+              {clientName}
+            </h3>
+            <p className="text-[#3A6131]/50 text-sm mt-1 font-['Inter']">{shopName}</p>
+          </div>
+          <div className="mt-5 flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+            </span>
+            <span className="text-emerald-600 text-xs font-semibold tracking-wide uppercase font-['Inter']">
+              Live & Active
+            </span>
           </div>
         </div>
 
-        {/* RIGHT: Stats + button */}
-        <div className="flex items-center gap-6">
-          <div className="flex flex-col items-center">
-            <span className="text-lime-800 text-xl font-bold font-['Inter']">{revenue}</span>
-            <span className="text-lime-800/50 text-[10px] font-['Inter']">Revenue</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-lime-800 text-xl font-bold font-['Inter']">{orders}</span>
-            <span className="text-lime-800/50 text-[10px] font-['Inter']">Orders</span>
-          </div>
-          <StockifyButton
-            label="Manage Shop"
-            onClick={onManageShop}
-            variant="primary"
-            className="!w-auto !h-auto px-6 py-1.5 !text-xs !rounded-xl !shadow-sm"
+        {/* Panel 2: Key Metrics */}
+        <div className="lg:col-span-1 flex flex-col justify-between bg-[#F5F0D8] rounded-[10px] border border-[#3A6131]/10 px-5 py-2">
+          <MetricRow
+            icon={Box}
+            label="Total Items"
+            value={itemCount}
           />
+          <MetricRow
+            icon={AlertTriangle}
+            label="Low Stock Items"
+            value={lowStockCount}
+            valueClass={lowStockCount > 0 ? "text-orange-600" : "text-[#3A6131]"}
+            badge={
+              lowStockCount > 0 ? (
+                <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-['Inter']">
+                  Restock
+                </span>
+              ) : undefined
+            }
+          />
+          <MetricRow
+            icon={BarChart3}
+            label="Total Orders"
+            value={orders}
+          />
+        </div>
+
+        {/* Panel 3: Revenue */}
+        <div className="lg:col-span-1 bg-[#3A6131] rounded-[10px] p-5 flex flex-col justify-between shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="w-9 h-9 rounded-[8px] bg-[#FFFCEB]/15 flex items-center justify-center">
+              <TrendingUp size={18} className="text-[#FFFCEB]" />
+            </div>
+            <div className="flex items-center gap-1.5 bg-[#FFFCEB]/15 rounded-full px-3 py-1">
+              <Sparkles size={11} className="text-[#FFFCEB]/80" />
+              <span className="text-[#FFFCEB]/80 text-[11px] font-semibold font-['Inter']">Revenue</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-[#FFFCEB]/60 text-xs font-semibold uppercase tracking-wider mb-1 font-['Inter']">
+              Total Revenue
+            </p>
+            <p className="text-[#FFFCEB] text-4xl font-black tracking-tight leading-none font-['Inter']">
+              {revenue}
+            </p>
+            <p className="text-[#FFFCEB]/50 text-xs mt-2 font-['Inter']">
+              Cumulative shop earnings
+            </p>
+          </div>
         </div>
 
       </div>

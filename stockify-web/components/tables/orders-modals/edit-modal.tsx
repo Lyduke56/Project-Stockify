@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { type Order } from "./view-modal";
+import { type Order } from "@/lib/employee/order-actions";
     
 interface EditOrderModalProps {
   order: Order | null;
@@ -50,8 +50,8 @@ export default function EditOrderModal({ order, onClose, onSave }: EditOrderModa
             </label>
             <input
               type="text"
-              value={form.customer}
-              onChange={(e) => handleChange("customer", e.target.value)}
+              value={form.customer_name}
+              onChange={(e) => handleChange("customer_name", e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-[#F7B71D]/40 bg-white text-[#385E31] font-medium focus:outline-none focus:ring-2 focus:ring-[#F7B71D]"
             />
           </div>
@@ -61,8 +61,8 @@ export default function EditOrderModal({ order, onClose, onSave }: EditOrderModa
               Payment Method
             </label>
             <select
-              value={form.paymentMethod}
-              onChange={(e) => handleChange("paymentMethod", e.target.value)}
+              value={form.payment_method}
+              onChange={(e) => handleChange("payment_method", e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border border-[#F7B71D]/40 bg-white text-[#385E31] font-medium focus:outline-none focus:ring-2 focus:ring-[#F7B71D]"
             >
               <option>QR Code</option>
@@ -77,9 +77,9 @@ export default function EditOrderModal({ order, onClose, onSave }: EditOrderModa
               Fulfillment Status
             </label>
             <select
-              value={form.fulfillment}
+              value={form.fulfillment_status}
               onChange={(e) =>
-                handleChange("fulfillment", e.target.value as Order["fulfillment"])
+                handleChange("fulfillment_status", e.target.value as Order["fulfillment_status"])
               }
               className="w-full px-4 py-2.5 rounded-xl border border-[#F7B71D]/40 bg-white text-[#385E31] font-medium focus:outline-none focus:ring-2 focus:ring-[#F7B71D]"
             >

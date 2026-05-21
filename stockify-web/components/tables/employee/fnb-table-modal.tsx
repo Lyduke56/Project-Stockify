@@ -149,10 +149,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
     loadItems();
   };
 
-  // The row whose dropdown is open
   const openRow = openDropdownId ? items.find((i) => i.item_id === openDropdownId) ?? null : null;
-
-  // ── Render ────────────────────────────────────────────────
 
   return (
     <div className="w-full font-['Inter']">
@@ -166,30 +163,30 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
               placeholder="Search by material, SKU, or category…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/70 outline-none font-medium text-[13px]"
+              className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/70 outline-none font-medium text-[13px]"
             />
-            <div className="absolute right-4 top-3 text-[#385E31]"><SearchIcon /></div>
+            <div className="absolute right-4 top-3 text-primary"><SearchIcon /></div>
           </div>
           <div className="relative w-[200px]">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full appearance-none border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] outline-none font-medium cursor-pointer text-[13px]"
+              className="w-full appearance-none border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary outline-none font-medium cursor-pointer text-[13px]"
             >
               <option value="All">All Ingredients</option>
               <option value="Low">Low Stock Alerts</option>
             </select>
-            <div className="absolute right-4 top-3.5 text-[#385E31] pointer-events-none"><ChevronDown /></div>
+            <div className="absolute right-4 top-3.5 text-primary pointer-events-none"><ChevronDown /></div>
           </div>
         </div>
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
-          <button onClick={loadItems} className="p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all" title="Refresh">
+          <button onClick={loadItems} className="p-2.5 rounded-full border border-primary text-primary hover:bg-primary/10 transition-all" title="Refresh">
             <RefreshCw size={16} />
           </button>
-          <button onClick={() => setShowCategories(true)} className="px-6 py-2.5 rounded-[40px] bg-[#F7B71D] text-[#385E31] text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">
+          <button onClick={() => setShowCategories(true)} className="px-6 py-2.5 rounded-[40px] bg-accent text-primary text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">
             Manage Categories
           </button>
-          <button onClick={() => setShowAdd(true)} className="px-6 py-2.5 rounded-[40px] bg-[#385E31] text-[#FFFCEB] text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">
+          <button onClick={() => setShowAdd(true)} className="px-6 py-2.5 rounded-[40px] bg-primary text-[var(--color-sidebar-text,#FFF9D7)] text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">
             Add Item
           </button>
         </div>
@@ -203,11 +200,11 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
       )}
 
       {/* Table */}
-      <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-x-auto shadow-sm">
+      <div className="w-full bg-transparent rounded-[10px] border border-primary flex flex-col overflow-x-auto shadow-sm">
         {/* Header */}
-        <div className="w-full flex bg-[#385E31] px-2 py-3 rounded-t-[8px] min-w-[900px]">
+        <div className="w-full flex bg-primary px-2 py-3 rounded-t-[8px] min-w-[900px]">
           {COLUMNS.map((col) => (
-            <div key={col.label} className={`flex text-[#FFFCEB] text-[11px] font-bold items-center uppercase tracking-wide ${col.className}`}>
+            <div key={col.label} className={`flex text-[var(--color-sidebar-text,#FFF9D7)] text-[12px] font-bold items-center uppercase tracking-wide ${col.className}`}>
               {col.label}
             </div>
           ))}
@@ -215,12 +212,12 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
 
         {/* Body */}
         {loading ? (
-          <div className="w-full flex items-center justify-center py-16 text-[#385E31]/60 gap-3">
+          <div className="w-full flex items-center justify-center py-16 text-primary/60 gap-3">
             <Loader2 size={20} className="animate-spin" />
             <span className="text-sm font-semibold">Loading inventory…</span>
           </div>
         ) : displayed.length === 0 ? (
-          <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">
+          <div className="w-full text-center py-10 text-primary font-semibold text-sm">
             {search || filterStatus !== "All" ? "No items match your filters." : "No ingredients yet. Add your first item!"}
           </div>
         ) : (
@@ -238,29 +235,29 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
             return (
               <div
                 key={row.item_id}
-                className={`w-full flex px-2 py-[12px] items-center min-w-[900px] ${!isLast ? "border-b border-[#385E31]/20" : ""}`}
+                className={`w-full flex px-2 py-[12px] items-center min-w-[900px] ${!isLast ? "border-b border-primary/20" : ""}`}
               >
                 {/* Material Name */}
-                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[0].className}`}>
+                <div className={`flex text-primary text-[13px] font-bold items-center ${COLUMNS[0].className}`}>
                   <span className="truncate pr-2">{row.name}</span>
                 </div>
 
                 {/* SKU */}
-                <div className={`flex text-[#3A6131] text-[11px] font-bold font-mono items-center ${COLUMNS[1].className}`}>
+                <div className={`flex text-primary text-[11px] font-bold font-mono items-center ${COLUMNS[1].className}`}>
                   {row.sku}
                 </div>
 
                 {/* Category */}
-                <div className={`flex text-[#3A6131] text-[12px] font-bold items-center ${COLUMNS[2].className}`}>
+                <div className={`flex text-primary text-[12px] font-bold items-center ${COLUMNS[2].className}`}>
                   <span className="truncate">{row.category_name ?? "—"}</span>
                 </div>
 
                 {/* Current Stock */}
                 <div className={`flex flex-col items-center justify-center ${COLUMNS[3].className}`}>
-                  <span className={`text-[12px] font-bold ${isLowStock ? "text-[#E91F22]" : "text-[#3A6131]"}`}>
+                  <span className={`text-[12px] font-bold ${isLowStock ? "text-red-500" : "text-primary"}`}>
                     {purchasingQty} {row.purchase_unit}{Number(purchasingQty) !== 1 ? "s" : ""}
                   </span>
-                  <span className="text-[10px] text-[#3A6131]/50 font-medium">
+                  <span className="text-[10px] text-primary/50 font-medium">
                     ({row.stock} {row.base_unit})
                   </span>
                   {isLowStock && (
@@ -269,17 +266,17 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
                 </div>
 
                 {/* Alert Limit */}
-                <div className={`flex text-[#3A6131] text-[12px] font-bold items-center ${COLUMNS[4].className}`}>
+                <div className={`flex text-primary text-[12px] font-bold items-center ${COLUMNS[4].className}`}>
                   {row.alert_limit} {row.base_unit}
                 </div>
 
                 {/* Unit Cost */}
-                <div className={`flex text-[#385E31] text-[12px] font-extrabold items-center ${COLUMNS[5].className}`}>
+                <div className={`flex text-primary text-[12px] font-extrabold items-center ${COLUMNS[5].className}`}>
                   ₱{Number(row.unit_cost).toFixed(2)}
                 </div>
 
                 {/* Nearest Expiry */}
-                <div className={`flex text-[#3A6131] text-[12px] font-bold items-center ${COLUMNS[6].className}`}>
+                <div className={`flex text-primary text-[12px] font-bold items-center ${COLUMNS[6].className}`}>
                   {expiryDisplay}
                 </div>
 
@@ -288,7 +285,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
                   <button
                     data-action-btn
                     onClick={(e) => handleActionClick(e, row.item_id)}
-                    className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"
+                    className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-primary text-[#FFFCEB]" : "text-primary hover:bg-primary/10"
                       }`}
                   >
                     Action <ChevronDown />
@@ -348,12 +345,12 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
       {/* Pagination */}
       <div className="w-full flex justify-end items-center gap-3 mt-6">
         {visibleCount > 5 && (
-          <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-[#385E31] text-[#385E31] text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-[#385E31]/10 active:scale-95 transition-all">
+          <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-primary text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-primary/10 active:scale-95 transition-all">
             Show Less
           </button>
         )}
         {filtered.length > visibleCount && (
-          <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-[#F7B71D] text-[#385E31] text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">
+          <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-accent text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">
             Load More
           </button>
         )}

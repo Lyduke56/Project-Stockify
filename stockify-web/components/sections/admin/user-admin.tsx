@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion"; // Added for animations
 
 import NewEmployeeModal from "@/components/modals/admin/new-employee-modal";
+import DeleteEmployeeModal from "@/components/modals/admin/remove-employee-modal";
 import StaffAdminTable from "@/components/tables/user-admin-staff";
 import CustomerAdminTable from "@/components/tables/user-admin-customers";
 
@@ -21,6 +22,11 @@ export default function UserAdminSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [tableKey, setTableKey] = useState(0);
+  
+  // Delete state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }: any) => {
@@ -33,12 +39,34 @@ export default function UserAdminSection() {
     setIsModalOpen(false);
   }
 
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/admin/delete-employee", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: userToDelete.user_id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete employee.");
+      
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      setTableKey((k) => k + 1);
+    } catch (err: any) {
+      alert(err.message || "Failed to delete employee.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex flex-col w-full min-h-screen bg-[#FFFCEB] font-['Inter'] pt-5 pb-12"
+      className="flex flex-col w-full min-h-screen bg-background font-['Inter'] pt-5 pb-12"
     >
       {/* PAGE HEADER */}
       <motion.header
@@ -47,10 +75,10 @@ export default function UserAdminSection() {
         transition={{ duration: 0.4, delay: 0.1 }}
         className="w-full flex flex-col items-center mb-12 gap-2"
       >
-        <h1 className="text-[#385E31] text-[30px] font-extrabold uppercase">
+        <h1 className="text-primary text-[30px] font-extrabold uppercase">
           User Administration
         </h1>
-        <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full opacity-60" />
+        <div className="w-full max-w-[900px] h-1.5 bg-accent rounded-full opacity-60" />
       </motion.header>
 
       {/* STAFF ACCOUNTS SECTION */}
@@ -62,11 +90,10 @@ export default function UserAdminSection() {
       >
         <div className="flex items-end justify-between">
           <div className="flex flex-col gap-1">
-            <h2 className="text-[#385E31] text-[26px] font-extrabold uppercase">
+            <h2 className="text-primary text-[26px] font-extrabold uppercase">
               Staff Accounts
             </h2>
           </div>
-
         </div>
 
         {/* NEW: Flex container to hold Search and Button on the same line */}
@@ -76,9 +103,9 @@ export default function UserAdminSection() {
             <input
               type="text"
               placeholder="Search employees..."
-              className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/60 outline-none font-medium text-sm"
+              className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/60 outline-none font-medium text-sm"
             />
-            <div className="absolute right-4 top-3 text-[#385E31]">
+            <div className="absolute right-4 top-3 text-primary">
               <SearchIcon />
             </div>
           </div>
@@ -86,21 +113,27 @@ export default function UserAdminSection() {
           {/* Add Button - now positioned at the farthest right */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="whitespace-nowrap px-8 py-2.5 rounded-[40px] font-bold text-[14px] transition-all hover:brightness-105 active:scale-95 shadow-sm"
-            style={{ backgroundColor: "#E5AC24", color: "#24481F" }}
+            className="whitespace-nowrap px-8 py-2.5 rounded-[40px] font-bold text-[14px] transition-all hover:brightness-105 active:scale-95 shadow-sm bg-accent text-primary"
           >
             + Add Employee
           </button>
         </div>
 
         {/* Table Container */}
-        <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] overflow-hidden shadow-sm">
-          <StaffAdminTable key={tableKey} userId={userId ?? ""} />
+        <div className="w-full bg-background rounded-[10px] border border-primary overflow-hidden shadow-sm">
+          <StaffAdminTable 
+            key={tableKey} 
+            userId={userId ?? ""} 
+            onDelete={(record) => {
+              setUserToDelete(record);
+              setIsDeleteModalOpen(true);
+            }}
+          />
         </div>
       </motion.div>
 
       {/* SEPARATOR */}
-      <div className="w-full h-[2px] bg-[#385E31]/20 rounded-full my-12" />
+      <div className="w-full h-[2px] bg-primary/20 rounded-full my-12" />
 
       {/* REGISTERED CUSTOMERS SECTION */}
       <motion.div
@@ -109,7 +142,7 @@ export default function UserAdminSection() {
         transition={{ delay: 0.3 }}
         className="flex flex-col gap-6"
       >
-        <h2 className="text-[#385E31] text-[26px] font-extrabold uppercase">
+        <h2 className="text-primary text-[26px] font-extrabold uppercase">
           Registered Customers
         </h2>
 
@@ -117,23 +150,32 @@ export default function UserAdminSection() {
           <input
             type="text"
             placeholder="Search customers..."
-            className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/60 outline-none font-medium text-sm"
+            className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/60 outline-none font-medium text-sm"
           />
-          <div className="absolute right-4 top-3 text-[#385E31]">
+          <div className="absolute right-4 top-3 text-primary">
             <SearchIcon />
           </div>
         </div>
 
-        <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] overflow-hidden shadow-sm">
+        <div className="w-full bg-background rounded-[10px] border border-primary overflow-hidden shadow-sm">
           <CustomerAdminTable userId={userId ?? ""} />
         </div>
       </motion.div>
 
-      {/* MODAL */}
+      {/* NEW EMPLOYEE MODAL */}
       <NewEmployeeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleEmployeeCreated}
+      />
+
+      {/* NEW EXTRACTED DELETE MODAL */}
+      <DeleteEmployeeModal
+        isOpen={isDeleteModalOpen}
+        user={userToDelete}
+        isDeleting={isDeleting}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
       />
     </motion.div>
   );

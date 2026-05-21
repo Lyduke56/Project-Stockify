@@ -8,7 +8,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
-import { Loader2, RefreshCw, AlertTriangle, Package, TrendingUp } from "lucide-react";
+import { Loader2, AlertTriangle, Package, TrendingUp } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,9 +43,9 @@ function LiveAlertsCard({ alerts, loading }: { alerts: DashboardData["alerts"]; 
   };
 
   return (
-    <div className="bg-[#385E31] rounded-[20px] p-6 flex flex-col shadow-lg min-w-[240px] h-[480px]">
-      <h2 className="text-[#FFF9D7] text-[18px] font-extrabold font-['Inter'] mb-5 shrink-0 flex items-center gap-2">
-        <AlertTriangle size={18} className="text-[#F7B71D]" />
+    <div className="bg-primary rounded-[20px] p-6 flex flex-col shadow-lg min-w-[240px] h-[480px]">
+      <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] text-[18px] font-extrabold font-['Inter'] mb-5 shrink-0 flex items-center gap-2">
+        <AlertTriangle size={18} className="text-accent" />
         Unresolved Alerts
         {!loading && alerts.length > 0 && (
           <span className="ml-auto text-[12px] font-bold bg-red-500 text-white px-2 py-0.5 rounded-full">
@@ -110,16 +110,16 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
   ];
 
   return (
-    <div className="bg-[#385E31] rounded-[20px] p-6 shadow-lg flex flex-col gap-6">
-      <h2 className="text-[#FFFCF0] text-[18px] font-extrabold tracking-wide flex items-center gap-2">
-        <TrendingUp size={18} className="text-[#F7B71D]" />
+    <div className="bg-primary rounded-[20px] p-6 shadow-lg flex flex-col gap-6">
+      <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] text-[18px] font-extrabold tracking-wide flex items-center gap-2">
+        <TrendingUp size={18} className="text-accent" />
         {monthLabel} Revenue
       </h2>
 
       {/* Stat pills */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {forecastStats.map((s) => (
-          <div key={s.label} className="bg-[#24481F] rounded-xl px-4 py-3.5 flex flex-col justify-between shadow-inner">
+          <div key={s.label} className="bg-secondary rounded-xl px-4 py-3.5 flex flex-col justify-between shadow-inner">
             <span className="text-[10px] font-bold tracking-wider text-[#98C98A] uppercase mb-1">{s.label}</span>
             <span className="text-[16px] font-extrabold text-[#F5E69E] mb-0.5 truncate">{s.value}</span>
             <span className="text-[11px] font-semibold" style={{ color: s.subColor ?? "#7EC86B" }}>{s.sub}</span>
@@ -198,15 +198,14 @@ export default function DashboardSection() {
   const [tenantId, setTenantId] = useState("");
   const [data,     setData]     = useState<DashboardData | null>(null);
   const [loading,  setLoading]  = useState(true);
-  const [refresh,  setRefresh]  = useState(false);
 
   const load = useCallback(async (tid: string) => {
     const result = await fetchDashboardData(tid);
     setData(result);
     setLoading(false);
-    setRefresh(false);
   }, []);
 
+  // 1. Initial Load & Auth
   useEffect(() => {
     const init = async () => {
       const supabase = createClient();
@@ -214,52 +213,44 @@ export default function DashboardSection() {
       if (!user) return;
       const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", user.id).single();
       if (!u?.tenant_id) return;
+      
       setTenantId(u.tenant_id);
       load(u.tenant_id);
     };
     init();
   }, [load]);
 
-  const handleRefresh = () => {
+  // 2. Silent Background Auto-Refresh (Polling)
+  useEffect(() => {
     if (!tenantId) return;
-    setRefresh(true);
-    load(tenantId);
-  };
+
+    // Refresh data every 30 seconds (30000ms)
+    const intervalId = setInterval(() => {
+      load(tenantId);
+    }, 30000);
+
+    return () => clearInterval(intervalId); // Cleanup interval on unmount
+  }, [tenantId, load]);
 
   const stats = data?.stats;
 
   return (
     <div className="w-full flex flex-col font-['Inter']">
 
-      {/* Header */}
+      {/* Header (Refresh button removed) */}
       <div className="w-full flex flex-col items-center mt-2 mb-10">
         <div className="w-full flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
-            <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+            <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
               Employee Dashboard
             </h1>
-            <div className="w-[900px] max-w-full h-1.5 bg-[#F7B71D] mt-1 rounded-full" />
+            <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={loading || refresh}
-            className="mt-2 p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all disabled:opacity-40"
-            title="Refresh dashboard"
-          >
-            <RefreshCw size={16} className={refresh ? "animate-spin" : ""} />
-          </button>
         </div>
       </div>
 
-      {/* Stat cards */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Revenue"
-          value={loading ? "—" : formatCurrency(stats?.totalRevenue ?? 0)}
-          trendText="All-time completed orders"
-          className="w-full"
-          svgName="employee-icons/piggybank"
-        />
+      {/* Stat cards - Updated Grid Layout */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="Total Orders"
           value={loading ? "—" : (stats?.totalOrders ?? 0).toString()}
@@ -287,7 +278,7 @@ export default function DashboardSection() {
       <div className="w-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8">
         <LiveAlertsCard alerts={data?.alerts ?? []} loading={loading} />
         {data ? <LiveRevenueCard data={data} /> : (
-          <div className="bg-[#385E31] rounded-[20px] p-6 flex items-center justify-center text-white/40 gap-3">
+          <div className="bg-primary rounded-[20px] p-6 flex items-center justify-center text-white/40 gap-3">
             <Loader2 size={22} className="animate-spin" />
             <span className="font-medium text-[14px]">Loading chart…</span>
           </div>

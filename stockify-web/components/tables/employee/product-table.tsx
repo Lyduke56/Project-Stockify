@@ -109,22 +109,22 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
       <div className="w-full flex flex-col lg:flex-row justify-between items-center mb-4 gap-4">
         <div className="flex w-full lg:w-auto flex-1 gap-4 items-center">
           <div className="relative flex-1 max-w-[400px]">
-            <input type="text" placeholder="Search by product, SKU, or category…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] placeholder-[#385E31]/70 outline-none font-medium text-[13px]" />
-            <div className="absolute right-4 top-3 text-[#385E31]"><SearchIcon /></div>
+            <input type="text" placeholder="Search by product, SKU, or category…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/70 outline-none font-medium text-[13px]" />
+            <div className="absolute right-4 top-3 text-primary"><SearchIcon /></div>
           </div>
           <div className="relative w-[180px]">
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full appearance-none border border-[#385E31] rounded-full px-5 py-2.5 bg-transparent text-[#385E31] outline-none font-medium cursor-pointer text-[13px]">
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full appearance-none border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary outline-none font-medium cursor-pointer text-[13px]">
               <option value="All">Filter By</option>
               <option value="Visible">Visible</option>
               <option value="Hidden">Hidden</option>
             </select>
-            <div className="absolute right-4 top-3.5 text-[#385E31] pointer-events-none"><ChevronDown /></div>
+            <div className="absolute right-4 top-3.5 text-primary pointer-events-none"><ChevronDown /></div>
           </div>
         </div>
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
-          <button onClick={loadProducts} className="p-2.5 rounded-full border border-[#385E31] text-[#385E31] hover:bg-[#385E31]/10 transition-all" title="Refresh"><RefreshCw size={16} /></button>
-          <button onClick={() => setShowCategories(true)} className="px-6 py-2.5 rounded-[40px] bg-[#F7B71D] text-[#385E31] text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">Manage Categories</button>
-          <button onClick={() => setShowAdd(true)} className="px-6 py-2.5 rounded-[40px] bg-[#385E31] text-[#FFFCEB] text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">Add Product</button>
+          <button onClick={loadProducts} className="p-2.5 rounded-full border border-primary text-primary hover:bg-primary/10 transition-all" title="Refresh"><RefreshCw size={16} /></button>
+          <button onClick={() => setShowCategories(true)} className="px-6 py-2.5 rounded-[40px] bg-accent text-primary text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">Manage Categories</button>
+          <button onClick={() => setShowAdd(true)} className="px-6 py-2.5 rounded-[40px] bg-primary text-[var(--color-sidebar-text,#FFF9D7)] text-[13px] font-bold hover:opacity-90 active:scale-95 transition-all shadow-sm">Add Product</button>
         </div>
       </div>
 
@@ -135,43 +135,40 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
         </div>
       )}
 
-      <div ref={tableRef} className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
-        <div className="w-full flex bg-[#385E31] px-2 py-3 rounded-t-[8px]">
+      <div ref={tableRef} className="w-full bg-transparent rounded-[10px] border border-primary flex flex-col overflow-visible shadow-sm">
+        <div className="w-full flex bg-primary px-2 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
-            <div key={col.label} className={`flex text-[#FFFCEB] text-[13px] font-bold items-center ${col.className}`}>{col.label}</div>
+            <div key={col.label} className={`flex text-[var(--color-sidebar-text,#FFF9D7)] text-[12px] font-bold items-center ${col.className}`}>{col.label}</div>
           ))}
         </div>
 
         {loading ? (
-          <div className="w-full flex items-center justify-center py-16 text-[#385E31]/60 gap-3"><Loader2 size={20} className="animate-spin" /><span className="text-sm font-semibold">Loading products…</span></div>
+          <div className="w-full flex items-center justify-center py-16 text-primary/60 gap-3"><Loader2 size={20} className="animate-spin" /><span className="text-sm font-semibold">Loading products…</span></div>
         ) : displayed.length === 0 ? (
-          <div className="w-full text-center py-10 text-[#385E31] font-semibold text-sm">{search || filterStatus !== "All" ? "No products match your filters." : "No products yet. Add your first product!"}</div>
+          <div className="w-full text-center py-10 text-primary font-semibold text-sm">{search || filterStatus !== "All" ? "No products match your filters." : "No products yet. Add your first product!"}</div>
         ) : (
           displayed.map((row, idx) => {
             const isLast = idx === displayed.length - 1;
             const isOpen = openDropdownId === row.product_id;
             const hasSizes = row.sizes && row.sizes.length > 0;
 
-            // ── Total QTY: Use the calculated max_yield from the products table.
-            // For F&B, this is the max capacity of the most efficient size (shared ingredients).
-            // For NF&B, this was already summed by the backend logic.
             const totalQty = Number(row.max_yield) || 0;
 
             return (
-              <div key={row.product_id} className={`w-full flex px-2 py-[10px] items-center ${!isLast ? "border-b border-[#385E31]/20" : ""}`}>
+              <div key={row.product_id} className={`w-full flex px-2 py-[10px] items-center ${!isLast ? "border-b border-primary/20" : ""}`}>
                 {/* Name + sizes hint */}
                 <div className={`flex flex-col justify-center ${COLUMNS[0].className}`}>
-                  <span className="text-[#3A6131] text-[13px] font-bold">{row.name}</span>
+                  <span className="text-primary text-[13px] font-bold">{row.name}</span>
                   {hasSizes && (
-                    <span className="text-[10px] text-[#3A6131]/50 font-semibold mt-0.5">{row.sizes!.map((s) => s.label).join(" · ")}</span>
+                    <span className="text-[10px] text-primary/60 font-semibold mt-0.5">{row.sizes!.map((s) => s.label).join(" · ")}</span>
                   )}
                 </div>
                 {/* SKU */}
-                <div className={`flex text-[#3A6131] text-[12px] font-bold font-mono items-center ${COLUMNS[1].className}`}>{row.sku}</div>
+                <div className={`flex text-primary text-[12px] font-bold font-mono items-center ${COLUMNS[1].className}`}>{row.sku}</div>
                 {/* Category */}
-                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[2].className}`}>{row.category_name ?? "—"}</div>
+                <div className={`flex text-primary text-[13px] font-bold items-center ${COLUMNS[2].className}`}>{row.category_name ?? "—"}</div>
                 {/* Unit Cost */}
-                <div className={`flex text-[#3A6131] text-[13px] font-bold items-center ${COLUMNS[3].className}`}>
+                <div className={`flex text-primary text-[13px] font-bold items-center ${COLUMNS[3].className}`}>
                   {(() => {
                      const sizes = row.sizes || [];
                      if (sizes.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
@@ -182,7 +179,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                 </div>
                 {/* Price */}
                 <div className={`flex flex-col items-center justify-center ${COLUMNS[4].className}`}>
-                  <span className="text-[#385E31] text-[13px] font-extrabold text-center leading-tight">
+                  <span className="text-primary text-[13px] font-extrabold text-center leading-tight">
                   {(() => {
                      const sizes = row.sizes || [];
                      if (sizes.length === 0) return `₱${Number(row.price).toFixed(2)}`;
@@ -192,7 +189,7 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                   })()}
                   </span>
                   {hasSizes && (
-                    <span className="text-[10px] text-[#3A6131]/40 font-semibold mt-0.5">{row.sizes!.length} variants</span>
+                    <span className="text-[10px] text-primary/40 font-semibold mt-0.5">{row.sizes!.length} variants</span>
                   )}
                 </div>
                 {/* Max Yield */}
@@ -201,9 +198,9 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                     <div className="flex flex-wrap justify-center gap-1 px-1">
                       {row.sizes!.map((s) => (
                         <span key={s.size_id} className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${
-                          s.max_yield <= 5 ? "bg-red-50 text-red-600 border-red-200" : 
-                          s.max_yield <= 15 ? "bg-amber-50 text-amber-600 border-amber-200" : 
-                          "bg-[#3A6131]/5 text-[#3A6131] border-[#385E31]/20"
+                          s.max_yield <= 5 ? "bg-red-500 text-white border-red-600" : 
+                          s.max_yield <= 15 ? "bg-amber-500 text-white border-amber-600" : 
+                          "bg-white/10 text-primary border-primary/20"
                         }`}>
                           {s.label.charAt(0).toUpperCase()}: {s.max_yield}
                         </span>
@@ -211,19 +208,19 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                     </div>
                   ) : (
                     <span className={`text-[13px] font-black ${
-                      row.max_yield <= 5 ? "text-[#E91F22]" : row.max_yield <= 15 ? "text-amber-500" : "text-[#3A6131]"
+                      row.max_yield <= 5 ? "text-red-500" : row.max_yield <= 15 ? "text-amber-500" : "text-primary"
                     }`}>{row.max_yield}</span>
                   )}
                 </div>
                 {/* Visible */}
                 <div className={`flex items-center ${COLUMNS[6].className}`}>
-                  <div className={`px-2.5 py-0.5 rounded-[40px] flex justify-center items-center ${row.visible ? "bg-[#385E31] text-[#FFFCEB]" : "bg-transparent border border-[#385E31]/40 text-[#385E31]"}`}>
+                  <div className={`px-2.5 py-0.5 rounded-[40px] flex justify-center items-center ${row.visible ? "bg-accent text-primary" : "bg-transparent border border-primary/40 text-primary"}`}>
                     <span className="text-[10px] font-bold leading-tight">{row.visible ? "Yes" : "No"}</span>
                   </div>
                 </div>
                 {/* Actions */}
                 <div className={`flex relative items-center justify-center ${COLUMNS[7].className}`}>
-                  <button onClick={() => setOpenDropdownId((prev) => prev === row.product_id ? null : row.product_id)} className={`border border-[#385E31] rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-[#385E31] text-[#FFFCEB]" : "text-[#385E31] hover:bg-[#385E31]/10"}`}>
+                  <button onClick={() => setOpenDropdownId((prev) => prev === row.product_id ? null : row.product_id)} className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-accent text-primary" : "text-primary hover:bg-primary/10"}`}>
                     Action <ChevronDown />
                   </button>
                   {isOpen && (
@@ -241,8 +238,8 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
 
       {/* Pagination */}
       <div className="w-full flex justify-end items-center gap-3 mt-6">
-        {visibleCount > 5 && <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-[#385E31] text-[#385E31] text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-[#385E31]/10 active:scale-95 transition-all">Show Less</button>}
-        {filtered.length > visibleCount && <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-[#F7B71D] text-[#385E31] text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">Load More</button>}
+        {visibleCount > 5 && <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-primary text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-primary/10 active:scale-95 transition-all">Show Less</button>}
+        {filtered.length > visibleCount && <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-accent text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">Load More</button>}
       </div>
 
       {/* Modals */}

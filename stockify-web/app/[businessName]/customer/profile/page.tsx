@@ -23,6 +23,7 @@ import { getStorefrontTenant } from "@/backend/hooks/getStoreFront";
 import { ProductModal } from "@/components/modals/storefront/nfnb/nfnb-product-modal";
 import { ShoppingBag } from "lucide-react";
 import { fetchFavorites } from "@/lib/customer/customer-actions";
+import { fetchStorefrontConfig } from "@/lib/admin/storefront-actions";
 
 export default function CustomerProfilePage() {
   const params = useParams();
@@ -32,6 +33,7 @@ export default function CustomerProfilePage() {
 
   const [profile, setProfile] = useState<any>(null);
   const [tenant, setTenant] = useState<any>(null);
+  const [sfConfig, setSfConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -65,6 +67,8 @@ export default function CustomerProfilePage() {
     }
     if (tenantRes) {
       setTenant(tenantRes);
+      const sf = await fetchStorefrontConfig(tenantRes.tenant_id);
+      setSfConfig(sf);
     }
     if (!countRes.error) {
       setOrderCount(countRes.count ?? 0);
@@ -120,13 +124,24 @@ export default function CustomerProfilePage() {
         showSearch={false}
         showCart={false}
         isNfnb={tenant?.business_type === "non-food-and-beverage"}
+        colors={{
+          primary: sfConfig?.color_primary ?? "#385E31",
+          secondary: sfConfig?.color_secondary ?? "#2A4725",
+          accent: sfConfig?.color_accent ?? "#F7B71D",
+          bg: sfConfig?.color_background ?? "#FFFCEB",
+          text: sfConfig?.color_text ?? "#3A6131",
+        }}
       />
 
       {/* Top Banner */}
-      <div className="h-48 bg-[#385E31] relative">
+      <div 
+        className="h-48 relative"
+        style={{ backgroundColor: sfConfig?.color_primary ?? "#385E31" }}
+      >
         <button
           onClick={() => router.back()}
-          className="absolute top-6 left-6 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full transition-colors z-10"
+          className="absolute top-6 left-6 p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors z-10"
+          style={{ color: sfConfig?.color_accent ?? "#F7B71D" }}
         >
           <ArrowLeft size={24} />
         </button>

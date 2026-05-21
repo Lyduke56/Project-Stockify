@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import { Loader2, Save, Upload, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
+import { motion, AnimatePresence, Variants } from "framer-motion";
+import { Loader2, Save, Upload, CheckCircle2, AlertCircle, Trash2, Store, CreditCard, QrCode, Info } from "lucide-react";
 import { 
   fetchTenantSettings, 
   updateTenantSettings, 
@@ -11,23 +11,30 @@ import {
 } from "@/lib/admin/settings-actions";
 import { createClient } from "@/lib/supabase/client";
 
-// Animation Variants
-const containerVariants = {
-  hidden: { opacity: 0, y: 15 },
+// ─── Animation Variants ──────────────────────────────────────────────────────
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    y: 0,
     transition: {
-      duration: 0.4,
+      duration: 0.5,
       staggerChildren: 0.1,
+      when: "beforeChildren",
     },
   },
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 },
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { type: "spring", stiffness: 300, damping: 24 }
+  },
 };
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function StoreSettingsSection() {
   const [loading, setLoading] = useState(true);
@@ -38,6 +45,7 @@ export default function StoreSettingsSection() {
   
   const qrInputRef = useRef<HTMLInputElement>(null);
 
+  // ─── Data Fetching ──────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       const supabase = createClient();
@@ -55,6 +63,7 @@ export default function StoreSettingsSection() {
     init();
   }, []);
 
+  // ─── Handlers ───────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!settings || !tenantId) return;
     setSaving(true);
@@ -83,7 +92,6 @@ export default function StoreSettingsSection() {
       setSaving(false);
     } else if (url) {
       setSettings(prev => prev ? { ...prev, gcash_qr_url: url } : null);
-      // Automatically save the URL to settings
       await updateTenantSettings(tenantId, { gcash_qr_url: url });
       setSaving(false);
       setFeedback({ type: "success", msg: "QR code uploaded!" });
@@ -93,9 +101,8 @@ export default function StoreSettingsSection() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#FFFCEB] text-[#385E31] gap-4">
-        <Loader2 className="animate-spin" size={40} />
-        <p className="font-bold uppercase tracking-widest text-sm">Loading Settings...</p>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="animate-spin text-primary" size={32} />
       </div>
     );
   }
@@ -106,176 +113,216 @@ export default function StoreSettingsSection() {
       animate="visible"
       variants={containerVariants}
       className="flex flex-col w-full min-h-screen bg-[#FFFCEB] font-['Inter'] pt-5 pb-12"
+      style={{
+        '--color-primary': '#385E31',
+        '--color-secondary': '#2A4725',
+        '--color-accent': '#E5AC24',
+        '--color-background': '#FFFCEB',
+      } as React.CSSProperties}
     >
       {/* PAGE HEADER */}
-      <motion.header variants={itemVariants} className="w-full flex flex-col items-center mb-12 gap-2">
-        <h1 className="text-[#385E31] text-[30px] font-extrabold uppercase tracking-tight">
+      <motion.header variants={itemVariants} className="w-full flex flex-col items-center mb-8 gap-2 px-4">
+        <h1 className="text-primary text-[30px] font-extrabold uppercase tracking-tight">
           Store Settings
         </h1>
-        <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full opacity-60" />
+        <div className="w-full max-w-[900px] h-1.5 bg-accent rounded-full opacity-60" />
       </motion.header>
 
-      <motion.div variants={itemVariants} className="flex flex-col gap-8 w-full max-w-5xl mx-auto px-4">
+      {/* MAIN CONTENT WRAPPER */}
+      <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 lg:gap-8">
         
-        {/* BUSINESS INFORMATION SECTION */}
-        <div className="flex flex-col gap-6 p-8 w-full bg-white rounded-[24px] border border-[#385E31]/10 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-[#F7B71D]" />
-          <div className="flex flex-col gap-1">
-            <h3 className="text-[#385E31] text-[18px] font-black uppercase">
-              Business Information
-            </h3>
-            <p className="text-[#385E31]/60 text-sm font-medium">
-              Update your core business details visible to customers in the storefront top bar.
-            </p>
-          </div>
-          
-          <div className="flex flex-col gap-5">
-            {[
-              { label: "Business Name", key: "business_name", placeholder: "e.g., Green Earth Grocery" },
-              { label: "Contact Number", key: "contact_number", placeholder: "e.g., +63 900 000 0000" },
-              { label: "Operating Hours", key: "operating_hours", placeholder: "e.g., Mon-Fri, 9AM - 6PM" },
-            ].map((item) => (
-              <div key={item.label} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                <label className="text-[#385E31] font-bold text-sm sm:w-48 shrink-0">
-                  {item.label}
-                </label>
-                <input
-                  type="text"
-                  value={settings?.[item.key as keyof TenantSettings] as string || ""}
-                  onChange={(e) => setSettings(prev => prev ? { ...prev, [item.key]: e.target.value } : null)}
-                  placeholder={item.placeholder}
-                  className="flex-1 border border-[#385E31]/20 rounded-xl px-5 py-3 bg-[#385E31]/5 text-[#385E31] placeholder-[#385E31]/30 outline-none font-medium text-sm transition-all focus:ring-2 focus:ring-[#F7B71D]/50 focus:bg-white"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* INFO BANNER */}
+        <motion.div variants={itemVariants} className="flex items-start gap-3 bg-primary/5 border border-primary/20 rounded-2xl p-4">
+          <Info className="text-primary shrink-0 mt-0.5" size={18} />
+          <p className="text-primary/80 text-sm font-medium leading-relaxed">
+            Update your core business details, payment preferences, and delivery options here. These settings directly affect what your customers see and how they check out on your storefront.
+          </p>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* PAYMENT METHODS SECTION */}
-          <div className="flex flex-col gap-6 p-8 w-full bg-white rounded-[24px] border border-[#385E31]/10 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[#385E31]" />
-            <div className="flex flex-col gap-1 mb-2">
-              <h3 className="text-[#385E31] text-[18px] font-black uppercase">
-                Payment & Delivery
-              </h3>
-              <p className="text-[#385E31]/60 text-sm font-medium">
-                Select which checkout and delivery options are available.
-              </p>
+        {/* TOP ROW: Business Profile & Payment Delivery (Perfectly balanced side-by-side) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+          
+          {/* COLUMN 1: BUSINESS INFORMATION */}
+          <motion.div variants={itemVariants} className="flex flex-col gap-6 p-7 w-full bg-white rounded-[20px] border border-primary/15 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-primary/20" />
+            
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 bg-primary/10 rounded-xl">
+                <Store className="text-primary" size={20} />
+              </div>
+              <h3 className="text-primary text-[17px] font-black uppercase tracking-wide">Business Profile</h3>
+            </div>
+            
+            <div className="flex flex-col gap-5">
+              {[
+                { label: "Business Name", key: "business_name", placeholder: "e.g., Green Earth Grocery" },
+                { label: "Contact Number", key: "contact_number", placeholder: "e.g., +63 900 000 0000" },
+                { label: "Operating Hours", key: "operating_hours", placeholder: "e.g., Mon-Fri, 9AM - 6PM" },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col gap-1.5 group">
+                  <label className="text-primary font-bold text-[13px] ml-1 opacity-80 group-focus-within:opacity-100 transition-opacity">
+                    {item.label}
+                  </label>
+                  <input
+                    type="text"
+                    value={settings?.[item.key as keyof TenantSettings] as string || ""}
+                    onChange={(e) => setSettings(prev => prev ? { ...prev, [item.key]: e.target.value } : null)}
+                    placeholder={item.placeholder}
+                    className="w-full border border-primary/20 hover:border-primary/40 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-3 bg-[#FFFCEB]/50 focus:bg-white text-primary placeholder-primary/30 outline-none font-medium text-sm transition-all"
+                  />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* COLUMN 2: PAYMENT METHODS */}
+          <motion.div variants={itemVariants} className="flex flex-col gap-5 p-7 w-full bg-white rounded-[20px] border border-primary/15 shadow-sm relative overflow-hidden h-full">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-accent/40" />
+            
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2.5 bg-accent/10 rounded-xl">
+                <CreditCard className="text-accent drop-shadow-sm" size={20} />
+              </div>
+              <h3 className="text-primary text-[17px] font-black uppercase tracking-wide">Payment & Delivery</h3>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {[
                 { label: "Enable Cash-on-Delivery (COD)", key: "cod_enabled" },
                 { label: "Enable QR Code Payment", key: "qr_enabled" },
                 { label: "Enable Nationwide Delivery", key: "nationwide_delivery" },
-              ].map((method) => (
-                <div 
-                  key={method.key}
-                  className="flex items-center justify-between p-4 rounded-2xl border border-[#385E31]/10 hover:bg-[#385E31]/5 transition-colors cursor-pointer group"
-                  onClick={() => setSettings(prev => prev ? { ...prev, [method.key]: !prev[method.key as keyof TenantSettings] } : null)}
-                >
-                  <span className="text-[#385E31] font-bold text-sm">{method.label}</span>
-                  <div className={`w-12 h-6 rounded-full relative transition-all duration-300 ${settings?.[method.key as keyof TenantSettings] ? 'bg-[#385E31]' : 'bg-[#385E31]/20'}`}>
-                    <motion.div 
-                      layout
-                      className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
-                      initial={false}
-                      animate={{ 
-                        x: settings?.[method.key as keyof TenantSettings] ? 28 : 4 
-                      }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* GCASH QR CODE SECTION */}
-          <div className="flex flex-col gap-6 p-8 w-full bg-white rounded-[24px] border border-[#385E31]/10 shadow-sm relative overflow-hidden">
-             <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500" />
-             <div className="flex flex-col gap-1 mb-2">
-              <h3 className="text-[#385E31] text-[18px] font-black uppercase">
-                GCash QR Code
-              </h3>
-              <p className="text-[#385E31]/60 text-sm font-medium">
-                Upload your GCash QR code for customer payments.
-              </p>
-            </div>
-
-            <div className="flex flex-col items-center justify-center gap-6 h-full min-h-[200px]">
-              {settings?.gcash_qr_url ? (
-                <div className="relative group w-48 h-48">
-                  <img 
-                    src={settings.gcash_qr_url} 
-                    alt="GCash QR Code" 
-                    className="w-full h-full object-contain rounded-2xl border-2 border-[#385E31]/10 p-2 bg-white" 
-                  />
-                  <button 
-                    onClick={() => setSettings(prev => prev ? { ...prev, gcash_qr_url: null } : null)}
-                    className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              ].map((method) => {
+                const isActive = settings?.[method.key as keyof TenantSettings];
+                return (
+                  <div 
+                    key={method.key}
+                    className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer group ${
+                      isActive ? 'bg-primary/5 border-primary/30' : 'bg-transparent border-primary/10 hover:border-primary/30'
+                    }`}
+                    onClick={() => setSettings(prev => prev ? { ...prev, [method.key]: !isActive } : null)}
                   >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ) : (
-                <div 
-                  onClick={() => qrInputRef.current?.click()}
-                  className="w-48 h-48 bg-[#385E31]/5 border-2 border-dashed border-[#385E31]/20 rounded-2xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#385E31]/10 transition-colors"
-                >
-                  <Upload size={32} className="text-[#385E31]/40" />
-                  <p className="text-[#385E31]/40 text-xs font-bold uppercase tracking-wider">Upload QR Code</p>
-                </div>
-              )}
-              
-              <input 
-                type="file" 
-                ref={qrInputRef} 
-                onChange={handleQRUpload} 
-                className="hidden" 
-                accept="image/*" 
-              />
-
-              {settings?.gcash_qr_url && (
-                <button
-                  onClick={() => qrInputRef.current?.click()}
-                  className="px-6 py-2.5 rounded-full border border-[#385E31]/20 text-[#385E31] font-bold text-xs hover:bg-[#385E31]/5 transition-colors"
-                >
-                  Replace Image
-                </button>
-              )}
+                    <span className="text-primary font-bold text-sm select-none">{method.label}</span>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${isActive ? 'bg-primary' : 'bg-primary/20'}`}>
+                      <motion.div 
+                        layout
+                        className={`absolute top-1 w-4 h-4 rounded-full shadow-sm transition-colors ${isActive ? 'bg-white' : 'bg-white'}`}
+                        initial={false}
+                        animate={{ x: isActive ? 28 : 4 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </motion.div>
         </div>
+
+        {/* BOTTOM ROW: GCASH QR CODE (Full Width, Horizontal Layout) */}
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 p-7 w-full bg-white rounded-[20px] border border-primary/15 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500/40 hidden md:block" />
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-500/40 block md:hidden" />
+          
+          {/* Left Text Side */}
+          <div className="flex flex-col gap-3 flex-1 md:pl-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-50 rounded-xl shrink-0">
+                <QrCode className="text-blue-500" size={20} />
+              </div>
+              <h3 className="text-primary text-[17px] font-black uppercase tracking-wide">GCash QR Code</h3>
+            </div>
+            <p className="text-primary/70 text-[14px] font-medium leading-relaxed max-w-lg">
+              Upload your official GCash QR code here. When customers choose to pay via QR, they will scan this image at checkout to send payments directly to your account.
+            </p>
+          </div>
+
+          {/* Right Upload Side */}
+          <div className="flex flex-col items-center justify-center gap-3 bg-[#FFFCEB]/30 rounded-xl border border-primary/5 p-4 w-full md:w-auto shrink-0">
+            {settings?.gcash_qr_url ? (
+              <div className="relative group w-40 h-40">
+                <img 
+                  src={settings.gcash_qr_url} 
+                  alt="GCash QR Code" 
+                  className="w-full h-full object-contain rounded-xl border-2 border-primary/10 p-2 bg-white shadow-sm transition-transform group-hover:scale-[1.02]" 
+                />
+                <button 
+                  onClick={() => setSettings(prev => prev ? { ...prev, gcash_qr_url: null } : null)}
+                  className="absolute -top-3 -right-3 w-8 h-8 bg-white border-2 border-red-100 text-red-500 rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 hover:border-red-200 hover:scale-110"
+                  title="Remove QR Code"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ) : (
+              <div 
+                onClick={() => qrInputRef.current?.click()}
+                className="w-40 h-40 bg-white border-2 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all group"
+              >
+                <div className="p-3 bg-primary/5 rounded-full group-hover:scale-110 transition-transform">
+                  <Upload size={24} className="text-primary/60" />
+                </div>
+                <p className="text-primary/60 text-[11px] font-bold uppercase tracking-widest text-center px-2">Click to Upload</p>
+              </div>
+            )}
+            
+            <input 
+              type="file" 
+              ref={qrInputRef} 
+              onChange={handleQRUpload} 
+              className="hidden" 
+              accept="image/*" 
+            />
+
+            {settings?.gcash_qr_url && (
+              <button
+                onClick={() => qrInputRef.current?.click()}
+                className="mt-1 px-5 py-2 rounded-full border-2 border-primary/10 text-primary font-bold text-[12px] hover:bg-primary hover:text-[#FFFCEB] hover:border-primary transition-all shadow-sm"
+              >
+                Replace Image
+              </button>
+            )}
+          </div>
+        </motion.div>
 
         {/* FEEDBACK & ACTIONS */}
-        <div className="flex flex-col gap-4 mt-4">
-          {feedback && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm ${
-                feedback.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
-              }`}
-            >
-              {feedback.type === "success" ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-              {feedback.msg}
-            </motion.div>
-          )}
-
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="group relative flex items-center justify-center gap-3 bg-[#385E31] text-[#F7B71D] px-12 py-4 rounded-full font-black text-[15px] uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-70 disabled:scale-100"
-            >
-              {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-              {saving ? "Saving Changes..." : "Save Store Settings"}
-            </button>
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 pt-6 border-t border-primary/10">
+          <div className="flex-1 min-h-[44px] flex items-center">
+            <AnimatePresence mode="wait">
+              {feedback && (
+                <motion.div 
+                  key="feedback"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-full font-bold text-[13px] w-fit shadow-sm border ${
+                    feedback.type === "success" 
+                      ? "bg-green-50 text-green-700 border-green-200" 
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  {feedback.type === "success" ? <CheckCircle2 size={16} className="text-green-600" /> : <AlertCircle size={16} className="text-red-600" />}
+                  {feedback.msg}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
-      </motion.div>
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center gap-2.5 px-8 py-3.5 rounded-full font-bold text-[14px] transition-all hover:brightness-110 active:scale-95 shadow-md disabled:opacity-60 bg-primary shrink-0 w-full sm:w-auto justify-center group"
+            style={{ color: "var(--color-sidebar-text, #FFF9D7)" }}
+          >
+            {saving ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} className="group-hover:scale-110 transition-transform" />
+            )}
+            {saving ? "Saving Changes..." : "Save Settings"}
+          </button>
+        </motion.div>
+        
+      </div>
     </motion.div>
   );
-}
+}

@@ -56,7 +56,8 @@ export async function GET(req: NextRequest) {
     .from("users")
     .select("*", { count: "exact", head: true })
     .eq("tenant_id", resolvedTenantId)
-    .eq("is_active", true);
+    .eq("is_active", true)
+    .in("role", ["Employee", "Manager", "Administrator"]);
 
   return NextResponse.json({
     user: { user_id: userId, tenant_id: resolvedTenantId },
