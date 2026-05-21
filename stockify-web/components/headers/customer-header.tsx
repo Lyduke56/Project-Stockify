@@ -339,7 +339,7 @@ export function CustomerHeader({
                             className={`p-4 border-b border-[#385E31]/5 hover:bg-[#F7B71D]/5 transition-colors relative ${!n.is_read ? 'bg-[#F7B71D]/5' : ''}`}
                           >
                             {!n.is_read && <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#F7B71D] rounded-full" />}
-                            <div onClick={() => { markAsRead(n.id); setShowNotifications(false); router.push(`/${businessName}/customer/orders`); }} className="cursor-pointer">
+                            <div onClick={() => { markAsRead(n.id); setShowNotifications(false); router.push(`/${businessName}/customer/orders${n.order_id ? `?view_order=${n.order_id}` : ''}`); }} className="cursor-pointer">
                               <p className="text-[14px] font-bold text-[#385E31] mb-1">{n.title}</p>
                               <p className="text-[12px] text-[#385E31]/70 line-clamp-2">{n.message}</p>
                             </div>
