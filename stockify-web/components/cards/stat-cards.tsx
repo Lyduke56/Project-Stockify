@@ -64,7 +64,7 @@ export default function StatCard({
 
         {/* Trend Text */}
         {trendText && (
-          <div className="mt-1 text-[#3A6131] text-[13px] font-medium font-['Inter']">
+          <div className="mt-2 text-[#3A6131] text-[13px] font-medium font-['Inter']">
             {trendText}
           </div>
         )}

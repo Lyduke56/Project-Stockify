@@ -95,21 +95,14 @@ export default function AdminDashboard() {
       '--color-text': config?.color_text ?? "#3A6131",
       '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
     } as React.CSSProperties}>
-      
-      {/* ADDED: The actual handler is now passed to SidebarAdmin */}
-      <SidebarAdmin 
-        activeSection={activeSection} 
-        setActiveSection={handleSetSection} 
-        openSettings={() => handleSetSection("admin-settings")} 
-      />
+      <SidebarAdmin activeSection={activeSection} setActiveSection={handleSetSection} openSettings={() => console.log("Open settings clicked")} />
       
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-14 pt-5 pb-12">
-        
-        {/* REMOVED: openSettings prop is completely gone from here */}
         <NavbarAdmin 
           setActiveSection={handleSetSection}
           openProfile={() => setIsProfileOpen(true)}
           openNotifs={() => setIsNotifsOpen(true)}
+          openSettings={() => handleSetSection("admin-settings")}
         />
         
         {/* Underlay Dashboard Core Content Main View Grid Block */}

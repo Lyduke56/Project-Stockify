@@ -8,12 +8,14 @@ interface NavbarAdminProps {
   setActiveSection: (section: SectionKey) => void;
   openProfile: () => void;
   openNotifs: () => void;
+  openSettings: () => void;
 }
 
 export default function NavbarAdmin({ 
   setActiveSection, 
   openProfile, 
-  openNotifs
+  openNotifs,
+  openSettings
 }: NavbarAdminProps) {
   const supabase = createClient();
   const [notifCount, setNotifCount] = useState<number>(0);
@@ -92,35 +94,42 @@ export default function NavbarAdmin({
 
       {/* RIGHT SIDE: Navigation Icons */}
       <div className="flex items-center gap-4 md:gap-8">
-        <button
-          onClick={() => setActiveSection("dashboard")} 
-          className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
-          title="Home"
-        >
-          <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
-        </button>
+  <button
+    onClick={() => setActiveSection("dashboard")} 
+    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+    title="Home"
+  >
+    <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
+  </button>
 
         {/* Notifications Icon */}
         <div className="relative flex items-center justify-center">
-          <button
-            onClick={() => {
-              openNotifs();
-              setNotifCount(0);
-            }} 
-            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
-            title="Notifications"
-          >
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
-          </button>
-          
-          {notifCount > 0 && (
-            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
-              {notifCount > 9 ? "9+" : notifCount}
-            </div>
-          )}
-        </div>
+    <button
+      onClick={() => {
+        openNotifs();
+        setNotifCount(0);
+      }} 
+      className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+      title="Notifications"
+    >
+      <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
+    </button>
+    
+    {notifCount > 0 && (
+      <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+        {notifCount > 9 ? "9+" : notifCount}
+      </div>
+    )}
+  </div>
 
-        {/* Profile Settings Icon */}
+  <button
+    onClick={openSettings} 
+    className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+    title="System Settings"
+  >
+    <img src="/icon-settings.svg" alt="Settings" className="w-full h-full object-contain" />
+  </button>
+
         <button
           onClick={openProfile} 
           className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"

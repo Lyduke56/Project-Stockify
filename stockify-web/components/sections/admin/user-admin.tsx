@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion"; // Added for animations
 
 import NewEmployeeModal from "@/components/modals/admin/new-employee-modal";
-import DeleteEmployeeModal from "@/components/modals/admin/remove-employee-modal";
 import StaffAdminTable from "@/components/tables/user-admin-staff";
 import CustomerAdminTable from "@/components/tables/user-admin-customers";
 
@@ -94,6 +93,7 @@ export default function UserAdminSection() {
               Staff Accounts
             </h2>
           </div>
+
         </div>
 
         {/* NEW: Flex container to hold Search and Button on the same line */}
@@ -162,21 +162,46 @@ export default function UserAdminSection() {
         </div>
       </motion.div>
 
-      {/* NEW EMPLOYEE MODAL */}
+      {/* MODAL */}
       <NewEmployeeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleEmployeeCreated}
       />
 
-      {/* NEW EXTRACTED DELETE MODAL */}
-      <DeleteEmployeeModal
-        isOpen={isDeleteModalOpen}
-        user={userToDelete}
-        isDeleting={isDeleting}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
-      />
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setIsDeleteModalOpen(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-background rounded-2xl w-full max-w-md mx-4 shadow-2xl pointer-events-auto p-8 flex flex-col gap-6 border border-primary/20">
+              <h2 className="text-primary text-2xl font-bold uppercase tracking-widest text-center">
+                Confirm Delete
+              </h2>
+              <div className="h-1 w-full bg-accent rounded-full opacity-60" />
+              <p className="text-primary text-center font-medium">
+                Are you sure you want to delete account of <b>{userToDelete?.display_name}</b>? This action cannot be undone.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="px-8 py-2 rounded-full bg-red-600 text-white font-bold hover:bg-red-700 active:scale-95 transition disabled:opacity-60"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+                <button
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isDeleting}
+                  className="px-8 py-2 rounded-full bg-accent text-primary font-bold hover:brightness-80 active:scale-95 transition disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </motion.div>
   );
 }
