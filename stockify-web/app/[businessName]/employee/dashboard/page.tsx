@@ -29,15 +29,12 @@ export type SectionKey =
   | "transactions"
   | "analytics";
 
-const SECTIONS: Record<SectionKey, React.ReactNode> = {
-  "dashboard": <DashboardSection />,
-  "audit-logs": <AuditLogsSection />,
-  "products": <ProductsSection />,
-  "ingredients": <IngredientsSection />,
-  "orders": <OrdersSection />,
-  "transactions": <TransactionsSection />,
-  "analytics": <div />,
+export type SidebarData = {
+  role:         string;
+  businessType: string;
+  businessName: string;
 };
+
 
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
@@ -127,6 +124,10 @@ export default function EmployeeDashboard() {
     setActiveSection(section);
     window.history.replaceState(null, "", `?section=${section}`);
   };
+
+  const handleOpenProfile  = () => setIsProfileOpen(true);
+  const handleOpenNotifs   = () => setIsNotifsOpen(true);
+  const handleOpenSettings = () => setIsSettingsOpen(true);
 
   const SECTIONS: Record<SectionKey, React.ReactNode> = {
     "dashboard":    <DashboardSection initialData={dashboardData} tenantId={tenantId!} />,
