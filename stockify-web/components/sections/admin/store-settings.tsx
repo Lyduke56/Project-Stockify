@@ -10,6 +10,7 @@ import {
   type TenantSettings 
 } from "@/lib/admin/settings-actions";
 import { createClient } from "@/lib/supabase/client";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
 
@@ -101,9 +102,7 @@ export default function StoreSettingsSection() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
+      <LoadingScreen fullScreen={false}/>
     );
   }
 

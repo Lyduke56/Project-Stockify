@@ -1,9 +1,8 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Loader2 } from "lucide-react";
+import LoadingScreen from "../loading-screen/loading";
 
 export default function TenantLayout({
   children,
@@ -23,13 +22,11 @@ export default function TenantLayout({
         return;
       }
       
-      // Avoid infinite loop if already on the suspended page
       if (pathname === `/${businessName}/suspended`) {
         setLoading(false);
         return;
       }
 
-      // Skip check for stockify-client-side
       if (pathname?.startsWith(`/${businessName}/stockify-client-side`)) {
         setLoading(false);
         return;
@@ -37,7 +34,6 @@ export default function TenantLayout({
 
       const supabase = createClient();
       
-      // Fetch tenant by slug (approximate by replacing hyphens with spaces)
       const { data: tenant } = await supabase
         .from("tenants")
         .select("subscription_status")
@@ -50,18 +46,10 @@ export default function TenantLayout({
         setLoading(false);
       }
     };
-
     checkSuspension();
   }, [businessName, pathname, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FFFCEB] text-[#385E31]">
-        <Loader2 size={40} className="animate-spin mb-4 opacity-70" />
-        <p className="font-['Fredoka'] font-bold text-lg opacity-70">Verifying store status...</p>
-      </div>
-    );
-  }
+  if (loading) return <LoadingScreen />;
 
   return <>{children}</>;
 }

@@ -1,16 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { motion } from "framer-motion"; // Added for animations
+import { motion } from "framer-motion";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 import NewEmployeeModal from "@/components/modals/admin/new-employee-modal";
 import DeleteEmployeeModal from "@/components/modals/admin/remove-employee-modal";
 import StaffAdminTable from "@/components/tables/user-admin-staff";
 import CustomerAdminTable from "@/components/tables/user-admin-customers";
 
+import type { StaffRecord } from "@/backend/hooks/useStaffRecords";
+import type { CustomerRecord } from "@/backend/hooks/useCustomerRecords";
+
 const supabase = createClient();
 
-// Custom Search Icon to match reference
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="11" cy="11" r="8"></circle>
@@ -18,21 +21,94 @@ const SearchIcon = () => (
   </svg>
 );
 
+function mapRole(dbRole: string): StaffRecord["role"] {
+  switch (dbRole) {
+    case "Superadmin":
+    case "Administrator": return "Administrator";
+    case "Manager": return "Manager";
+    default: return "Employee";
+  }
+}
+
 export default function UserAdminSection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [tableKey, setTableKey] = useState(0);
-  
-  // Delete state
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [staffRecords, setStaffRecords] = useState<StaffRecord[]>([]);
+  const [customerRecords, setCustomerRecords] = useState<CustomerRecord[]>([]);
+
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }: any) => {
-      setUserId(data.user?.id ?? null);
-    });
-  }, []);
+    const loadAll = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        setUserId(user.id);
+
+        const { data: currentUser } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (!currentUser?.tenant_id) return;
+
+        const tenantId = currentUser.tenant_id;
+
+        // fetch staff and customers in parallel
+        const [staffRes, customerRes] = await Promise.all([
+          supabase
+            .from("users")
+            .select("user_id, display_name, first_name, last_name, email, role, is_active")
+            .eq("tenant_id", tenantId)
+            .in("role", ["Administrator", "Manager", "Employee", "Superadmin"])
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("users")
+            .select("user_id, display_name, first_name, last_name, email, contact_number, is_active")
+            .eq("tenant_id", tenantId)
+            .eq("role", "Customer")
+            .order("created_at", { ascending: false }),
+        ]);
+
+        setStaffRecords(
+          (staffRes.data ?? []).map((u: any) => ({
+            user_id: u.user_id,
+            display_name: (u.display_name ?? [u.first_name, u.last_name].filter(Boolean).join(" ")) || u.email,
+            first_name: u.first_name,
+            last_name: u.last_name,
+            email: u.email,
+            role: mapRole(u.role),
+            status: u.is_active ? "Active" : "Inactive",
+          }))
+        );
+
+        setCustomerRecords(
+          (customerRes.data ?? []).map((c: any) => ({
+            user_id: c.user_id,
+            name: c.display_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "Unknown",
+            email: c.email,
+            contact: c.contact_number || "N/A",
+            status: c.is_active ? "Active" : "Suspended",
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to load user admin data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAll();
+  }, [tableKey]);
+
+  if (isLoading) return <LoadingScreen fullScreen = {false} />;
 
   function handleEmployeeCreated() {
     setTableKey((k) => k + 1);
@@ -50,7 +126,6 @@ export default function UserAdminSection() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete employee.");
-      
       setIsDeleteModalOpen(false);
       setUserToDelete(null);
       setTableKey((k) => k + 1);
@@ -96,9 +171,7 @@ export default function UserAdminSection() {
           </div>
         </div>
 
-        {/* NEW: Flex container to hold Search and Button on the same line */}
         <div className="flex items-center justify-between w-full gap-4">
-          {/* Styled Search Bar */}
           <div className="relative w-full max-w-[500px]">
             <input
               type="text"
@@ -109,8 +182,6 @@ export default function UserAdminSection() {
               <SearchIcon />
             </div>
           </div>
-
-          {/* Add Button - now positioned at the farthest right */}
           <button
             onClick={() => setIsModalOpen(true)}
             className="whitespace-nowrap px-8 py-2.5 rounded-[40px] font-bold text-[14px] transition-all hover:brightness-105 active:scale-95 shadow-sm bg-accent text-primary"
@@ -119,11 +190,11 @@ export default function UserAdminSection() {
           </button>
         </div>
 
-        {/* Table Container */}
         <div className="w-full bg-background rounded-[10px] border border-primary overflow-hidden shadow-sm">
-          <StaffAdminTable 
-            key={tableKey} 
-            userId={userId ?? ""} 
+          <StaffAdminTable
+            key={tableKey}
+            records={staffRecords}
+            userId={userId ?? ""}
             onDelete={(record) => {
               setUserToDelete(record);
               setIsDeleteModalOpen(true);
@@ -158,18 +229,16 @@ export default function UserAdminSection() {
         </div>
 
         <div className="w-full bg-background rounded-[10px] border border-primary overflow-hidden shadow-sm">
-          <CustomerAdminTable userId={userId ?? ""} />
+          <CustomerAdminTable records={customerRecords} userId={userId ?? ""} />
         </div>
       </motion.div>
 
-      {/* NEW EMPLOYEE MODAL */}
       <NewEmployeeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleEmployeeCreated}
       />
 
-      {/* NEW EXTRACTED DELETE MODAL */}
       <DeleteEmployeeModal
         isOpen={isDeleteModalOpen}
         user={userToDelete}
