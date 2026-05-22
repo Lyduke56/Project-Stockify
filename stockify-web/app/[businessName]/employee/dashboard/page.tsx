@@ -10,14 +10,13 @@ import DashboardSection from "@/components/sections/employee/dashboard-home-empl
 import AuditLogsSection from "@/components/sections/employee/audit-logs";
 import ProductsSection from "@/components/sections/employee/products";
 import OrdersSection from "@/components/sections/employee/orders";
-import TransactionsSection from "@/components/sections/employee/transactions";  
+import TransactionsSection from "@/components/sections/employee/transactions";
 import IngredientsSection from "@/components/sections/employee/ingredients";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 import NotificationModal from "@/components/modals/notification-modal";
 import EmployeeProfileModal from "@/components/modals/new-employee-modal";
-// MAKE SURE TO IMPORT YOUR GENERIC SUPERADMIN SETTINGS/PASSWORD COMPONENT SHEET HERE
-import EmployeeSettingsModal from "@/components/modals/navbar-modals/settings"; 
+import EmployeeSettingsModal from "@/components/modals/navbar-modals/settings";
 
 export type SectionKey =
   | "dashboard"
@@ -29,13 +28,13 @@ export type SectionKey =
   | "analytics";
 
 const SECTIONS: Record<SectionKey, React.ReactNode> = {
-  "dashboard":     <DashboardSection />,
-  "audit-logs":    <AuditLogsSection />,
-  "products":      <ProductsSection />,
-  "ingredients":   <IngredientsSection />,
-  "orders":        <OrdersSection />,
-  "transactions":  <TransactionsSection />,
-  "analytics":     <div />, 
+  "dashboard": <DashboardSection />,
+  "audit-logs": <AuditLogsSection />,
+  "products": <ProductsSection />,
+  "ingredients": <IngredientsSection />,
+  "orders": <OrdersSection />,
+  "transactions": <TransactionsSection />,
+  "analytics": <div />,
 };
 
 export default function EmployeeDashboard() {
@@ -123,10 +122,10 @@ export default function EmployeeDashboard() {
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee
-         setActiveSection={handleSetSection}
-         openProfile={handleOpenProfile} 
-         openNotifs={handleOpenNotifs}
-         openSettings={handleOpenSettings}
+          setActiveSection={handleSetSection}
+          openProfile={handleOpenProfile}
+          openNotifs={handleOpenNotifs}
+          openSettings={handleOpenSettings}
         />
 
         <main className="px-5 pt-10">
@@ -135,23 +134,23 @@ export default function EmployeeDashboard() {
       </div>
 
       {/*  WORKING PROFILE MODAL LAYER */}
-      <EmployeeProfileModal 
-        isOpen={isProfileOpen} 
-        onClose={() => setIsProfileOpen(false)} 
+      <EmployeeProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
 
       {/*  WORKING NOTIFICATION MODAL LAYER */}
-      <NotificationModal 
-        isOpen={isNotifsOpen} 
-        onClose={() => setIsNotifsOpen(false)} 
+      <NotificationModal
+        isOpen={isNotifsOpen}
+        onClose={() => setIsNotifsOpen(false)}
         role="employee"
         tenantId={tenantId}
       />
 
       {/*  WIRED UP UNIFIED SETTINGS MODAL OVERLAY */}
-      <EmployeeSettingsModal 
-        isOpen={isSettingsOpen} 
-        onClose={() => setIsSettingsOpen(false)} 
+      <EmployeeSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
       />
     </div>
   );
