@@ -50,12 +50,12 @@ const getPillStyles = (status: string) => {
 // ── Column headers ────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  "Business Name",
-  "Owner",
-  "Business Type",
-  "Due Date",
-  "Subscription Status",
-  "Actions",
+  "BUSINESS NAME",
+  "OWNER",
+  "BUSINESS TYPE",
+  "DUE DATE",
+  "SUBSCRIPTION STATUS",
+  "ACTIONS",
 ];
 
 // ── Skeleton Loader ───────────────────────────────────────────────────────────

@@ -13,10 +13,12 @@ import OrdersSection from "@/components/sections/employee/orders";
 import TransactionsSection from "@/components/sections/employee/transactions";
 import IngredientsSection from "@/components/sections/employee/ingredients";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import { fetchDashboardData, type DashboardData } from "@/lib/employee/dashboard-stats";
 
 import NotificationModal from "@/components/modals/notification-modal";
 import EmployeeProfileModal from "@/components/modals/new-employee-modal";
 import EmployeeSettingsModal from "@/components/modals/navbar-modals/settings";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 export type SectionKey =
   | "dashboard"
@@ -39,75 +41,102 @@ const SECTIONS: Record<SectionKey, React.ReactNode> = {
 
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
-  const supabase = createClient();
-  const [tenantId, setTenantId] = useState<string | null>(null);
+
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [sidebarData, setSidebarData] = useState<SidebarData | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    const loadConfig = async () => {
+    const loadAll = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Single query to get everything we need from users + tenants
       const { data: userData } = await supabase
         .from("users")
-        .select("tenant_id")
+        .select(`
+          role,
+          tenant_id,
+          tenants (
+            business_name,
+            business_type
+          )
+        `)
         .eq("user_id", user.id)
         .single();
 
-      if (userData?.tenant_id) {
-        const cfg = await fetchStorefrontConfig(userData.tenant_id);
-        setConfig(cfg);
-      }
+      if (!userData?.tenant_id) return;
+
+      const tenant = userData.tenants as any;
+      const tid = userData.tenant_id;
+
+      setTenantId(tid);
+      setSidebarData({
+        role: userData.role ?? "",
+        businessType: tenant?.business_type ?? "",
+        businessName: tenant?.business_name ?? "",
+      });
+
+      // Fetch everything else in parallel
+      const [cfg, dash] = await Promise.all([
+        fetchStorefrontConfig(tid),
+        fetchDashboardData(tid),
+      ]);
+
+      setConfig(cfg);
+      setDashboardData(dash);
     };
-    loadConfig();
+
+    loadAll().finally(() => setIsLoading(false));
   }, []);
 
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const section = params.get("section") as SectionKey;
-      if (section && SECTIONS[section]) {
-        setActiveSection(section);
-      } else {
-        setActiveSection("dashboard");
-      }
+      setActiveSection(section ?? "dashboard");
     };
-
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        window.location.reload();
-      }
+      if (event.persisted) window.location.reload();
     };
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isNotifsOpen, setIsNotifsOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
   useEffect(() => {
     const querySection = searchParams.get("section") as SectionKey;
-    if (querySection && Object.keys(SECTIONS).includes(querySection)) {
-      setActiveSection(querySection);
-    }
+    if (querySection) setActiveSection(querySection);
   }, [searchParams]);
+
+  // Everything — sidebar, navbar, dashboard — waits here
+  if (isLoading) return <LoadingScreen />;
 
   const handleSetSection = (section: SectionKey) => {
     setActiveSection(section);
     window.history.replaceState(null, "", `?section=${section}`);
   };
 
-  const handleOpenProfile = () => setIsProfileOpen(true);
-  const handleOpenNotifs = () => setIsNotifsOpen(true);
-  const handleOpenSettings = () => setIsSettingsOpen(true);
+  const SECTIONS: Record<SectionKey, React.ReactNode> = {
+    "dashboard":    <DashboardSection initialData={dashboardData} tenantId={tenantId!} />,
+    "audit-logs":   <AuditLogsSection />,
+    "products":     <ProductsSection />,
+    "ingredients":  <IngredientsSection />,
+    "orders":       <OrdersSection />,
+    "transactions": <TransactionsSection />,
+    "analytics":    <div />,
+  };
 
   return (
     <div className="flex min-h-screen" style={{
@@ -118,7 +147,13 @@ export default function EmployeeDashboard() {
       '--color-text': config?.color_text ?? "#3A6131",
       '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
     } as React.CSSProperties}>
-      <SidebarEmployee activeSection={activeSection} setActiveSection={handleSetSection} onOpenSettings={() => console.log("Open settings clicked")} />
+
+      <SidebarEmployee
+        activeSection={activeSection}
+        setActiveSection={handleSetSection}
+        onOpenSettings={() => console.log("Open settings clicked")}
+        sidebarData={sidebarData!}
+      />
 
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee
@@ -127,7 +162,6 @@ export default function EmployeeDashboard() {
           openNotifs={handleOpenNotifs}
           openSettings={handleOpenSettings}
         />
-
         <main className="px-5 pt-10">
           {SECTIONS[activeSection]}
         </main>

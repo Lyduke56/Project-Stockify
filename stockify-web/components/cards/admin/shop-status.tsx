@@ -45,7 +45,7 @@ export default function ShopStatus({
     valueClass?: string;
     badge?: React.ReactNode;
   }) => (
-    <div className="flex items-center justify-between py-3 border-b border-[#3A6131]/10 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-[#3A6131] last:border-0">
       <div className="flex items-center gap-3 text-[#3A6131]/60">
         <div className="w-8 h-8 rounded-[6px] bg-[#3A6131]/10 flex items-center justify-center">
           <Icon size={16} className="text-[#3A6131]" />

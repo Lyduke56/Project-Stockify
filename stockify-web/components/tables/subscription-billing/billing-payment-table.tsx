@@ -39,14 +39,14 @@ const TABS = ["Overall", "Pending", "Paid", "Overdue", "Missed"] as const;
 type BillingTab = typeof TABS[number];
 
 const COLUMNS = [
-  "Business Name",
-  "Owner",
-  "Billing Period",
-  "Due Date",
-  "Last Paid",
-  "Payment Status",
-  "Balance",
-  "Actions",
+  "BUSINESS NAME",
+  "OWNER",
+  "BILLING PERIOD",
+  "DUE DATE",
+  "LAST PAID",
+  "PAYMENT STATUS",
+  "BALANCE",
+  "ACTIONS",
 ];
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
@@ -279,7 +279,7 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
               <button
                 key={tab}
                 onClick={() => { setActiveTab(tab); setOpenDropdownId(null); }}
-                className={`flex-1 h-full z-20 text-center font-bold text-[15px] transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`flex-1 h-full z-20 text-center font-bold text-[16px] transition-colors duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${
                   isActive ? getTabConfig(tab).text : "text-[#385E31]"
                 }`}
               >
@@ -441,12 +441,25 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
                         }}
                         className="px-3 py-2 hover:bg-[#E5AD24] text-left transition-colors flex items-center gap-2"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-                          fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="5" width="20" height="14" rx="2"/>
-                          <line x1="2" y1="10" x2="22" y2="10"/>
-                        </svg>
-                        Record Payment
+                        {row.display_status === "Paid" ? (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10"/>
+                              <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            Billing History
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                              fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="5" width="20" height="14" rx="2"/>
+                              <line x1="2" y1="10" x2="22" y2="10"/>
+                            </svg>
+                            Record Payment
+                          </>
+                        )}
                       </button>
 
                       {/* Send Notification — all except Paid */}

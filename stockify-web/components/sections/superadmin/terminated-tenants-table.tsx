@@ -125,10 +125,10 @@ export default function TerminatedTenantsTab() {
       <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
         {/* Table Header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px] gap-4">
-          <div className="w-[200px] shrink-0 text-center text-[#FFFCEB] text-[14px] font-bold tracking-wide">Business Name</div>
-          <div className="w-[200px] shrink-0 text-center text-[#FFFCEB] text-[14px] font-bold tracking-wide">Owner</div>
-          <div className="w-[150px] shrink-0 text-center text-[#FFFCEB] text-[14px] font-bold tracking-wide">Term. Date</div>
-          <div className="flex-1 text-left text-[#FFFCEB] text-[14px] font-bold tracking-wide">Remarks</div>
+          <div className="w-[200px] shrink-0 text-center text-[#FFFCEB] text-[13px] font-bold tracking-wide">BUSINESS NAME</div>
+          <div className="w-[200px] shrink-0 text-center text-[#FFFCEB] text-[13px] font-bold tracking-wide">OWNER</div>
+          <div className="w-[150px] shrink-0 text-center text-[#FFFCEB] text-[13px] font-bold tracking-wide">TERM. DATE</div>
+          <div className="flex-1 text-left text-[#FFFCEB] text-[13px] font-bold tracking-wide">REMARKS</div>
         </div>
 
         {/* Table Body */}

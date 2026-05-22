@@ -105,7 +105,7 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
   const forecastStats = [
     { label: "MONTHLY TOTAL",  value: formatCurrency(projectedTotal), sub: monthLabel },
     { label: "DAILY AVERAGE",  value: formatCurrency(dailyAvg),       sub: "Avg per sales day" },
-    { label: "PEAK DAY",       value: peakDay ?? "—",                  sub: peakAmount > 0 ? formatCurrency(peakAmount) : "No data", subColor: undefined },
+    { label: "PEAK DAY",       value: peakDay ?? "—",                  sub: peakAmount > 0 ? formatCurrency(peakAmount) : "No data" },
     { label: "LOW POINT",      value: lowDay  ?? "—",                  sub: lowAmount  > 0 ? formatCurrency(lowAmount)  : "No data", subColor: "#D32F2F" },
   ];
 
@@ -116,7 +116,6 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
         {monthLabel} Revenue
       </h2>
 
-      {/* Stat pills */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {forecastStats.map((s) => (
           <div key={s.label} className="bg-secondary rounded-xl px-4 py-3.5 flex flex-col justify-between shadow-inner">
@@ -127,7 +126,6 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
         ))}
       </div>
 
-      {/* Chart */}
       <div className="bg-[#FEFCE8] rounded-xl p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between px-2 mb-4 gap-2">
           <span className="text-[13px] font-extrabold text-[#2D2D2D] tracking-wide">Daily Revenue Trend</span>
@@ -194,10 +192,11 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-export default function DashboardSection() {
-  const [tenantId, setTenantId] = useState("");
-  const [data,     setData]     = useState<DashboardData | null>(null);
-  const [loading,  setLoading]  = useState(true);
+type Props = { initialData?: DashboardData | null; tenantId: string };
+
+export default function DashboardSection({ initialData, tenantId }: Props) {
+  const [data,    setData]    = useState<DashboardData | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
 
   const load = useCallback(async (tid: string) => {
     const result = await fetchDashboardData(tid);
@@ -205,31 +204,18 @@ export default function DashboardSection() {
     setLoading(false);
   }, []);
 
-  // 1. Initial Load & Auth
+  // Only fetch if initialData was not provided
   useEffect(() => {
-    const init = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", user.id).single();
-      if (!u?.tenant_id) return;
-      
-      setTenantId(u.tenant_id);
-      load(u.tenant_id);
-    };
-    init();
-  }, [load]);
+    if (!initialData && tenantId) {
+      load(tenantId);
+    }
+  }, [initialData, tenantId, load]);
 
-  // 2. Silent Background Auto-Refresh (Polling)
+  // Silent background polling every 30 seconds
   useEffect(() => {
     if (!tenantId) return;
-
-    // Refresh data every 30 seconds (30000ms)
-    const intervalId = setInterval(() => {
-      load(tenantId);
-    }, 30000);
-
-    return () => clearInterval(intervalId); // Cleanup interval on unmount
+    const intervalId = setInterval(() => load(tenantId), 30000);
+    return () => clearInterval(intervalId);
   }, [tenantId, load]);
 
   const stats = data?.stats;
@@ -237,7 +223,6 @@ export default function DashboardSection() {
   return (
     <div className="w-full flex flex-col font-['Inter']">
 
-      {/* Header (Refresh button removed) */}
       <div className="w-full flex flex-col items-center mt-2 mb-10">
         <div className="w-full flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
@@ -249,7 +234,6 @@ export default function DashboardSection() {
         </div>
       </div>
 
-      {/* Stat cards - Updated Grid Layout */}
       <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
           title="Total Orders"
@@ -274,7 +258,6 @@ export default function DashboardSection() {
         />
       </div>
 
-      {/* Bottom contents */}
       <div className="w-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8">
         <LiveAlertsCard alerts={data?.alerts ?? []} loading={loading} />
         {data ? <LiveRevenueCard data={data} /> : (

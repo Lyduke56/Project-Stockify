@@ -280,11 +280,11 @@ export default function SuperadminDashboard() {
           <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm mb-10">
             {/* Header Row */}
             <div className="w-full flex bg-[#385E31] px-6 py-3 rounded-t-[8px] gap-4">
-              <div className="w-[150px] shrink-0 text-left text-[#FFFCEB] text-[12px] font-bold tracking-wide">Date & Time</div>
-              <div className="w-[160px] shrink-0 text-left text-[#FFFCEB] text-[12px] font-bold tracking-wide">Performed By</div>
-              <div className="w-[130px] shrink-0 text-left text-[#FFFCEB] text-[12px] font-bold tracking-wide">Business Name</div>
-              <div className="w-[175px] shrink-0 text-left text-[#FFFCEB] text-[12px] font-bold tracking-wide">Event Type</div>
-              <div className="flex-1 text-left text-[#FFFCEB] text-[12px] font-bold tracking-wide">Description / Notes</div>
+              <div className="w-[150px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold tracking-wide">DATE & TIME</div>
+              <div className="w-[160px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold tracking-wide">PERFORMED BY</div>
+              <div className="w-[130px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold tracking-wide">BUSINESS NAME</div>
+              <div className="w-[175px] shrink-0 text-left text-[#FFFCEB] text-[13px] font-bold tracking-wide">EVENT TYPE</div>
+              <div className="flex-1 text-left text-[#FFFCEB] text-[13px] font-bold tracking-wide">DESCRIPTION / NOTES</div>
             </div>
 
             {/* Data Rows */}

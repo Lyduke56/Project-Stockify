@@ -13,10 +13,11 @@ import AdminSettingsModal from "@/components/sections/admin/client-settings";
 import ClientProfileModal from "@/components/modals/client-profile-modal";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientSettingsModal from "@/components/modals/client-settings-modal";
+import LoadingScreen from "@/app/loading-screen/loading";
 import { fetchStorefrontConfig, type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import { fetchClientDashboardData, type ClientDashboardStats } from "@/lib/client/dashboard-stats";
 import { createClient } from "@/lib/supabase/client";
 
-// 🟢 FIX 1: Keep "admin-settings" in SectionKey so SidebarAdmin and URL params don't break types
 export type SectionKey =
   | "dashboard"
   | "user-admin"
@@ -27,33 +28,43 @@ export type SectionKey =
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
   
-  // Track the underlying main workspace view background tab 
   const [activeSection, setActiveSection] = useState<SectionKey>("dashboard");
-  
-  // Controlling the visibility states of our interactive floating modals
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
+  const [dashboardData, setDashboardData] = useState<ClientDashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadConfig = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    const loadAll = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data: userData } = await supabase
-        .from("users")
-        .select("tenant_id")
-        .eq("user_id", user.id)
-        .single();
+        const { data: userData } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("user_id", user.id)
+          .single();
 
-      if (userData?.tenant_id) {
-        const cfg = await fetchStorefrontConfig(userData.tenant_id);
-        setConfig(cfg);
+        if (userData?.tenant_id) {
+          // fetch everything in parallel
+          const [cfg, stats] = await Promise.all([
+            fetchStorefrontConfig(userData.tenant_id),
+            fetchClientDashboardData(userData.tenant_id),
+          ]);
+          setConfig(cfg);
+          setDashboardData(stats);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
-    loadConfig();
+    loadAll();
   }, []);
 
   useEffect(() => {
@@ -62,7 +73,6 @@ export default function AdminDashboard() {
     
     if (querySection && validSections.includes(querySection)) {
       if (querySection === "admin-settings") {
-        // If the URL parameters trigger the settings view, open the overlay screen directly
         setIsSettingsOpen(true);
       } else if (querySection !== activeSection) {
         setActiveSection(querySection);
@@ -79,12 +89,12 @@ export default function AdminDashboard() {
     window.history.pushState(null, "", `?section=${section}`); 
   };
 
-  // Safe fallback to manage closing the modal overlay and restoring url path cleanups
   const handleCloseSettings = () => {
     setIsSettingsOpen(false);
-    // Restore the browser url view parameters cleanly back to the underlying core panel state
     window.history.pushState(null, "", `?section=${activeSection}`);
   };
+
+  if (isLoading) return <LoadingScreen />;
 
   return (
     <div className="flex min-h-screen" style={{
@@ -96,7 +106,6 @@ export default function AdminDashboard() {
       '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
     } as React.CSSProperties}>
       
-      {/* ADDED: The actual handler is now passed to SidebarAdmin */}
       <SidebarAdmin 
         activeSection={activeSection} 
         setActiveSection={handleSetSection} 
@@ -104,18 +113,18 @@ export default function AdminDashboard() {
       />
       
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-14 pt-5 pb-12">
-        
-        {/* REMOVED: openSettings prop is completely gone from here */}
         <NavbarAdmin 
           setActiveSection={handleSetSection}
           openProfile={() => setIsProfileOpen(true)}
           openNotifs={() => setIsNotifsOpen(true)}
         />
         
-        {/* Underlay Dashboard Core Content Main View Grid Block */}
         <main className="p-5">
-          {activeSection === "dashboard" && (
-            <DashboardSection onManageShop={() => handleSetSection("store-settings")} />
+          {activeSection === "dashboard" && dashboardData && (
+            <DashboardSection 
+              data={dashboardData}
+              onManageShop={() => handleSetSection("store-settings")} 
+            />
           )}
           {activeSection === "user-admin" && <UserAdminSection />}
           {activeSection === "storefront" && <StorefrontSection />}
@@ -123,11 +132,8 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* Floating Application Overlay Screen Windows Layer Portal */}
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} />
-      
-      {/* Floating settings screen wrapper element */}
       <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} />
     </div>
   );

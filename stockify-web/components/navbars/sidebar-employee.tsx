@@ -1,69 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
-import { getUserData } from "@/backend/hooks/getUserRole";
 import { createClient } from "@/lib/supabase/client";
-import { getCurrentUserContext } from "@/lib/employee/inventory";
-import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
+import type { SectionKey, SidebarData } from "@/app/[businessName]/employee/dashboard/page";
 
 interface SidebarEmployeeProps {
   activeSection:    SectionKey;
   setActiveSection: (section: SectionKey) => void;
-  onOpenSettings:   () => void; // Added property prop hook callback to target settings modal overlay
+  onOpenSettings:   () => void;
+  sidebarData:      SidebarData;
 }
 
-export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings }: SidebarEmployeeProps) {
+export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings, sidebarData }: SidebarEmployeeProps) {
   const router   = useRouter();
   const supabase = createClient();
-
-  const [role,         setRole]         = useState<string | null>(null);
-  const [businessType, setBusinessType] = useState<string | null>(null);
-  const [businessName, setBusinessName] = useState<string | null>(null);
-  const [loading,      setLoading]      = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          window.location.replace("/");
-          return;
-        }
+  const { role, businessType, businessName } = sidebarData;
 
-        const [userRole, ctx, bName] = await Promise.all([
-          getUserData(user.id),
-          getCurrentUserContext(),
-          getBusinessNameByUserId(user.id),
-        ]);
-        
-        setRole(userRole);
-        
-        if (ctx && ctx.businessType) {
-          setBusinessType(ctx.businessType.toString());
-        }
-        
-        if (bName) {
-          if (typeof bName === "object" && bName !== null) {
-            const resolvedName = (bName as any).business_name || (bName as any).businessName || "";
-            setBusinessName(resolvedName);
-          } else {
-            setBusinessName(bName);
-          }
-        }
-      } catch (err) {
-        console.error("Sidebar init error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, [supabase.auth]);
-
-  const cleanType = businessType?.toLowerCase().trim() || "";
-  const isFnb = cleanType === "food & beverage";
+  const cleanType  = businessType?.toLowerCase().trim() || "";
+  const isFnb      = cleanType === "food & beverage";
   const isEmployee = role?.toLowerCase() === "employee";
 
   const allNavItems = [
@@ -71,7 +28,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
     { label: "Products",        iconFileName: "icon-inventory",    section: "products"     },
     { label: "Stock Inventory", iconFileName: "icon-ingredients",  section: "ingredients"  },
     { label: "Orders",          iconFileName: "icon-orders",       section: "orders"       },
-    { label: "Audit Logs",      iconFileName: "icon-audit-logs",   section: "audit-logs"  },
+    { label: "Audit Logs",      iconFileName: "icon-audit-logs",   section: "audit-logs"   },
     { label: "Transactions",    iconFileName: "icon-transactions", section: "transactions" },
   ];
 
@@ -89,14 +46,14 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
       localStorage.clear();
       sessionStorage.clear();
       const fallbackTarget = businessName ? encodeURIComponent(businessName.trim()) : "";
-      window.location.href = fallbackTarget ? `http://localhost:3000/${fallbackTarget}/login` : "http://localhost:3000/";
+      window.location.href = fallbackTarget
+        ? `http://localhost:3000/${fallbackTarget}/login`
+        : "http://localhost:3000/";
     } catch (error) {
       console.error("Logout execution error:", error);
       setIsLoggingOut(false);
     }
   };
-
-  if (loading || role === null) return null;
 
   return (
     <div className="w-64 h-screen pt-6 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
@@ -113,10 +70,12 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
             }`}
           >
             <div className="w-8 h-8 flex items-center justify-center shrink-0">
-              <img 
-                src={`/${item.iconFileName}.svg`} 
+              <img
+                src={`/${item.iconFileName}.svg`}
                 className="w-full h-full object-contain"
-                style={activeSection === item.section ? { filter: "brightness(0) saturate(100%) invert(32%) sepia(16%) saturate(1553%) hue-rotate(69deg) brightness(97%) contrast(85%)" } : {}}
+                style={activeSection === item.section
+                  ? { filter: "brightness(0) saturate(100%) invert(32%) sepia(16%) saturate(1553%) hue-rotate(69deg) brightness(97%) contrast(85%)" }
+                  : {}}
               />
             </div>
             <div className="text-base whitespace-nowrap">{item.label}</div>
@@ -126,18 +85,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
 
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
-      <div className="w-full flex flex-col gap-1">
-          
-          {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
-          
-          {/*<div
-            onClick={() => setActiveSection("store-settings")}
-            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-accent text-primary" : "text-sidebar-text"}`}
-          >
-            <img src="/icon-settings.svg" className="w-8 h-8" />
-            <span className="text-base">Settings</span>
-          </div>*/}
-
+        <div className="w-full flex flex-col gap-1">
           <button
             onClick={handleLogout}
             disabled={isLoggingOut}

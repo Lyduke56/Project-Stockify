@@ -15,12 +15,12 @@ interface PendingTenant {
 // ── Column headers ────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  "Business Name",
-  "Owner",
-  "Reg. Date",
-  "Business Type",
-  "Contact Email",
-  "Action",
+  "BUSINESS NAME",
+  "OWNER",
+  "REG. DATE",
+  "BUSINESS TYPE",
+  "CONTACT EMAIL",
+  "ACTION",
 ];
 
 // ── Skeleton Loader ───────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export default function PendingTenantsTab() {
         {/* Table header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
-            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[15px] font-bold">
+            <div key={col} className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">
               {col}
             </div>
           ))}
