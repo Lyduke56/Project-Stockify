@@ -17,7 +17,7 @@ export interface BillingRow {
   owner_full_name:     string;
   owner_email:         string;
   subscription_status: string;
-  display_status:      "Pending" | "Paid" | "Overdue" | "Missed";
+  display_status:      "Pending" | "Paid" | "Overdue" | "Missed" | "Suspended";
   billing_period:      string | null;
   due_date:            string | null;
   grace_ends_at:       string | null;
@@ -35,7 +35,7 @@ interface Props {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TABS = ["Overall", "Pending", "Paid", "Overdue", "Missed"] as const;
+const TABS = ["Overall", "Pending", "Paid", "Overdue", "Missed", "Suspended"] as const;
 type BillingTab = typeof TABS[number];
 
 const COLUMNS = [
@@ -53,22 +53,24 @@ const COLUMNS = [
 
 const getTabConfig = (tab: string) => {
   switch (tab) {
-    case "Overall": return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Pending": return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
-    case "Paid":    return { bg: "bg-[#2D7A1E]", text: "text-[#FFFCEB]" };
-    case "Overdue": return { bg: "bg-[#D97706]", text: "text-[#FFFCEB]" };
-    case "Missed":  return { bg: "bg-[#CE0000]", text: "text-[#FFFCEB]" };
-    default:        return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
+    case "Overall":   return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
+    case "Pending":   return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
+    case "Paid":      return { bg: "bg-[#2D7A1E]", text: "text-[#FFFCEB]" };
+    case "Overdue":   return { bg: "bg-[#D97706]", text: "text-[#FFFCEB]" };
+    case "Missed":    return { bg: "bg-[#CE0000]", text: "text-[#FFFCEB]" };
+    case "Suspended": return { bg: "bg-[#64748B]", text: "text-[#FFFCEB]" };
+    default:          return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
   }
 };
 
 const getPillStyles = (status: string) => {
   switch (status) {
-    case "Paid":    return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
-    case "Pending": return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
-    case "Overdue": return { bg: "bg-[#FFD980]", text: "text-[#385E31]" };
-    case "Missed":  return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
-    default:        return { bg: "bg-[#E2E8F0]", text: "text-[#475569]" };
+    case "Paid":      return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
+    case "Pending":   return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
+    case "Overdue":   return { bg: "bg-[#FFD980]", text: "text-[#385E31]" };
+    case "Missed":    return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
+    case "Suspended": return { bg: "bg-[#64748B]", text: "text-[#FFFCEB]" };
+    default:          return { bg: "bg-[#E2E8F0]", text: "text-[#475569]" };
   }
 };
 
@@ -266,8 +268,8 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
           <div
             className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
             style={{
-              width: "calc(20% + 4px)",
-              left:  `calc(${TABS.indexOf(activeTab) * 20}% - 2px)`,
+              width: `calc(${100 / TABS.length}% + 4px)`,
+              left:  `calc(${TABS.indexOf(activeTab) * (100 / TABS.length)}% - 2px)`,
             }}
           />
 
@@ -411,7 +413,9 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
 
                 {/* Balance */}
                 <div className={`text-center text-[12px] font-bold ${
-                  row.balance > 0 ? "text-[#E91F22]" : "text-[#3A6131]"
+                  row.balance > 0 && (row.display_status === "Pending" || row.display_status === "Overdue" || row.display_status === "Missed")
+                    ? "text-[#E91F22]"
+                    : "text-[#3A6131]"
                 }`}>
                   {fmtPHP(row.balance)}
                 </div>
