@@ -29,11 +29,14 @@ export type SectionKey =
   | "transactions"
   | "analytics";
 
-// All sidebar data is now resolved here and passed as props
-export type SidebarData = {
-  role: string;
-  businessType: string;
-  businessName: string;
+const SECTIONS: Record<SectionKey, React.ReactNode> = {
+  "dashboard": <DashboardSection />,
+  "audit-logs": <AuditLogsSection />,
+  "products": <ProductsSection />,
+  "ingredients": <IngredientsSection />,
+  "orders": <OrdersSection />,
+  "transactions": <TransactionsSection />,
+  "analytics": <div />,
 };
 
 export default function EmployeeDashboard() {
@@ -155,18 +158,34 @@ export default function EmployeeDashboard() {
       <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
         <NavbarEmployee
           setActiveSection={handleSetSection}
-          openProfile={() => setIsProfileOpen(true)}
-          openNotifs={() => setIsNotifsOpen(true)}
-          openSettings={() => setIsSettingsOpen(true)}
+          openProfile={handleOpenProfile}
+          openNotifs={handleOpenNotifs}
+          openSettings={handleOpenSettings}
         />
         <main className="px-5 pt-10">
           {SECTIONS[activeSection]}
         </main>
       </div>
 
-      <EmployeeProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} role="employee" tenantId={tenantId} />
-      <EmployeeSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {/*  WORKING PROFILE MODAL LAYER */}
+      <EmployeeProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+      />
+
+      {/*  WORKING NOTIFICATION MODAL LAYER */}
+      <NotificationModal
+        isOpen={isNotifsOpen}
+        onClose={() => setIsNotifsOpen(false)}
+        role="employee"
+        tenantId={tenantId}
+      />
+
+      {/*  WIRED UP UNIFIED SETTINGS MODAL OVERLAY */}
+      <EmployeeSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </div>
   );
 }

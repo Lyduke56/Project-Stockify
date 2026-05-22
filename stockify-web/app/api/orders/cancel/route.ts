@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     // ── 1. Fetch order ────────────────────────────────────────────────────────
     const { data: order, error: orderErr } = await supabase
       .from("orders")
-      .select("order_id, customer_id, total_amount, payment_method, created_at")
+      .select("order_id, customer_id, tenant_id, total_amount, payment_method, created_at")
       .eq("order_id", orderId)
       .single();
 
@@ -64,6 +64,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── 3.5 Create Customer Notification ──────────────────────────────────────
+    const notificationTitle = "Order Cancelled";
+    const notificationMessage = reason?.trim() ? `Order #${orderId.slice(0, 8).toUpperCase()} was cancelled. Reason: ${reason.trim()}` : `Order #${orderId.slice(0, 8).toUpperCase()} was cancelled.`;
+    
+    const { error: notifError } = await supabase.from('customer_notifications').insert({
+      customer_id: order.customer_id,
+      tenant_id: order.tenant_id,
+      title: notificationTitle,
+      message: notificationMessage,
+      notification_type: 'ORDER_CANCELLED',
+      order_id: orderId,
+      is_read: false
+    });
+
+    if (notifError) {
+      console.error("[cancel] Failed to insert notification:", notifError);
+    }
     // ── 4. Send cancellation email ────────────────────────────────────────────
     const customerName =
       userRow?.first_name && userRow?.last_name
