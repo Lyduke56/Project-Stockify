@@ -37,7 +37,7 @@ export default function DashboardHome({ data, onManageShop }: DashboardHomeProps
       <div className="flex flex-col w-full">
 
         {/* Stat Cards */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.25 }}>
             <StatCard 
               title="Active New Customers" 
@@ -76,7 +76,6 @@ export default function DashboardHome({ data, onManageShop }: DashboardHomeProps
           transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.55 }}
           className="w-full flex flex-col gap-6 mt-2"
         >
-          <div className="w-full h-[3px] bg-primary/20 rounded-full" />
           <ShopStatus
             shopName="Administrator View" 
             clientName={data.shopStatus?.shopName ?? "My Shop"}

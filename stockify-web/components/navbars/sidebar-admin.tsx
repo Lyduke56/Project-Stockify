@@ -25,10 +25,21 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
       }`}
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
-        <img
-          src={`/${iconFileName}.svg`}
-          alt={label}
-          className="w-full h-full object-contain"
+        {/* Replaced <img> with a CSS mask div to inherit text color */}
+        <div
+          className="w-full h-full bg-current"
+          style={{
+            WebkitMaskImage: `url(/${iconFileName}.svg)`,
+            maskImage: `url(/${iconFileName}.svg)`,
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }}
+          role="img"
+          aria-label={label}
         />
       </div>
       <div className="text-base whitespace-nowrap">{label}</div>

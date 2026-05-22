@@ -255,11 +255,11 @@ export default function SuspendedTenantsTab() {
         className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm"
       >
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
-          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Business Name</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Owner</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Date of Suspension</div>
-          <div className="flex-[1.5] text-left text-[#FFFCEB] text-[14px] font-bold">Remarks</div>
-          <div className="flex-1 text-center text-[#FFFCEB] text-[14px] font-bold">Actions</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">BUSINESS NAME</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">OWNER</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">DATE OF SUSPENSION</div>
+          <div className="flex-[1.5] text-left text-[#FFFCEB] text-[13px] font-bold">REMARKS</div>
+          <div className="flex-1 text-center text-[#FFFCEB] text-[13px] font-bold">ACTIONS</div>
         </div>
 
         <div className="flex flex-col w-full py-1">
