@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getUserData } from "@/backend/hooks/getUserRole";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { fetchStorefrontConfig } from "@/lib/admin/storefront-actions";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 // ─── Slideshow slides ────────────────────────────────────────────────────────
 const SLIDES = [
