@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+// Separate components for distinct modal designs
 import ClientProfileModal from "../modals/client/profile/modal";
 import NotificationModal from "../modals/notification-modal";
 
@@ -187,7 +189,7 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
             <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
           </button>
 
-          {/* Notifications with Dynamic Counter */}
+          {/* Notifications Trigger */}
           <div className="relative flex items-center justify-center">
             <button 
               onClick={() => {
@@ -208,7 +210,7 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
             )}
           </div>
 
-          {/* Profile Button - Opens Modal */}
+          {/* Profile Button */}
           <button
             onClick={() => setIsProfileModalOpen(true)}
             className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"

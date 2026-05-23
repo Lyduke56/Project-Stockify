@@ -5,19 +5,12 @@ import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 
 interface NotificationItem {
+  id: string; 
   title: string;
   subject: string;
   body: string;
   timestamp: string;
   isRead?: boolean;
-}
-
-interface TenantAlert {
-  tenant_id: string;
-  business_name: string;
-  subscription_status: string;
-  is_suspended: boolean;
-  created_at: string;
 }
 
 interface NotificationModalProps {
@@ -47,7 +40,6 @@ const getDetailedBody = (type: string, subject: string): string => {
 export default function NotificationModal({
   isOpen,
   onClose,
-  role = "superadmin",
   tenantId = null,
 }: NotificationModalProps) {
   const supabase = createClient();
@@ -66,13 +58,24 @@ export default function NotificationModal({
     setExpandedIndex(null);
   }, [isOpen]);
 
-  const fetchLiveSystemAlerts = useCallback(async (showLoadingState = false) => {
-    if (showLoadingState) setLoading(true);
-    try {
-      if (role === "employee") {
-        if (!tenantId) return;
+  // Store lists of explicitly deleted notification IDs to keep them hidden locally
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  // Keep track of which notification IDs have been read locally
+  const [readIds, setReadIds] = useState<string[]>([]);
 
-        // === EMPLOYEE WORKSPACE REAL-TIME ALERTS ===
+  const fetchLiveBillingAlerts = useCallback(async (showLoadingState = false) => {
+    if (!tenantId) return;
+    if (showLoadingState) setLoading(true);
+    
+    try {
+      // Querying your requested billing_notifications table directly
+      const { data, error } = await supabase
+        .from("billing_notifications")
+        .select("id, title, message, created_at")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
         const collectedAlerts: NotificationItem[] = [];
 
         const [fnbResult, nfbResult, orderResult] = await Promise.all([
@@ -224,8 +227,8 @@ export default function NotificationModal({
               }),
               isRead: false,
             });
-          });
-        }
+          }
+        });
 
         // 3. Fetch subscription records for pending/overdue/missed warnings
         const { data: subData } = await supabase
@@ -373,20 +376,41 @@ export default function NotificationModal({
         setNotifications(collectedAlerts);
       }
     } catch (err) {
-      console.error("Failed executing real-time context notifications fetch:", err);
+      console.error("Failed executing real-time billing notifications fetch:", err);
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, [supabase, role, tenantId]);
+  }, [supabase, tenantId, deletedIds, readIds]);
 
-  // Initial fetch trigger when opened
+  // Click handler to toggle read status (Facebook style background tint)
+  const handleToggleRead = (id: string) => {
+    setReadIds(prev => [...prev, id]);
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  // Delete a single notification element manually
+  const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Stops row click event from firing simultaneously
+    setDeletedIds(prev => [...prev, id]);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  // Mass action to clear out the active lists immediately
+  const handleClearAll = () => {
+    const currentIds = notifications.map(n => n.id);
+    setDeletedIds(prev => [...prev, ...currentIds]);
+    setNotifications([]);
+  };
+
   useEffect(() => {
     if (isOpen) {
-      fetchLiveSystemAlerts(true);
+      fetchLiveBillingAlerts(true);
     }
-  }, [isOpen, fetchLiveSystemAlerts]);
+  }, [isOpen, fetchLiveBillingAlerts]);
 
-  // Live real-time stream tracking rules matching workspace role conditions
+  // Real-time postgres pipeline listener setup targeted at the billing table
   useEffect(() => {
     if (!isOpen) return;
 

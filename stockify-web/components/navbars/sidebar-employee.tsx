@@ -26,7 +26,7 @@ export default function SidebarEmployee({
   const supabase = createClient();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const { role, businessType, businessName } = sidebarData;
+  const { role = "", businessType = "", businessName = "" } = sidebarData ?? {};
 
   const cleanType  = businessType?.toLowerCase().trim() || "";
   const isFnb      = cleanType === "food & beverage";

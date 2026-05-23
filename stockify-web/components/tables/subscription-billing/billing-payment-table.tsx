@@ -35,7 +35,7 @@ interface Props {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TABS = ["Overall", "Pending", "Paid", "Overdue", "Missed", "Suspended"] as const;
+const TABS = ["Overall", "Pending", "Paid", "Overdue", "Missed"] as const;
 type BillingTab = typeof TABS[number];
 
 const COLUMNS = [
@@ -58,7 +58,6 @@ const getTabConfig = (tab: string) => {
     case "Paid":      return { bg: "bg-[#2D7A1E]", text: "text-[#FFFCEB]" };
     case "Overdue":   return { bg: "bg-[#D97706]", text: "text-[#FFFCEB]" };
     case "Missed":    return { bg: "bg-[#CE0000]", text: "text-[#FFFCEB]" };
-    case "Suspended": return { bg: "bg-[#64748B]", text: "text-[#FFFCEB]" };
     default:          return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
   }
 };
@@ -69,7 +68,6 @@ const getPillStyles = (status: string) => {
     case "Pending":   return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
     case "Overdue":   return { bg: "bg-[#FFD980]", text: "text-[#385E31]" };
     case "Missed":    return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
-    case "Suspended": return { bg: "bg-[#64748B]", text: "text-[#FFFCEB]" };
     default:          return { bg: "bg-[#E2E8F0]", text: "text-[#475569]" };
   }
 };
@@ -160,9 +158,16 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // ── Pre-filter: Exclude Suspended Tenants completely ─────────────────────────
+  const activeRows = rows.filter(
+    (r) =>
+      r.display_status !== "Suspended" &&
+      r.subscription_status?.toLowerCase() !== "suspended"
+  );
+
   // ── Client-side filtering ──────────────────────────────────────────────────
 
-  const filtered = rows
+  const filtered = activeRows
     .filter((r) => activeTab === "Overall" || r.display_status === activeTab)
     .filter((r) => {
       if (!search.trim()) return true;
@@ -238,8 +243,9 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
 
   // ── Tab counts ─────────────────────────────────────────────────────────────
 
+  // Use activeRows so counts accurately reflect the non-suspended list
   const tabCount = (tab: BillingTab) =>
-    tab === "Overall" ? rows.length : rows.filter((r) => r.display_status === tab).length;
+    tab === "Overall" ? activeRows.length : activeRows.filter((r) => r.display_status === tab).length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 

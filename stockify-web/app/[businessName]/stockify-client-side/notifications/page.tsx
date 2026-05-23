@@ -27,6 +27,35 @@ const getDetailedBody = (type: string, subject: string): string => {
   return subject;
 };
 
+// FIXED ALIAS PATH: Pointing exactly to components/navbars/ where it sits in your tree
+import NotificationModal from "@/components/modals/notification-modal";
+
+// ── Animations with Strict Typing ──────────────────────────────────────────
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      ease: "easeOut",
+    },
+  },
+};
+
+// ── Page Component ──────────────────────────────────────────────────────────
+
 export default function ClientNotifications() {
   const supabase = createClient();
   const [notifications, setNotifications] = useState<BillingNotification[]>([]);
@@ -292,7 +321,9 @@ export default function ClientNotifications() {
       <main className="ml-0 lg:ml-64 flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <div className="mx-auto w-full max-w-6xl space-y-6">
           {/* TOP BAR */}
-          <NavbarClient />
+          <motion.div variants={itemVariants}>
+            <NavbarClient openNotifs={() => setIsNotifModalOpen(true)} />
+          </motion.div>
 
           {/* TAB HEADER */}
           <section className="w-full inline-flex flex-col justify-start items-start gap-1 px-2 mt-4">
@@ -396,6 +427,12 @@ export default function ClientNotifications() {
           </div>
         </div>
       </main>
+
+      {/* Rendered Notification Overlay Window */}
+      <NotificationModal 
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+      />
     </div>
   );
 }
