@@ -93,7 +93,7 @@ interface FieldRowProps {
   inputType?: string;
   colSpan?: boolean;
   disabled?: boolean;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   options?: string[];
 }
 
@@ -146,10 +146,7 @@ interface ClientProfileModalProps {
   onClose: () => void;
 }
 
-export default function ClientProfileModal({
-  isOpen,
-  onClose,
-}: ClientProfileModalProps) {
+export default function ClientProfileModal({ isOpen, onClose }: ClientProfileModalProps) {
   const supabase = createClient();
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -184,7 +181,6 @@ export default function ClientProfileModal({
     return () => setMounted(false);
   }, []);
 
-  // ── FETCH DATA FROM SUPABASE ──
   const fetchProfileData = async () => {
     try {
       setLoading(true);
@@ -195,39 +191,37 @@ export default function ClientProfileModal({
           .from("users")
           .select("*")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         const { data: tenantData } = await supabase
           .from("tenants")
           .select("*")
           .eq("owner_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (userData && tenantData) {
-          const profileState = {
-            ownerLastName: userData.last_name || "",
-            ownerFirstName: userData.first_name || "",
-            ownerMiddleName: userData.middle_name || "",
-            ownerSuffix: userData.suffix || "",
-            gender: userData.gender || "Male",
-            email: userData.email || user.email || "",
-            contactNo: userData.contact_number || "",
-            citizenship: userData.citizenship || "Filipino",
-            permanentAddress: userData.permanent_address || "",
-            businessName: tenantData.business_name || "",
-            businessAddress: tenantData.business_address || "",
-            businessContactNo: tenantData.business_contact || "",
-            businessType: tenantData.business_type || "Food & Beverage",
-            avatarUrl: userData.avatar_url || null,
-            businessPermitName: tenantData.permit_url ? tenantData.permit_url.split('/').pop() : "No file uploaded",
-            ownerIdName: tenantData.owner_id_url ? tenantData.owner_id_url.split('/').pop() : "No file uploaded",
-          };
-          setFormData(profileState);
-          setAvatarPreview(userData.avatar_url || null);
-        }
+        setFormData({
+          ownerLastName: userData?.last_name || "",
+          ownerFirstName: userData?.first_name || "",
+          ownerMiddleName: userData?.middle_name || "",
+          ownerSuffix: userData?.suffix || "",
+          gender: userData?.gender || "Male",
+          email: userData?.email || user.email || "",
+          contactNo: userData?.contact_number || "",
+          citizenship: userData?.citizenship || "Filipino",
+          permanentAddress: userData?.permanent_address || "",
+          businessName: tenantData?.business_name || "Setup Your Business",
+          businessAddress: tenantData?.business_address || "No address listed",
+          businessContactNo: tenantData?.business_contact || "",
+          businessType: tenantData?.business_type || "Food & Beverage",
+          avatarUrl: userData?.avatar_url || null,
+          businessPermitName: tenantData?.permit_url ? tenantData?.permit_url.split('/').pop() : "No file uploaded",
+          ownerIdName: tenantData?.owner_id_url ? tenantData?.owner_id_url.split('/').pop() : "No file uploaded",
+        });
+
+        setAvatarPreview(userData?.avatar_url || null);
       }
     } catch (error) {
-      console.error("Error loading workspace configurations:", error);
+      console.error("Error loading profile configurations:", error);
     } finally {
       setLoading(false);
     }
@@ -254,14 +248,12 @@ export default function ClientProfileModal({
     }
   };
 
-  // ── SAVE HANDLER ──
   const handleSave = async () => {
     setIsSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Sync data to public.users
       await supabase
         .from("users")
         .update({
@@ -273,11 +265,10 @@ export default function ClientProfileModal({
           citizenship: formData.citizenship,
           contact_number: formData.contactNo,
           permanent_address: formData.permanentAddress,
-          avatar_url: avatarPreview
+          avatar_url: avatarPreview,
         })
         .eq("id", user.id);
 
-      // Sync data to public.tenants
       await supabase
         .from("tenants")
         .update({
@@ -315,7 +306,6 @@ export default function ClientProfileModal({
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -324,7 +314,6 @@ export default function ClientProfileModal({
             onClick={!isSaving ? onClose : undefined}
           />
 
-          {/* Hidden File Input */}
           <input
             type="file"
             ref={fileInputRef}
@@ -333,7 +322,6 @@ export default function ClientProfileModal({
             className="hidden"
           />
 
-          {/* Modal */}
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -352,7 +340,6 @@ export default function ClientProfileModal({
                 </button>
               )}
 
-              {/* Avatar Picture */}
               <div
                 className={`w-20 h-20 rounded-[18px] bg-[#FFFCEB] p-[5px] mx-auto translate-y-10 relative z-20 group ${isEditing ? "cursor-pointer" : ""}`}
                 onClick={() => isEditing && fileInputRef.current?.click()}
@@ -383,10 +370,16 @@ export default function ClientProfileModal({
             >
               {/* Identity Header */}
               <div className="pt-14 text-center mb-6">
-                <h2 className="text-xl font-black text-[#385E31] tracking-wide mb-1.5">
-                  {loading ? "Loading content variables..." : fullName}
+                <h2 className="text-xl font-black text-[#385E31] tracking-wide mb-1.5 h-7 flex items-center justify-center">
+                  {loading ? (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#385E31]/50 tracking-normal normal-case">
+                      <LoaderIcon /> Syncing dynamic account profiles...
+                    </div>
+                  ) : (
+                    fullName || "New Business Owner"
+                  )}
                 </h2>
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 mt-1">
                   <span className="bg-[#385E31]/10 text-[#385E31] px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest">
                     Business Owner
                   </span>
@@ -395,36 +388,38 @@ export default function ClientProfileModal({
 
               {/* SECTION: Owner Information */}
               <div className="bg-white/65 border border-[#385E31]/10 rounded-2xl p-5 mb-4 flex flex-col gap-4">
-                <h3 className="text-[11px] font-extrabold text-[#385E31] uppercase tracking-[0.1em] flex items-center justify-between pb-2 border-b border-[#385E31]/10">
-                  <div className="flex items-center gap-2"><UserIcon /> Owner Information</div>
+                <h3 className="text-[11px] font-extrabold text-[#385E31] uppercase tracking-[0.1em] flex items-center gap-2 pb-2 border-b border-[#385E31]/10">
+                  <UserIcon /> Owner Information
                 </h3>
 
-                {isEditing ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-                    <FieldRow label="First Name" name="ownerFirstName" value={formData.ownerFirstName} isEditing={isEditing} onChange={handleInputChange} />
-                    <FieldRow label="Last Name" name="ownerLastName" value={formData.ownerLastName} isEditing={isEditing} onChange={handleInputChange} />
-                    <FieldRow label="Middle Name" name="ownerMiddleName" value={formData.ownerMiddleName} isEditing={isEditing} onChange={handleInputChange} />
-                    <FieldRow label="Suffix" name="ownerSuffix" value={formData.ownerSuffix} isEditing={isEditing} onChange={handleInputChange} />
-                    <FieldRow label="Gender" name="gender" value={formData.gender} isEditing={isEditing} onChange={handleInputChange} options={["Male", "Female", "Other"]} />
-                    <FieldRow label="Citizenship" name="citizenship" value={formData.citizenship} isEditing={isEditing} onChange={handleInputChange} />
-                    <FieldRow label="Email Address" name="email" value={formData.email} isEditing={isEditing} inputType="email" colSpan disabled onChange={handleInputChange} />
-                    <FieldRow label="Contact No." name="contactNo" value={formData.contactNo} isEditing={isEditing} colSpan onChange={handleInputChange} />
-                    <FieldRow label="Permanent Address" name="permanentAddress" value={formData.permanentAddress} isEditing={isEditing} colSpan onChange={handleInputChange} />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-                    <FieldRow icon={<MailIcon />} label="Email Address" name="email" value={formData.email} isEditing={false} colSpan onChange={()=>{}} />
-                    <FieldRow icon={<PhoneIcon />} label="Contact No." name="contactNo" value={formData.contactNo} isEditing={false} onChange={()=>{}} />
-                    <FieldRow icon={<UserIcon />} label="Gender & Citizenship" name="genderInfo" value={`${formData.gender}, ${formData.citizenship}`} isEditing={false} onChange={()=>{}} />
-                    <FieldRow icon={<MapPinIcon />} label="Permanent Address" name="permanentAddress" value={formData.permanentAddress} isEditing={false} colSpan onChange={()=>{}} />
-                  </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                  {isEditing ? (
+                    <>
+                      <FieldRow label="First Name" name="ownerFirstName" value={formData.ownerFirstName} isEditing={true} onChange={handleInputChange} />
+                      <FieldRow label="Last Name" name="ownerLastName" value={formData.ownerLastName} isEditing={true} onChange={handleInputChange} />
+                      <FieldRow label="Middle Name" name="ownerMiddleName" value={formData.ownerMiddleName} isEditing={true} onChange={handleInputChange} />
+                      <FieldRow label="Suffix" name="ownerSuffix" value={formData.ownerSuffix} isEditing={true} onChange={handleInputChange} />
+                      <FieldRow label="Gender" name="gender" value={formData.gender} isEditing={true} onChange={handleInputChange} options={["Male", "Female", "Other"]} />
+                      <FieldRow label="Citizenship" name="citizenship" value={formData.citizenship} isEditing={true} onChange={handleInputChange} />
+                      <FieldRow label="Email Address" name="email" value={formData.email} isEditing={true} inputType="email" colSpan disabled />
+                      <FieldRow label="Contact No." name="contactNo" value={formData.contactNo} isEditing={true} colSpan onChange={handleInputChange} />
+                      <FieldRow label="Permanent Address" name="permanentAddress" value={formData.permanentAddress} isEditing={true} colSpan onChange={handleInputChange} />
+                    </>
+                  ) : (
+                    <>
+                      <FieldRow icon={<MailIcon />} label="Email Address" name="email" value={formData.email} isEditing={false} colSpan />
+                      <FieldRow icon={<PhoneIcon />} label="Contact No." name="contactNo" value={formData.contactNo} isEditing={false} />
+                      <FieldRow icon={<UserIcon />} label="Gender & Citizenship" name="genderInfo" value={`${formData.gender}, ${formData.citizenship}`} isEditing={false} />
+                      <FieldRow icon={<MapPinIcon />} label="Permanent Address" name="permanentAddress" value={formData.permanentAddress} isEditing={false} colSpan />
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* SECTION: Business Details */}
               <div className="bg-white/65 border border-[#385E31]/10 rounded-2xl p-5 mb-2.5 flex flex-col gap-4">
-                <h3 className="text-[11px] font-extrabold text-[#385E31] uppercase tracking-[0.1em] flex items-center justify-between pb-2 border-b border-[#385E31]/10">
-                  <div className="flex items-center gap-2"><BuildingIcon /> Business Details</div>
+                <h3 className="text-[11px] font-extrabold text-[#385E31] uppercase tracking-[0.1em] flex items-center gap-2 pb-2 border-b border-[#385E31]/10">
+                  <BuildingIcon /> Business Details
                 </h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
@@ -461,7 +456,6 @@ export default function ClientProfileModal({
                   </div>
                 </div>
               </div>
-
             </div>
 
             {/* ── FOOTER ── */}
@@ -496,8 +490,9 @@ export default function ClientProfileModal({
                   <>
                     <button
                       type="button"
+                      disabled={loading}
                       onClick={() => setIsEditing(true)}
-                      className="flex-1 bg-[#F7B71D] text-[#385E31] py-3 rounded-xl text-[13px] font-bold hover:brightness-105 transition-all"
+                      className="flex-1 bg-[#F7B71D] text-[#385E31] py-3 rounded-xl text-[13px] font-bold hover:brightness-105 transition-all disabled:opacity-50"
                     >
                       Edit profile
                     </button>

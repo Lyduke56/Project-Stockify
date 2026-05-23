@@ -9,7 +9,7 @@ interface SidebarEmployeeProps {
   activeSection:    SectionKey;
   setActiveSection: (section: SectionKey) => void;
   onOpenSettings:   () => void;
-  sidebarData:      SidebarData;
+  sidebarData?:     SidebarData;
 }
 
 export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings, sidebarData }: SidebarEmployeeProps) {
@@ -17,7 +17,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
   const supabase = createClient();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const { role, businessType, businessName } = sidebarData;
+  const { role = "", businessType = "", businessName = "" } = sidebarData ?? {};
 
   const cleanType  = businessType?.toLowerCase().trim() || "";
   const isFnb      = cleanType === "food & beverage";
