@@ -4,18 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface NotificationItem {
+  id: string; 
   title: string;
-  body: string;
+  body: string; // Map "message" column from Supabase into this for compatibility
   timestamp: string;
   isRead?: boolean;
-}
-
-interface TenantAlert {
-  tenant_id: string;
-  business_name: string;
-  subscription_status: string;
-  is_suspended: boolean;
-  created_at: string;
 }
 
 interface NotificationModalProps {
@@ -28,212 +21,188 @@ interface NotificationModalProps {
 export default function NotificationModal({
   isOpen,
   onClose,
-  role = "superadmin",
   tenantId = null,
 }: NotificationModalProps) {
   const supabase = createClient();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const fetchLiveSystemAlerts = useCallback(async (showLoadingState = false) => {
-    if (showLoadingState) setLoading(true);
-    try {
-      if (role === "employee") {
-        if (!tenantId) return;
+  // Store lists of explicitly deleted notification IDs to keep them hidden locally
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  // Keep track of which notification IDs have been read locally
+  const [readIds, setReadIds] = useState<string[]>([]);
 
-        // === EMPLOYEE WORKSPACE REAL-TIME ALERTS ===
+  const fetchLiveBillingAlerts = useCallback(async (showLoadingState = false) => {
+    if (!tenantId) return;
+    if (showLoadingState) setLoading(true);
+    
+    try {
+      // Querying your requested billing_notifications table directly
+      const { data, error } = await supabase
+        .from("billing_notifications")
+        .select("id, title, message, created_at")
+        .eq("tenant_id", tenantId)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
         const collectedAlerts: NotificationItem[] = [];
 
-        const [fnbResult, nfbResult, orderResult] = await Promise.all([
-          supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit, created_at").eq("tenant_id", tenantId).eq("is_active", true),
-          supabase.from("nfb_products").select("product_name, quantity, reorder_threshold, created_at").eq("tenant_id", tenantId).eq("is_active", true),
-          supabase.from("orders").select("order_id, created_at").eq("tenant_id", tenantId).eq("fulfillment_status", "Pending")
-        ]);
-
-        // 1. Map Food and Beverage Low Stock alerts (Typed 'item' parameter)
-        if (fnbResult.data) {
-  fnbResult.data.forEach((item: { item_name: string; stock: any; alert_limit: any; created_at: string }) => {
-    const currentStock = Number(item.stock || 0);
-    const limit = Number(item.alert_limit || 0);
-
-    if (currentStock <= limit) {
-      const isOut = currentStock <= 0;
-      collectedAlerts.push({
-        title: isOut ? "⚠️ F&B Item Out of Stock" : "⚠️ Low F&B Stock Warning",
-        body: isOut 
-          ? `Critical: "${item.item_name}" has run out completely.` 
-          : `Warning: "${item.item_name}" is running low (${currentStock} left).`,
-        timestamp: new Date(item.created_at || new Date()).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }),
-        isRead: false,
-      });
-    }
-  });
-}
-
-        // 2. Map Non-Food Products alerts (Typed 'item' parameter)
-        if (nfbResult.data) {
-  nfbResult.data.forEach((item: { product_name: string; quantity: any; reorder_threshold: any; created_at: string }) => {
-    const currentQty = Number(item.quantity || 0);
-    const threshold = Number(item.reorder_threshold || 0);
-
-    if (currentQty <= threshold) {
-      const isOut = currentQty <= 0;
-      collectedAlerts.push({
-        title: isOut ? "⚠️ Product Out of Stock" : "⚠️ Product Low Stock Warning",
-        body: isOut 
-          ? `Critical: "${item.product_name}" has run out completely.` 
-          : `Warning: "${item.product_name}" is running low (${currentQty} left).`,
-        timestamp: new Date(item.created_at || new Date()).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }),
-        isRead: false,
-      });
-    }
-  });
-}
-
-        // 3. Map Pending Sales Fulfillment Orders (Typed 'order' parameter)
-        if (orderResult.data) {
-          orderResult.data.forEach((order: { order_id: string; created_at: string }) => {
+        data.forEach((item: { id: any; title: string; message: string; created_at: string }) => {
+          const stringId = String(item.id);
+          
+          // Only render if it hasn't been added to the deletedIds array
+          if (!deletedIds.includes(stringId)) {
             collectedAlerts.push({
-              title: "📦 Pending Order Fulfillment",
-              body: `Order #${order.order_id.slice(0, 8).toUpperCase()} requires immediate floor processing.`,
-              timestamp: new Date(order.created_at).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }),
-              isRead: false,
+              id: stringId,
+              title: item.title || "💳 Billing Notification",
+              body: item.message || "No message content provided.",
+              timestamp: new Date(item.created_at).toLocaleString("en-US", { 
+                month: "2-digit", 
+                day: "2-digit", 
+                hour: "2-digit", 
+                minute: "2-digit", 
+                hour12: true 
+              }),
+              isRead: readIds.includes(stringId), // Retain current read selection status
             });
-          });
-        }
+          }
+        });
 
         setNotifications(collectedAlerts);
-      } else {
-        // === SUPERADMIN STRATEGY ===
-        const { data, error } = await supabase
-          .from("tenants")
-          .select("tenant_id, business_name, subscription_status, is_suspended, created_at")
-          .or("subscription_status.eq.Pending,is_suspended.eq.true")
-          .order("created_at", { ascending: false });
-
-        if (!error && data) {
-          const formattedAlerts = (data as TenantAlert[]).map((tenant: TenantAlert) => {
-            const dateString = new Date(tenant.created_at).toLocaleString("en-US", {
-              month: "2-digit", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true,
-            });
-
-            if (tenant.is_suspended) {
-              return {
-                title: "Platform Suspended - Compliance Alert",
-                body: `The tenant account organization entity "${tenant.business_name}" has been flagged as suspended.`,
-                timestamp: dateString,
-                isRead: false,
-              };
-            } else {
-              return {
-                title: "New Registration Pending Approval",
-                body: `The tenant enterprise profile registration request for "${tenant.business_name}" is awaiting access authorization.`,
-                timestamp: dateString,
-                isRead: false,
-              };
-            }
-          });
-          setNotifications(formattedAlerts);
-        }
       }
     } catch (err) {
-      console.error("Failed executing real-time context notifications fetch:", err);
+      console.error("Failed executing real-time billing notifications fetch:", err);
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, [supabase, role, tenantId]);
+  }, [supabase, tenantId, deletedIds, readIds]);
 
-  // Initial fetch trigger when opened
+  // Click handler to toggle read status (Facebook style background tint)
+  const handleToggleRead = (id: string) => {
+    setReadIds(prev => [...prev, id]);
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  // Delete a single notification element manually
+  const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Stops row click event from firing simultaneously
+    setDeletedIds(prev => [...prev, id]);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  // Mass action to clear out the active lists immediately
+  const handleClearAll = () => {
+    const currentIds = notifications.map(n => n.id);
+    setDeletedIds(prev => [...prev, ...currentIds]);
+    setNotifications([]);
+  };
+
   useEffect(() => {
     if (isOpen) {
-      fetchLiveSystemAlerts(true);
+      fetchLiveBillingAlerts(true);
     }
-  }, [isOpen, fetchLiveSystemAlerts]);
+  }, [isOpen, fetchLiveBillingAlerts]);
 
-  // Live real-time stream tracking rules matching workspace role conditions
+  // Real-time postgres pipeline listener setup targeted at the billing table
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !tenantId) return;
 
-    if (role === "employee") {
-      if (!tenantId) return;
-      const monitoredTables = ["fnb_inventory_items", "nfb_products", "orders"];
-      const channels = monitoredTables.map((tableName) => {
-        return supabase
-          .channel(`modal-live-${tableName}`)
-          .on(
-            "postgres_changes",
-            { event: "*", schema: "public", table: tableName, filter: `tenant_id=eq.${tenantId}` },
-            () => fetchLiveSystemAlerts(false)
-          )
-          .subscribe();
-      });
+    const channel = supabase
+      .channel("modal-live-billing-table-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "billing_notifications", filter: `tenant_id=eq.${tenantId}` },
+        () => fetchLiveBillingAlerts(false)
+      )
+      .subscribe();
 
-      return () => {
-        channels.forEach((channel) => supabase.removeChannel(channel));
-      };
-    } else {
-      const channel = supabase
-        .channel("modal-system-compliance")
-        .on("postgres_changes", { event: "*", schema: "public", table: "tenants" }, () => {
-          fetchLiveSystemAlerts(false);
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [isOpen, supabase, fetchLiveSystemAlerts, role, tenantId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isOpen, supabase, fetchLiveBillingAlerts, tenantId]);
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-[600px] rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: "#FFFCF0" }}>
-        {/* Header */}
+        
+        {/* Header Section */}
         <header className="px-8 py-5 flex justify-between items-center" style={{ borderBottom: "1px solid rgba(56,94,49,0.15)" }}>
-          <h2 className="text-2xl font-bold uppercase tracking-widest font-['Inter']" style={{ color: "#385E31" }}>
-            Notifications
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold uppercase tracking-widest font-['Inter']" style={{ color: "#385E31" }}>
+              Notifications
+            </h2>
+            {notifications.length > 0 && (
+              <button 
+                onClick={handleClearAll}
+                className="text-xs font-bold font-['Inter'] px-2.5 py-1 rounded-md bg-red-50 hover:bg-red-100/80 transition-all border border-red-200/50"
+                style={{ color: "#DC2626" }}
+              >
+                Clear All
+              </button>
+            )}
+          </div>
           <button onClick={onClose} className="text-lg font-bold hover:scale-110 transition-transform" style={{ color: "#385E31" }}>
             ✕
           </button>
         </header>
 
-        {/* Notification list view matching original UI design layout context definitions */}
+        {/* List View */}
         <div className="flex flex-col max-h-[440px] overflow-y-auto">
           {loading ? (
             <div className="px-8 py-12 text-center text-sm font-medium font-['Inter']" style={{ color: "#385E31", opacity: 0.6 }}>
-              Syncing live system metrics...
+              Syncing live billing metrics...
             </div>
           ) : notifications.length === 0 ? (
             <div className="px-8 py-16 text-center flex flex-col gap-1.5 items-center justify-center font-['Inter']" style={{ color: "#385E31" }}>
               <span className="text-base font-semibold">All Caught Up!</span>
               <span className="text-sm font-normal opacity-60">
-                {role === "employee" ? "No low inventory or pending order tasks found." : "No pending infrastructure setup tasks found."}
+                No billing statements or subscription updates found.
               </span>
             </div>
           ) : (
-            notifications.map((notif, i) => (
+            notifications.map((notif) => (
               <div
-                key={i}
-                className="flex items-start justify-between px-8 py-5"
+                key={notif.id}
+                onClick={() => handleToggleRead(notif.id)}
+                className="flex items-start justify-between px-8 py-5 cursor-pointer group transition-all duration-150 relative"
                 style={{
-                  backgroundColor: notif.isRead ? "transparent" : "rgba(56,94,49,0.07)",
+                  backgroundColor: notif.isRead ? "transparent" : "rgba(56,94,49,0.06)",
                   borderBottom: "1px solid rgba(56,94,49,0.10)",
                 }}
               >
-                <div className="flex flex-col gap-1 flex-1 pr-8">
-                  <span className="text-base font-semibold font-['Inter']" style={{ color: "#385E31" }}>
-                    {notif.title}
-                  </span>
-                  <span className="text-sm font-normal font-['Inter']" style={{ color: "#385E31", opacity: 0.6 }}>
-                    {notif.body}
-                  </span>
+                {/* Unread amber indicator dot (FB style) */}
+                {!notif.isRead && (
+                  <div className="absolute left-3.5 top-7 w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                )}
+
+                <div className="flex items-start gap-3 flex-1 pr-24">
+                  <div className="flex flex-col gap-1 pl-1">
+                    <span className={`text-base font-['Inter'] ${notif.isRead ? "font-medium text-gray-600" : "font-bold text-lime-900"}`} style={{ color: notif.isRead ? undefined : "#264220" }}>
+                      {notif.title}
+                    </span>
+                    <span className="text-sm font-normal font-['Inter']" style={{ color: "#385E31", opacity: notif.isRead ? 0.5 : 0.8 }}>
+                      {notif.body}
+                    </span>
+                  </div>
                 </div>
-                <span className="text-sm font-normal font-['Inter'] shrink-0" style={{ color: "#385E31", opacity: 0.6 }}>
-                  {notif.timestamp}
-                </span>
+
+                {/* Timestamps and Deletions Column */}
+                <div className="flex flex-col items-end gap-3 shrink-0">
+                  <span className="text-sm font-normal font-['Inter']" style={{ color: "#385E31", opacity: 0.5 }}>
+                    {notif.timestamp}
+                  </span>
+                  
+                  <button
+                    onClick={(e) => handleDeleteNotification(notif.id, e)}
+                    className="text-xs font-semibold px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 transition-all duration-150"
+                  >
+                    Delete this notification
+                  </button>
+                </div>
               </div>
             ))
           )}

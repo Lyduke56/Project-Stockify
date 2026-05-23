@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+// Separate components for distinct modal designs
 import ClientProfileModal from "../modals/client/profile/modal";
+import ClientSettingsModal from "../modals/client-settings-modal"; 
+import NotificationModal from "../modals/notification-modal";
 
 interface NavbarClientProps {
   onHome?: () => void;
@@ -12,18 +16,24 @@ interface NavbarClientProps {
 
 export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps = {}) {
   const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
   const supabase = createClient();
 
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [notifCount, setNotifCount] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
+
+  // Dynamically resolve business name from parameters or current pathname
+  const businessName = (params?.businessName as string) || pathname?.split("/")[1];
 
   useEffect(() => {
     const initNotifications = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Resolve tenant mapping via user metadata or profile lookup
+      // Resolve tenant mapping via profile lookup
       const { data: userProfile } = await supabase
         .from("users")
         .select("tenant_id")
@@ -74,7 +84,12 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
   }, [tenantId]);
 
   const handleHomeClick = () => {
-    router.push("/dashboard"); 
+    // Dynamic fallback structure mapping to your real folders: /[businessName]/stockify-client-side/Dashboard
+    if (businessName) {
+      router.push(`/${businessName}/stockify-client-side/Dashboard`);
+    } else {
+      router.push("/dashboard");
+    }
     if (onHome) onHome();
   };
 
@@ -107,12 +122,16 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
             <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
           </button>
 
-          {/* Notifications with Dynamic Counter */}
+          {/* Notifications Trigger */}
           <div className="relative flex items-center justify-center">
             <button 
               onClick={() => {
-                if (openNotifs) openNotifs();
-                setNotifCount(0); // Clear visual indicator badge counter when opened
+                if (openNotifs) {
+                  openNotifs();
+                } else {
+                  setIsNotifModalOpen(true); // Integrated on-page overlay fallback!
+                }
+                setNotifCount(0); // Clear counter badge when viewing
               }} 
               className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
               title="Notifications"
@@ -127,7 +146,7 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
             )}
           </div>
 
-          {/* Profile Button - Opens Modal */}
+          {/* Profile Button */}
           <button
             onClick={() => setIsProfileModalOpen(true)}
             className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
@@ -138,11 +157,19 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
         </div>
       </nav>
 
-      {/* Render the Modal outside of the <nav> element */}
+      {/* Account Profile Settings Overlay */}
       <ClientProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 
-      /> 
+      />
+
+      {/* Real-time System Alerts Panel Popup Overlay */}
+      <NotificationModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+        role="employee"
+        tenantId={tenantId}
+      />
     </>
   );
 }
