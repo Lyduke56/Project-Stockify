@@ -89,7 +89,13 @@ export default function TransactionsTable() {
     });
 
   const totalRevenue = transactions.reduce((s, t) => s + t.total_amount, 0);
-  
+
+  const fmtCurrency = (n: number) => {
+    if (n >= 1_000_000) return `₱ ${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000)     return `₱ ${(n / 1_000).toFixed(1)}K`;
+    return `₱ ${n.toFixed(2)}`;
+  };
+
   // Slicing data for pagination
   const displayedTxns = filtered.slice(0, visibleRows);
   const hasMore = visibleRows < filtered.length;
@@ -110,13 +116,13 @@ export default function TransactionsTable() {
         />
         <StatCard 
           title="Total Revenue" 
-          value={`₱ ${totalRevenue.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`} 
+          value={fmtCurrency(totalRevenue)} 
           hideIcon={true} 
           className="w-full"
         />
         <StatCard 
           title="Avg. Order Value" 
-          value={transactions.length ? `₱ ${(totalRevenue / transactions.length).toFixed(2)}` : "₱0.00"} 
+          value={transactions.length ? fmtCurrency(totalRevenue / transactions.length) : "₱0.00"} 
           hideIcon={true} 
           className="w-full"
         />
