@@ -28,21 +28,21 @@ export default function NavbarEmployee({
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
         supabase.from("fnb_inventory_items").select("item_id, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
         supabase.from("nfb_products").select("product_id, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
-        supabase.from("orders").select("order_id", { count: "exact", head: true }).eq("tenant_id", tId).eq("fulfillment_status", "Pending")
+        supabase.from("orders").select("order_id, fulfillment_status").eq("tenant_id", tId).in("fulfillment_status", ["Pending", "Reported"])
       ]);
 
       const lowFnbCount = fnbResult.data?.filter(
-        (item: { stock: number; alert_limit: number }) => item.stock <= item.alert_limit
+        (item: { stock: number; alert_limit: number }) => item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit)
       ).length || 0;
 
       const lowNfbCount = nfbResult.data?.filter(
         (item: { quantity: number; reorder_threshold: any }) => 
-          Number(item.quantity) <= Number(item.reorder_threshold)
+          Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold))
       ).length || 0;
 
-      const pendingOrdersCount = orderResult.count || 0;
+      const pendingAndReportedOrdersCount = orderResult.data?.length || 0;
 
-      setOperationalAlerts(lowFnbCount + lowNfbCount + pendingOrdersCount);
+      setOperationalAlerts(lowFnbCount + lowNfbCount + pendingAndReportedOrdersCount);
     } catch (err) {
       console.error("Failed calculating operational notification badge counts:", err);
     }

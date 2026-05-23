@@ -18,23 +18,34 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
   const [systemAlertCount, setSystemAlertCount] = useState<number>(0);
 
   const checkGlobalPlatformIssues = useCallback(async () => {
-    // Query tenants across global application context scope
-    const { data, error } = await supabase
-      .from("tenants")
-      .select("tenant_id")
-      .or("subscription_status.eq.Pending,is_suspended.eq.true");
+    // Query tenants and subscription records across global context scope
+    const [tenantsRes, subRes] = await Promise.all([
+      supabase
+        .from("tenants")
+        .select("tenant_id")
+        .or("subscription_status.eq.Pending,is_suspended.eq.true"),
+      supabase
+        .from("subscription_records")
+        .select("subscription_id")
+        .or("payment_status.eq.Paid,payment_status.eq.Overdue,payment_status.eq.Missed")
+    ]);
 
-    if (!error && data) {
-      setSystemAlertCount(data.length);
+    let totalCount = 0;
+    if (!tenantsRes.error && tenantsRes.data) {
+      totalCount += tenantsRes.data.length;
     }
+    if (!subRes.error && subRes.data) {
+      totalCount += subRes.data.length;
+    }
+    setSystemAlertCount(totalCount);
   }, [supabase]);
 
   useEffect(() => {
     checkGlobalPlatformIssues();
 
     // Listen to changes globally across all tenants
-    const channel = supabase
-      .channel("global-system-compliance")
+    const channelTenants = supabase
+      .channel("global-system-tenants")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tenants" },
@@ -44,8 +55,21 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
       )
       .subscribe();
 
+    // Listen to changes globally across subscription records
+    const channelSubs = supabase
+      .channel("global-system-subs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "subscription_records" },
+        () => {
+          checkGlobalPlatformIssues();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelTenants);
+      supabase.removeChannel(channelSubs);
     };
   }, [checkGlobalPlatformIssues]);
 

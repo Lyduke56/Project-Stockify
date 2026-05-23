@@ -1,21 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { SectionKey, SidebarData } from "@/app/[businessName]/employee/dashboard/page";
+import LogoutModal from "../modals/logout-modal";
 
 interface SidebarEmployeeProps {
   activeSection:    SectionKey;
   setActiveSection: (section: SectionKey) => void;
   onOpenSettings:   () => void;
-  sidebarData:      SidebarData;
+  sidebarData?:     SidebarData;
 }
 
-export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings, sidebarData }: SidebarEmployeeProps) {
-  const router   = useRouter();
+export default function SidebarEmployee({ 
+  activeSection, 
+  setActiveSection, 
+  onOpenSettings, 
+  sidebarData = { role: "Employee", businessType: "", businessName: "" } 
+}: SidebarEmployeeProps) {
+  const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+  const businessNameSlug = (params?.businessName as string) || pathname?.split("/")[1];
   const supabase = createClient();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const { role, businessType, businessName } = sidebarData;
 
@@ -39,19 +48,16 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
   });
 
   const handleLogout = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
     try {
       await supabase.auth.signOut();
       localStorage.clear();
       sessionStorage.clear();
-      const fallbackTarget = businessName ? encodeURIComponent(businessName.trim()) : "";
-      window.location.href = fallbackTarget
-        ? `http://localhost:3000/${fallbackTarget}/login`
-        : "http://localhost:3000/";
+      setShowLogoutModal(false);
+      const targetPath = businessNameSlug ? `/${businessNameSlug}/login` : "/";
+      window.location.href = targetPath;
     } catch (error) {
       console.error("Logout execution error:", error);
-      setIsLoggingOut(false);
+      setShowLogoutModal(false);
     }
   };
 
@@ -86,16 +92,36 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
+          {/* Settings Tab */}
           <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
+            onClick={onOpenSettings}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary font-semibold"
           >
-            <img src="/icon-logout.svg" className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} />
-            <span className="text-base">{isLoggingOut ? "Logging out..." : "Logout"}</span>
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <img src="/icon-settings.svg" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-base">Settings</span>
+          </button>
+
+          {/* Logout Button */}
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary font-semibold"
+          >
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <img src="/icon-logout.svg" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-base">Logout</span>
           </button>
         </div>
       </div>
+
+      {/* Logout Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+      />
     </div>
   );
 }

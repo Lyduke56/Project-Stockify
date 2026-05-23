@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ClientProfileModal from "../modals/client/profile/modal";
+import NotificationModal from "../modals/notification-modal";
 
 interface NavbarClientProps {
   onHome?: () => void;
@@ -12,18 +13,72 @@ interface NavbarClientProps {
 
 export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps = {}) {
   const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
   const supabase = createClient();
 
+  const businessName = (params?.businessName as string) || pathname?.split("/")[1];
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [notifCount, setNotifCount] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
+
+  const fetchNotificationCount = async (tid: string) => {
+    try {
+      // 1. Fetch billing notifications count
+      const { count, error } = await supabase
+        .from("billing_notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("tenant_id", tid);
+
+      let totalCount = !error && count !== null ? count : 0;
+
+      // 2. Fetch tenant status for suspension
+      const { data: tenantRow } = await supabase
+        .from("tenants")
+        .select("is_suspended")
+        .eq("tenant_id", tid)
+        .single();
+      
+      if (tenantRow?.is_suspended) {
+        totalCount += 1;
+      }
+
+      // 3. Fetch pending, overdue, or missed subscription records
+      const { data: subData } = await supabase
+        .from("subscription_records")
+        .select("payment_status, overdue_at")
+        .eq("tenant_id", tid)
+        .in("payment_status", ["Pending", "Overdue", "Missed"]);
+
+      if (subData) {
+        const now = new Date();
+        subData.forEach((record: any) => {
+          if (record.payment_status === "Overdue" || record.payment_status === "Missed") {
+            totalCount += 1;
+          } else if (record.payment_status === "Pending" && record.overdue_at) {
+            const overdueDate = new Date(record.overdue_at);
+            const diffTime = overdueDate.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays >= 0 && diffDays <= 3) {
+              totalCount += 1;
+            }
+          }
+        });
+      }
+
+      setNotifCount(totalCount);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     const initNotifications = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Resolve tenant mapping via user metadata or profile lookup
       const { data: userProfile } = await supabase
         .from("users")
         .select("tenant_id")
@@ -32,49 +87,74 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
 
       if (userProfile?.tenant_id) {
         setTenantId(userProfile.tenant_id);
-
-        // Fetch initial billing alerts count
-        const { count, error } = await supabase
-          .from("billing_notifications")
-          .select("*", { count: "exact", head: true })
-          .eq("tenant_id", userProfile.tenant_id);
-
-        if (!error && count !== null) {
-          setNotifCount(count);
-        }
+        fetchNotificationCount(userProfile.tenant_id);
       }
     };
 
     initNotifications();
   }, []);
 
-  // Listen to incoming billing logs in real-time
+  // Listen to incoming billing notifications, subscription records, and tenant details in real-time
   useEffect(() => {
     if (!tenantId) return;
 
-    const channel = supabase
+    const channel1 = supabase
       .channel("realtime-client-billing")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "billing_notifications",
           filter: `tenant_id=eq.${tenantId}`,
         },
         () => {
-          setNotifCount((prev) => prev + 1);
+          fetchNotificationCount(tenantId);
+        }
+      )
+      .subscribe();
+
+    const channel2 = supabase
+      .channel("realtime-client-subscriptions")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subscription_records",
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => {
+          fetchNotificationCount(tenantId);
+        }
+      )
+      .subscribe();
+
+    const channel3 = supabase
+      .channel("realtime-client-tenants")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tenants",
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => {
+          fetchNotificationCount(tenantId);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channel1);
+      supabase.removeChannel(channel2);
+      supabase.removeChannel(channel3);
     };
   }, [tenantId]);
 
   const handleHomeClick = () => {
-    router.push("/dashboard"); 
+    router.push(`/${businessName}/stockify-client-side/Dashboard`); 
     if (onHome) onHome();
   };
 
@@ -111,6 +191,7 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
           <div className="relative flex items-center justify-center">
             <button 
               onClick={() => {
+                setIsNotifModalOpen(true);
                 if (openNotifs) openNotifs();
                 setNotifCount(0); // Clear visual indicator badge counter when opened
               }} 
@@ -138,11 +219,18 @@ export default function NavbarClient({ onHome, openNotifs }: NavbarClientProps =
         </div>
       </nav>
 
-      {/* Render the Modal outside of the <nav> element */}
+      {/* Render the Modals outside of the <nav> element */}
       <ClientProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 
       /> 
+
+      <NotificationModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+        role="client"
+        tenantId={tenantId}
+      />
     </>
   );
 }
