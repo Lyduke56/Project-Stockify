@@ -19,9 +19,17 @@ export default function ClientSettingsModal({ isOpen, onClose }: { isOpen: boole
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+    <div 
+      //  BACKDROP CLICK: Clicking this dark background overlay will now trigger automatic close
+      onClick={onClose}
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+    >
       {/* Container Size matches the aspect ratio of the 2-column Superadmin UI */}
-      <div className="bg-[#FFFCF0] w-[800px] h-[500px] rounded-[32px] shadow-2xl overflow-hidden grid grid-cols-12 font-['Inter']">
+      <div 
+        //  STOP PROPAGATION: Clicking inside the settings form elements will not bubble up to the backdrop
+        onClick={(e) => e.stopPropagation()}
+        className="bg-[#FFFCF0] w-[800px] h-[500px] rounded-[32px] shadow-2xl overflow-hidden grid grid-cols-12 font-['Inter'] cursor-default"
+      >
         
         {/* ── LEFT SIDEBAR PANEL (1/3 Width) ── */}
         <div className="col-span-4 bg-[#385E31] p-8 flex flex-col justify-between relative">
