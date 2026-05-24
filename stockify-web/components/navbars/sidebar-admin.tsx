@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { createClient } from "@/lib/supabase/client";
 import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page";
@@ -59,6 +59,9 @@ export default function SidebarAdmin({
   openSettings, 
 }: SidebarAdminProps) {
   const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+  const businessName = (params?.businessName as string) || pathname?.split("/")[1];
   const supabase = createClient();
 
   const [shopName, setShopName] = useState<string | null>(null);
@@ -107,9 +110,17 @@ export default function SidebarAdmin({
   ];
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setShowLogoutModal(false);
-    router.push("/");
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      setShowLogoutModal(false);
+      const targetPath = businessName ? `/${businessName}/login` : "/";
+      window.location.href = targetPath;
+    } catch (e) {
+      console.error("Logout error:", e);
+      setShowLogoutModal(false);
+    }
   };
 
   return (

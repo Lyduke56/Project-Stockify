@@ -19,12 +19,61 @@ export default function NavbarAdmin({
   const [notifCount, setNotifCount] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
 
+  const fetchNotificationCount = async (tid: string) => {
+    try {
+      // 1. Fetch billing notifications count
+      const { count, error } = await supabase
+        .from("billing_notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("tenant_id", tid);
+
+      let totalCount = !error && count !== null ? count : 0;
+
+      // 2. Fetch tenant status for suspension
+      const { data: tenantRow } = await supabase
+        .from("tenants")
+        .select("is_suspended")
+        .eq("tenant_id", tid)
+        .single();
+      
+      if (tenantRow?.is_suspended) {
+        totalCount += 1;
+      }
+
+      // 3. Fetch pending, overdue, or missed subscription records
+      const { data: subData } = await supabase
+        .from("subscription_records")
+        .select("payment_status, overdue_at")
+        .eq("tenant_id", tid)
+        .in("payment_status", ["Pending", "Overdue", "Missed"]);
+
+      if (subData) {
+        const now = new Date();
+        subData.forEach((record: any) => {
+          if (record.payment_status === "Overdue" || record.payment_status === "Missed") {
+            totalCount += 1;
+          } else if (record.payment_status === "Pending" && record.overdue_at) {
+            const overdueDate = new Date(record.overdue_at);
+            const diffTime = overdueDate.getTime() - now.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays >= 0 && diffDays <= 3) {
+              totalCount += 1;
+            }
+          }
+        });
+      }
+
+      setNotifCount(totalCount);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     const initNotifications = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Resolve tenant mapping via user metadata or profile lookup
       const { data: userProfile } = await supabase
         .from("users")
         .select("tenant_id")
@@ -33,44 +82,69 @@ export default function NavbarAdmin({
 
       if (userProfile?.tenant_id) {
         setTenantId(userProfile.tenant_id);
-
-        // Fetch initial billing alerts count
-        const { count, error } = await supabase
-          .from("billing_notifications")
-          .select("*", { count: "exact", head: true })
-          .eq("tenant_id", userProfile.tenant_id);
-
-        if (!error && count !== null) {
-          setNotifCount(count);
-        }
+        fetchNotificationCount(userProfile.tenant_id);
       }
     };
 
     initNotifications();
   }, []);
 
-  // Listen to incoming billing logs in real-time
+  // Listen to incoming billing logs, subscriptions, and tenant details in real-time
   useEffect(() => {
     if (!tenantId) return;
 
-    const channel = supabase
+    const channel1 = supabase
       .channel("realtime-admin-billing")
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "billing_notifications",
           filter: `tenant_id=eq.${tenantId}`,
         },
         () => {
-          setNotifCount((prev) => prev + 1);
+          fetchNotificationCount(tenantId);
+        }
+      )
+      .subscribe();
+
+    const channel2 = supabase
+      .channel("realtime-admin-subscriptions")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subscription_records",
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => {
+          fetchNotificationCount(tenantId);
+        }
+      )
+      .subscribe();
+
+    const channel3 = supabase
+      .channel("realtime-admin-tenants")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "tenants",
+          filter: `tenant_id=eq.${tenantId}`,
+        },
+        () => {
+          fetchNotificationCount(tenantId);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channel1);
+      supabase.removeChannel(channel2);
+      supabase.removeChannel(channel3);
     };
   }, [tenantId]);
 
@@ -126,7 +200,7 @@ export default function NavbarAdmin({
           className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
           title="Profile Settings"
         >
-          <img src="/navbar-profile-settings.svg" alt="Profile Settings" className="w-full h-full object-contain" />
+          <img src="/navbar-profile-settings.svg" alt="Profile Settings" className="w-full h-full object-contain rounded-full border border-[#385E31]" />
         </button>
       </div>
     </nav>

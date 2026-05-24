@@ -5,7 +5,7 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 import LogoutModal from "../modals/logout-modal";
-// Removed SettingsModal import!
+import ClientSettingsModal from "../modals/navbar-modals/client-settings";
 
 type SidebarClientProps = {
   active?: "dashboard" | "billing" | "settings";
@@ -56,7 +56,7 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
   const supabase = createClient();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  // Removed showSettingsModal state!
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   // Fallback: extract businessName from the URL path if params doesn't resolve it
   const businessName = (params?.businessName as string) || pathname?.split("/")[1];
@@ -67,9 +67,8 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
   ];
 
   const bottomItems = [
-    // Added the path route for the new settings page based on your file structure
-    { id: "settings", label: "Settings", iconFileName: "icon-settings", path: `/${businessName}/stockify-client-side/settings` },
-    { id: "logout",   label: "Logout",   iconFileName: "icon-logout" },
+    { id: "settings", label: "Settings", iconFileName: "icon-settings", path: "" },
+    { id: "logout",   label: "Logout",   iconFileName: "icon-logout", path: "" },
   ];
 
   const handleNavigation = (id: string, path?: string) => {
@@ -77,7 +76,10 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
       setShowLogoutModal(true);
       return;
     }
-    // Removed the "settings" intercept block so it falls through to router.push()
+    if (id === "settings") {
+      setShowSettingsModal(true);
+      return;
+    }
     if (path) {
       router.push(path);
     }
@@ -125,7 +127,6 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
               label={item.label}
               iconFileName={item.iconFileName}
               isActive={active === item.id}
-              // Make sure to pass item.path here so handleNavigation receives it!
               onClick={() => handleNavigation(item.id, item.path)}
             />
           ))}
@@ -138,7 +139,10 @@ export default function SidebarClient({ active = "dashboard" }: SidebarClientPro
         onCancel={() => setShowLogoutModal(false)}
         onConfirm={handleLogout}
       />
-      {/* Removed SettingsModal component! */}
+      <ClientSettingsModal 
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
     </div>
   );
 }

@@ -3,32 +3,21 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
-// ── Types & Mock Data ─────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface AdminProfileData {
   name: string;
   email: string;
   contactNumber: string;
-  location: string;
+  address: string;
   role: string;
   status: string;
-  lastLogin: string;
-  twoFactorEnabled: boolean;
+  gender: string;
+  citizenship: string;
   avatarUrl: string | null;
 }
-
-const MOCK_ADMIN_DATA: AdminProfileData = {
-  name: "John Doe",
-  email: "johndoe@superadmin.com",
-  contactNumber: "+63 912 345 6789",
-  location: "Cebu City, Philippines",
-  role: "System Superadmin",
-  status: "Active",
-  lastLogin: "Today, 08:42 AM",
-  twoFactorEnabled: true,
-  avatarUrl: null,
-};
 
 // ── SVGs ──────────────────────────────────────────────────────────────────────
 
@@ -52,14 +41,14 @@ const MapPinIcon = () => (
     <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" />
   </svg>
 );
-const ShieldCheckIcon = () => (
+const UserIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" /><path d="m9 12 2 2 4-4" />
+    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
   </svg>
 );
-const ClockIcon = () => (
+const GlobeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+    <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
   </svg>
 );
 const LogOutIcon = () => (
@@ -110,7 +99,9 @@ function FieldRow({ icon, label, name, value, isEditing, inputType = "text", onC
             className="w-full bg-white border border-[#385E31]/20 rounded-lg px-2.5 py-1 text-[13px] font-semibold text-[#385E31] outline-none focus:border-[#F7B71D] transition-colors"
           />
         ) : (
-          <span className="text-[13px] font-semibold text-[#385E31]">{value}</span>
+          <span className="text-[13px] font-semibold text-[#385E31]">
+            {value || <span className="text-[#385E31]/30 italic">Not set</span>}
+          </span>
         )}
       </div>
     </div>
@@ -122,34 +113,94 @@ function FieldRow({ icon, label, name, value, isEditing, inputType = "text", onC
 interface SuperadminProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  adminData?: AdminProfileData;
 }
+
+const DEFAULT_DATA: AdminProfileData = {
+  name: "",
+  email: "",
+  contactNumber: "",
+  address: "",
+  role: "Superadmin",
+  status: "Active",
+  gender: "",
+  citizenship: "",
+  avatarUrl: null,
+};
 
 export default function SuperadminProfileModal({
   isOpen,
   onClose,
-  adminData = MOCK_ADMIN_DATA,
 }: SuperadminProfileModalProps) {
+  const supabase = createClient();
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState<AdminProfileData>(adminData);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(adminData.avatarUrl);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<AdminProfileData>(DEFAULT_DATA);
+  const [savedData, setSavedData] = useState<AdminProfileData>(DEFAULT_DATA);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [newAvatarFile, setNewAvatarFile] = useState<File | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
+  // Fetch real user data from Supabase when modal opens
   useEffect(() => {
-    if (isOpen) {
-      setFormData(adminData);
-      setAvatarPreview(adminData.avatarUrl);
-      setIsEditing(false);
-    }
-  }, [isOpen, adminData]);
+    if (!isOpen) return;
+
+    const fetchUserData = async () => {
+      setIsLoading(true);
+      setSaveError("");
+
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const authUser = sessionData.session?.user;
+        if (!authUser) return;
+
+        setUserId(authUser.id);
+
+        const { data: userRow, error } = await supabase
+          .from("users")
+          .select("first_name, last_name, middle_name, email, contact_number, address, role, is_active, gender, citizenship, profile_picture_url")
+          .eq("user_id", authUser.id)
+          .single();
+
+        if (error || !userRow) return;
+
+        const fullName = [userRow.first_name, userRow.middle_name, userRow.last_name]
+          .filter(Boolean)
+          .join(" ") || userRow.email;
+
+        const profile: AdminProfileData = {
+          name: fullName,
+          email: userRow.email || authUser.email || "",
+          contactNumber: userRow.contact_number || "",
+          address: userRow.address || "",
+          role: userRow.role || "Superadmin",
+          status: userRow.is_active ? "Active" : "Inactive",
+          gender: userRow.gender || "",
+          citizenship: userRow.citizenship || "",
+          avatarUrl: userRow.profile_picture_url || null,
+        };
+
+        setFormData(profile);
+        setSavedData(profile);
+        setAvatarPreview(userRow.profile_picture_url || null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+    setIsEditing(false);
+    setNewAvatarFile(null);
+  }, [isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -159,29 +210,85 @@ export default function SuperadminProfileModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setNewAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => setAvatarPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!userId) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    setSaveError("");
+
+    try {
+      // Parse name back into parts (simple split: first + last)
+      const nameParts = formData.name.trim().split(" ");
+      const first_name = nameParts[0] || "";
+      const last_name = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+      const middle_name = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "";
+
+      let profile_picture_url = formData.avatarUrl;
+
+      // Upload new avatar if selected
+      if (newAvatarFile) {
+        const ext = newAvatarFile.name.split(".").pop();
+        const filePath = `avatars/${userId}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("profile-pictures")
+          .upload(filePath, newAvatarFile, { upsert: true });
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from("profile-pictures")
+            .getPublicUrl(filePath);
+          profile_picture_url = urlData.publicUrl;
+        }
+      }
+
+      const { error } = await supabase
+        .from("users")
+        .update({
+          first_name,
+          last_name,
+          middle_name,
+          contact_number: formData.contactNumber,
+          address: formData.address,
+          gender: formData.gender,
+          citizenship: formData.citizenship,
+          profile_picture_url,
+        })
+        .eq("user_id", userId);
+
+      if (error) {
+        setSaveError("Failed to save changes. Please try again.");
+        return;
+      }
+
+      const updated = { ...formData, avatarUrl: profile_picture_url };
+      setFormData(updated);
+      setSavedData(updated);
+      setNewAvatarFile(null);
       setIsEditing(false);
-    }, 1000);
+    } catch {
+      setSaveError("An unexpected error occurred.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
-    setFormData(adminData);
-    setAvatarPreview(adminData.avatarUrl);
+    setFormData(savedData);
+    setAvatarPreview(savedData.avatarUrl);
+    setNewAvatarFile(null);
     setIsEditing(false);
+    setSaveError("");
   };
 
   if (!mounted) return null;
 
-  const initials = (formData.name || "A")
+  const initials = (formData.name || formData.email || "A")
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -216,11 +323,11 @@ export default function SuperadminProfileModal({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-            className="relative w-full max-w-[460px] bg-[#FFFCEB] rounded-[28px] overflow-hidden border border-[#385E31]/10 shadow-[0_24px_64px_rgba(56,94,49,0.18)] flex flex-col max-h-[620px] z-10"
+            className="relative w-full max-w-[460px] bg-[#FFFCEB] rounded-[28px] overflow-hidden border border-[#385E31]/10 shadow-[0_24px_64px_rgba(56,94,49,0.18)] flex flex-col max-h-[640px] z-10"
           >
             {/* ── BANNER ── */}
             <div className="bg-[#385E31] px-5 pt-5 pb-0 relative flex-shrink-0">
-              {/* Close button — hidden while editing */}
+              {/* Close button */}
               {!isEditing && (
                 <button
                   onClick={onClose}
@@ -230,13 +337,15 @@ export default function SuperadminProfileModal({
                 </button>
               )}
 
-              {/* Avatar — overflows banner into scroll body via translateY */}
+              {/* Avatar */}
               <div
                 className={`w-20 h-20 rounded-[18px] bg-[#FFFCEB] p-[5px] mx-auto translate-y-10 relative z-20 group ${isEditing ? "cursor-pointer" : ""}`}
                 onClick={() => isEditing && fileInputRef.current?.click()}
               >
                 <div className="w-full h-full rounded-[13px] overflow-hidden relative bg-[#F7B71D] flex items-center justify-center text-[#385E31] text-2xl font-black">
-                  {avatarPreview ? (
+                  {isLoading ? (
+                    <LoaderIcon />
+                  ) : avatarPreview ? (
                     <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     initials
@@ -259,7 +368,7 @@ export default function SuperadminProfileModal({
                 [&::-webkit-scrollbar-thumb]:bg-[#385E31]/20
                 [&::-webkit-scrollbar-thumb]:rounded-full"
             >
-              {/* Identity block — pt-14 offsets the avatar overflow */}
+              {/* Identity block */}
               <div className="pt-14 text-center mb-5">
                 {isEditing ? (
                   <input
@@ -272,7 +381,11 @@ export default function SuperadminProfileModal({
                   />
                 ) : (
                   <h2 className="text-xl font-black text-[#385E31] tracking-wide mb-2">
-                    {formData.name}
+                    {isLoading ? (
+                      <span className="inline-block w-32 h-5 bg-[#385E31]/10 rounded animate-pulse" />
+                    ) : (
+                      formData.name || formData.email
+                    )}
                   </h2>
                 )}
                 <div className="flex items-center justify-center gap-2">
@@ -287,10 +400,17 @@ export default function SuperadminProfileModal({
                 </div>
               </div>
 
+              {/* Save error */}
+              {saveError && (
+                <div className="mb-3 px-4 py-2 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-semibold">
+                  {saveError}
+                </div>
+              )}
+
               {/* Contact card */}
               <div className="bg-white/65 border border-[#385E31]/10 rounded-2xl p-4 mb-2.5 flex flex-col gap-3.5">
                 <h3 className="text-[9.5px] font-bold text-[#385E31]/45 uppercase tracking-[0.1em] flex items-center justify-between">
-                  Contact information
+                  Contact Information
                   {isEditing && (
                     <span className="text-[#c9920d] normal-case tracking-normal text-[10px] font-semibold">
                       Editing profile…
@@ -303,7 +423,7 @@ export default function SuperadminProfileModal({
                   label="Email address"
                   name="email"
                   value={formData.email}
-                  isEditing={isEditing}
+                  isEditing={false}
                   inputType="email"
                   onChange={handleInputChange}
                 />
@@ -317,9 +437,32 @@ export default function SuperadminProfileModal({
                 />
                 <FieldRow
                   icon={<MapPinIcon />}
-                  label="Location"
-                  name="location"
-                  value={formData.location}
+                  label="Address"
+                  name="address"
+                  value={formData.address}
+                  isEditing={isEditing}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* Additional Info card */}
+              <div className="bg-white/65 border border-[#385E31]/10 rounded-2xl p-4 mb-2.5 flex flex-col gap-3.5">
+                <h3 className="text-[9.5px] font-bold text-[#385E31]/45 uppercase tracking-[0.1em]">
+                  Additional Information
+                </h3>
+                <FieldRow
+                  icon={<UserIcon />}
+                  label="Gender"
+                  name="gender"
+                  value={formData.gender}
+                  isEditing={isEditing}
+                  onChange={handleInputChange}
+                />
+                <FieldRow
+                  icon={<GlobeIcon />}
+                  label="Citizenship"
+                  name="citizenship"
+                  value={formData.citizenship}
                   isEditing={isEditing}
                   onChange={handleInputChange}
                 />
@@ -356,13 +499,14 @@ export default function SuperadminProfileModal({
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="flex-1 bg-[#F7B71D] text-[#385E31] py-3 rounded-xl text-[13px] font-bold hover:brightness-105 transition-all"
+                      disabled={isLoading}
+                      className="flex-1 bg-[#F7B71D] text-[#385E31] py-3 rounded-xl text-[13px] font-bold hover:brightness-105 transition-all disabled:opacity-60"
                     >
                       Edit profile
                     </button>
                     <button
-                      onClick={() => alert("Trigger Logout")}
-                      title="Sign out"
+                      onClick={onClose}
+                      title="Close"
                       className="w-[46px] bg-transparent border-2 border-[#E91F22]/25 text-[#c0282a] rounded-xl flex items-center justify-center hover:bg-[#E91F22]/5 transition-colors"
                     >
                       <LogOutIcon />

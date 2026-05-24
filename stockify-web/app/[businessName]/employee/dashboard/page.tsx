@@ -137,25 +137,24 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div
-      className="flex min-h-screen"
-      style={{
-        backgroundColor:        config?.color_background  ?? "#FFFCEB",
-        "--color-primary":      config?.color_primary      ?? "#385E31",
-        "--color-secondary":    config?.color_secondary    ?? "#2A4725",
-        "--color-accent":       config?.color_accent       ?? "#F7B71D",
-        "--color-text":         config?.color_text         ?? "#3A6131",
-        "--color-sidebar-text": config?.color_sidebar_text ?? "#FFF9D7",
-      } as React.CSSProperties}
-    >
-      {/* Sidebar — slides in from left */}
-      <motion.div
-        initial={{ opacity: 0, x: -32 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
-      >
-        <SidebarEmployee
-          activeSection={activeSection}
+    <div className="flex min-h-screen" style={{
+      backgroundColor: config?.color_background ?? "#FFFCEB",
+      '--color-primary': config?.color_primary ?? "#385E31",
+      '--color-secondary': config?.color_secondary ?? "#2A4725",
+      '--color-accent': config?.color_accent ?? "#F7B71D",
+      '--color-text': config?.color_text ?? "#3A6131",
+      '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
+    } as React.CSSProperties}>
+
+      <SidebarEmployee
+        activeSection={activeSection}
+        setActiveSection={handleSetSection}
+        onOpenSettings={handleOpenSettings}
+        sidebarData={sidebarData!}
+      />
+
+      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
+        <NavbarEmployee
           setActiveSection={handleSetSection}
           onOpenSettings={() => console.log("Open settings clicked")}
           sidebarData={sidebarData!}
