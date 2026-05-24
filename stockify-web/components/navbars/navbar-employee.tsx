@@ -26,6 +26,10 @@ export default function NavbarEmployee({
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [hasSeenNotifs, setHasSeenNotifs] = useState<boolean>(false);
 
+  // ── NEW BRAND STATES ────────────────────────────────────────────────────────
+  const [businessName, setBusinessName] = useState<string>("STOCKIFY");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
   // Function to be called by the parent (via Modal's "Clear All")
   const resetBadge = useCallback(() => {
     setOperationalAlerts(0);
@@ -76,8 +80,25 @@ export default function NavbarEmployee({
         .single();
 
       if (profile?.tenant_id) {
-        setTenantId(profile.tenant_id);
-        calculateOperationalMetrics(profile.tenant_id);
+        const tid = profile.tenant_id;
+        setTenantId(tid);
+        calculateOperationalMetrics(tid);
+
+        // ── FETCH BRAND INFORMATION FROM THE TENANTS TABLE ───────────────────
+        const { data: tenantBrand } = await supabase
+          .from("tenants")
+          .select("business_name, logo_url")
+          .eq("tenant_id", tid)
+          .single();
+
+        if (tenantBrand) {
+          if (tenantBrand.business_name) {
+            setBusinessName(tenantBrand.business_name.toUpperCase());
+          }
+          if (tenantBrand.logo_url) {
+            setLogoUrl(tenantBrand.logo_url);
+          }
+        }
       }
     };
 
@@ -102,26 +123,59 @@ export default function NavbarEmployee({
         .subscribe();
     });
 
+    // Real-time listener specifically watching the tenants table for changes to branding elements
+    const brandChannel = supabase
+      .channel("realtime-employee-brand")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` },
+        () => {
+          supabase
+            .from("tenants")
+            .select("business_name, logo_url")
+            .eq("tenant_id", tenantId)
+            .single()
+            .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
+              if (data) {
+                if (data.business_name) setBusinessName(data.business_name.toUpperCase());
+                if (data.logo_url) setLogoUrl(data.logo_url);
+              }
+            });
+        }
+      )
+      .subscribe();
+
     return () => {
       channels.forEach((channel) => supabase.removeChannel(channel));
+      supabase.removeChannel(brandChannel);
     };
   }, [tenantId, calculateOperationalMetrics, supabase]);
 
   const handleNotifClick = () => {
-    // Only set as "seen" when explicitly opened
     openNotifs();
   };
 
   return (
     <nav className="relative w-full h-[55px] px-12 bg-[var(--color-accent)] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
-      {/* Brand Group */}
-      <div className="flex items-center gap-1.5 cursor-pointer select-none" onClick={() => setActiveSection("dashboard")}>
-        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-          <img src="/stockify-logo-1.svg" alt="Stockify Logo" className="h-7 md:h-9 w-auto" />
+      
+      {/* Brand Group: Dynamic Logo + Brand Name */}
+      <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setActiveSection("dashboard")}>
+        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full overflow-hidden bg-white/10 p-0.5">
+          <img 
+            src={logoUrl || "/stockify-logo-1.svg"} 
+            alt={`${businessName} Logo`} 
+            className="h-full w-full object-contain" 
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/stockify-logo-1.svg";
+            }}
+          />
         </div>
-        <div className="text-[var(--color-primary)] text-3xl font-bold font-fredoka tracking-tight">STOCKIFY</div>
+        <div className="text-[var(--color-primary)] text-xl md:text-2xl font-bold font-fredoka truncate max-w-[180px] md:max-w-[280px]">
+          {businessName}
+        </div>
       </div>
 
+      {/* RIGHT SIDE: Controls */}
       <div className="flex items-center gap-4 md:gap-8">
         <button onClick={() => setActiveSection("dashboard")} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Home">
           <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
