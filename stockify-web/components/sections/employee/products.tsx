@@ -45,16 +45,15 @@ export default function ProductsSection() {
   return (
     <>
       {isLoading && !error && <LoadingScreen fullScreen={false} />}
-
-      <div
-        className={`w-full flex flex-col font-['Inter'] transition-all duration-700 ease-out ${
-          isLoading || error
-            ? "hidden"
-            : isVisible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-4"
-        }`}
-      >
+        <div
+            className={`w-full flex flex-col font-['Inter'] transition-all duration-700 ease-out ${
+              isLoading || error
+                ? "invisible pointer-events-none"  
+                : isVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-4"
+            }`}
+          >
         {/* Header */}
         <div className="w-full flex flex-col items-center mt-2 mb-10">
           <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">

@@ -2,153 +2,205 @@
 
 import React from "react";
 import { motion } from "framer-motion";
-import { Plus, Heart, Coffee } from "lucide-react";
-
-export interface FnbProductSize {
-  size_id: string;
-  label: string;
-  price: number;
-  is_default: boolean;
-  sort_order: number;
-  max_yield: number;
-}
-
-export interface FnbProduct {
-  product_id: string;
-  name: string;
-  description: string | null;
-  image_url: string | null;
-  price: number;
-  max_yield: number;
-  category_id: string | null;
-  category_name: string | null;
-  sizes: FnbProductSize[];
-}
+import { Heart, Plus } from "lucide-react";
+import { FnbProduct } from "@/backend/hooks/getStoreFront";
 
 interface FnbProductCardProps {
   product: FnbProduct;
   onOpenModal: (product: FnbProduct) => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: (productId: string) => void;
-  colors?: {
-    primary: string;
-    secondary: string;
-    accent: string;
-    bg: string;
-    text: string;
-  };
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
+  colors?: any; 
 }
 
-export const FnbProductCard = ({ 
-  product, 
+export const FnbProductCard = ({
+  product,
   onOpenModal,
-  isFavorite = false,
+  isFavorite,
   onToggleFavorite,
-  colors
+  colors,
 }: FnbProductCardProps) => {
-  const c = colors || {
-    primary: "#385E31",
-    secondary: "#2A4725",
-    accent: "#F7B71D",
-    bg: "#FFFCEB",
-    text: "#3A6131"
+  const currentYield = product.max_yield;
+  const isOutOfStock = currentYield === 0;
+
+  // Utilize the exact dark palette provided
+  const c = {
+    primary: colors?.primary || "#385E31",    // Deep Green 1
+    secondary: colors?.secondary || "#2A4725", // Darker Green (Card BG)
+    accent: colors?.accent || "#E5AC24",       // Gold
+    textLight: colors?.bg || "#FFFCEB",        // Cream/Light Text
   };
 
-  const hasSizes    = product.sizes.length > 0;
-  const isAvailable = hasSizes
-    ? product.sizes.some((s) => s.max_yield > 0)
-    : product.max_yield > 0;
-
-  const displayPrice = hasSizes
-    ? `from ₱${Math.min(...product.sizes.map((s) => s.price)).toFixed(2)}`
-    : `₱${Number(product.price).toFixed(2)}`;
-
-  const availabilityLabel = hasSizes
-    ? (isAvailable ? `${product.sizes.filter((s) => s.max_yield > 0).length} sizes available` : "Unavailable")
-    : (isAvailable ? `${product.max_yield} servings` : "Sold Out");
+  // Sort sizes if they exist
+  const sizes = product.sizes?.slice().sort((a, b) => a.sort_order - b.sort_order) || [];
 
   return (
     <motion.div
-      layoutId={`card-${product.product_id}`}
-      variants={{
-        hidden: { opacity: 0, y: 15 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { type: "spring", stiffness: 300, damping: 25 },
-        },
+      layout
+      whileHover={{ y: -6 }}
+      className="group relative flex flex-col h-full rounded-[28px] p-3 sm:p-4 cursor-pointer transition-all duration-500 overflow-hidden"
+      style={{ 
+        backgroundColor: c.secondary, // Dark background
+        border: `1px solid ${c.primary}`, 
+        boxShadow: `0 12px 32px -4px rgba(0,0,0,0.3)`, 
       }}
       onClick={() => onOpenModal(product)}
-      className="border rounded-[10px] p-5 flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-      style={{ backgroundColor: c.bg, borderColor: c.primary + "33" }}
     >
-      {/* Image / Fallback */}
-      <div className="w-full aspect-square flex items-center justify-center mb-4 rounded-[8px] group-hover:scale-105 transition-transform duration-300 overflow-hidden relative"
-        style={{ background: `linear-gradient(to bottom, ${c.primary}0D, transparent)` }}>
+      {/* Glow Effect on Hover */}
+      <div 
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at center, ${c.accent}15 0%, rgba(0,0,0,0) 70%)`
+        }}
+      />
+
+      {/* Padded Image Container */}
+      <div className="relative w-full aspect-[4/3] rounded-[20px] overflow-hidden mb-4 flex-shrink-0" style={{ backgroundColor: `${c.primary}80` }}>
+        
+        {/* Favorite Button (Floating over image) */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(product.product_id);
+          }}
+          className="absolute top-3 left-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-110"
+          style={{ 
+            backgroundColor: `${c.textLight}E6`, // Light cream bg for contrast on image
+            backdropFilter: "blur(4px)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
+          }}
+        >
+          <Heart
+            size={16}
+            fill={isFavorite ? c.accent : "none"}
+            stroke={isFavorite ? c.accent : c.secondary}
+            strokeWidth={1.5}
+            className="transition-colors duration-300"
+          />
+        </button>
+
         {product.image_url ? (
           <img
-            src={product.image_url.split('?')[0]}  
+            src={product.image_url.split("?")[0]}
             alt={product.name}
-            className="w-full h-full object-cover rounded-[8px]"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-              (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('style');
-            }}
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           />
-        ) : null}
-        <Coffee size={72} style={product.image_url ? { display: 'none' } : { color: c.primary + "40" }} />
-        {!isAvailable && (
-          <div className="absolute inset-0 bg-white/60 rounded-[8px] flex items-center justify-center">
-            <span className="text-red-500 font-bold text-[11px] bg-red-50 border border-red-100 px-2.5 py-1 rounded-full">
-              Unavailable
-            </span>
+        ) : (
+          <div 
+            className="w-full h-full flex items-center justify-center text-[10px] tracking-widest uppercase font-bold"
+            style={{ color: `${c.textLight}40` }}
+          >
+            No Image
           </div>
         )}
-        {hasSizes && (
-          <div className="absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: c.primary, color: c.accent }}>
-            {product.sizes.length} sizes
+        
+        {/* Out of Stock Overlay */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 backdrop-blur-[2px] flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <span 
+              className="text-[11px] font-black px-4 py-2 rounded-full tracking-widest uppercase shadow-md"
+              style={{ backgroundColor: c.accent, color: c.secondary }}
+            >
+              Sold Out
+            </span>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col flex-1">
-        <h3 className="text-[16px] font-extrabold mb-1 line-clamp-1" style={{ color: c.text }}>
-          {product.name}
-        </h3>
-        <p className="text-[12px] font-medium leading-relaxed mb-4 flex-1 line-clamp-2" style={{ color: c.text, opacity: 0.7 }}>
-          {product.description ?? "No description available."}
-        </p>
-
-        <div className="flex justify-between items-end mb-5">
-          <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-[11px] font-bold border ${!isAvailable ? "bg-red-50 border-red-100 text-red-400" : ""}`}
-            style={isAvailable ? { backgroundColor: c.bg, borderColor: c.primary + "1A", color: c.primary } : {}}
+      {/* Card Content & Action Row */}
+      <div className="flex justify-between items-end gap-2 flex-1 relative z-10 mb-4">
+        
+        {/* Left Side: Text Info */}
+        <div className="flex flex-col flex-1 min-w-0">
+          {/* Categorization */}
+          <span 
+            className="text-[10px] font-bold uppercase tracking-widest mb-1 truncate"
+            style={{ color: `${c.textLight}A0` }} // Cream with 60% opacity
           >
-            {availabilityLabel}
-          </div>
-          <div className="text-[18px] font-black tracking-tight" style={{ color: c.primary }}>
-            {displayPrice}
-          </div>
+            {product.category_name || "Uncategorized"}
+          </span>
+
+          <h3 
+            className="font-bold text-[16px] leading-snug line-clamp-2 min-h-[38px] pr-2"
+            style={{ color: c.textLight }} // Main Cream Text
+          >
+            {product.name}
+          </h3>
+          
+          <p 
+            className="font-black text-[18px] mt-1.5"
+            style={{ color: c.accent }} // Gold Price
+          >
+            ₱{product.price.toFixed(2)}
+          </p>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            disabled={!isAvailable}
-            onClick={(e) => { e.stopPropagation(); onOpenModal(product); }}
-            className="flex-1 flex justify-center items-center gap-2 py-2.5 rounded-[8px] font-bold text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: c.primary, color: c.bg }}
-          >
-            <Plus size={16} /> {hasSizes ? "Choose Size" : "Add to Cart"}
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(product.product_id); }}
-            className={`w-11 h-11 border rounded-[8px] flex items-center justify-center transition-colors ${isFavorite ? "bg-red-50 text-red-500 border-red-200" : "hover:brightness-95"}`}
-            style={!isFavorite ? { color: c.primary, borderColor: c.primary + "4D" } : {}}
-          >
-            <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
-          </button>
+        {/* Right Side: Add Button (Gold) */}
+        <button 
+          disabled={isOutOfStock}
+          style={{
+            backgroundColor: isOutOfStock ? `${c.accent}20` : c.accent,
+            color: isOutOfStock ? `${c.textLight}40` : c.secondary,
+            boxShadow: isOutOfStock ? "none" : `0 4px 12px ${c.accent}40`
+          }}
+          className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-300 ${
+            !isOutOfStock && "hover:scale-105 hover:bg-white hover:text-black"
+          }`}
+        >
+          <Plus size={14} strokeWidth={3} />
+          <span className="text-[12px] font-black tracking-wide">Add</span>
+        </button>
+      </div>
+
+      {/* Bottom Row: Always Rendered for Consistent Heights */}
+      <div className="flex items-center justify-between mt-auto pt-3 relative z-10" style={{ borderTop: `1px dashed ${c.primary}` }}>
+        
+        {/* Sizes OR Fallback */}
+        <div className="flex items-center flex-wrap gap-1.5">
+          {sizes.length > 0 ? (
+            sizes.map((size, index) => {
+              const isFirst = index === 0;
+              return (
+                <div 
+                  key={size.size_id} 
+                  className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-colors group-hover:border-white/20"
+                  style={{ 
+                    // Gold for first, dark green border for others
+                    backgroundColor: isFirst ? c.accent : "transparent",
+                    color: isFirst ? c.secondary : `${c.textLight}A0`,
+                    border: isFirst ? `1px solid ${c.accent}` : `1px solid ${c.primary}`
+                  }}
+                >
+                  {size.label}
+                </div>
+              );
+            })
+          ) : (
+            <div 
+              className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider"
+              style={{ 
+                backgroundColor: "transparent",
+                color: `${c.textLight}60`,
+                border: `1px solid ${c.primary}`
+              }}
+            >
+              Regular
+            </div>
+          )}
         </div>
+
+        {/* Stock Indicator */}
+        <span 
+          className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 shrink-0"
+          style={{ color: `${c.textLight}70` }}
+        >
+          <span 
+            className="w-1.5 h-1.5 rounded-full" 
+            style={{ backgroundColor: currentYield > 0 ? c.primary : '#EF4444' }} 
+          />
+          {currentYield > 0 ? `${currentYield} Left` : "Out"}
+        </span>
+
       </div>
     </motion.div>
   );

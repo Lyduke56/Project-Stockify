@@ -137,7 +137,7 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen" style={{
+    <div className="flex" style={{
       backgroundColor: config?.color_background ?? "#FFFCEB",
       '--color-primary': config?.color_primary ?? "#385E31",
       '--color-secondary': config?.color_secondary ?? "#2A4725",
@@ -154,7 +154,7 @@ export default function EmployeeDashboard() {
       />
 
       {/* Main column */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto pb-10 px-15 pt-5">
+      <div className="flex-1 flex flex-col min-h-screen pb-10 px-15 pt-5">
 
         {/* Navbar — drops from top */}
         <motion.div
@@ -172,23 +172,24 @@ export default function EmployeeDashboard() {
 
         {/* Content — rises up */}
         <motion.main
-          className="px-5 pt-10"
+          className="px-5 pt-10"  
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1], delay: 0.25 }}
         >
-          {/* Section switcher — fades out old, fades in new */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeSection}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            >
-              {SECTIONS[activeSection]}
-            </motion.div>
-          </AnimatePresence>
+           <div className="">  {/* ← scroll lives here instead */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeSection}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+              >
+                {SECTIONS[activeSection]}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </motion.main>
       </div>
 

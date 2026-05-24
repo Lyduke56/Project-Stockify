@@ -3,22 +3,22 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowLeft, 
-  Package, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  ChevronRight, 
+import {
+  ArrowLeft,
+  Package,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  ChevronRight,
   Search,
   RefreshCcw,
   ShoppingBag,
-  X
+  X,
+  Receipt,
+  Truck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-
-// --- Types ---
 interface OrderItem {
   item_name: string;
   quantity: number;
@@ -52,10 +52,8 @@ export default function CustomerOrdersPage() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const viewOrder = urlParams.get('view_order');
-    if (viewOrder) {
-      setViewOrderId(viewOrder);
-    }
+    const viewOrder = urlParams.get("view_order");
+    if (viewOrder) setViewOrderId(viewOrder);
   }, []);
 
   const fetchOrders = async () => {
@@ -65,286 +63,380 @@ export default function CustomerOrdersPage() {
 
     const { data, error } = await supabase
       .from("orders")
-      .select(`
-        order_id, 
-        fulfillment_status, 
-        total_amount, 
-        created_at,
-        payment_method,
-        payment_status,
-        cancel_reason,
-        deliverer_name,
-        delivery_id,
-        order_items (item_name, quantity, unit_price, size_label)
-      `)
+      .select(
+        `order_id, fulfillment_status, total_amount, created_at, payment_method,
+         payment_status, cancel_reason, deliverer_name, delivery_id,
+         order_items (item_name, quantity, unit_price, size_label)`
+      )
       .eq("customer_id", user.id)
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setOrders(data.map((o: any) => ({
-        order_id: o.order_id,
-        fulfillment_status: o.fulfillment_status,
-        total_amount: Number(o.total_amount),
-        created_at: o.created_at,
-        payment_method: o.payment_method,
-        payment_status: o.payment_status,
-        cancel_reason: o.cancel_reason,
-        deliverer_name: o.deliverer_name,
-        delivery_id: o.delivery_id,
-        items: o.order_items || []
-      })));
+      setOrders(
+        data.map((o: any) => ({
+          order_id: o.order_id,
+          fulfillment_status: o.fulfillment_status,
+          total_amount: Number(o.total_amount),
+          created_at: o.created_at,
+          payment_method: o.payment_method,
+          payment_status: o.payment_status,
+          cancel_reason: o.cancel_reason,
+          deliverer_name: o.deliverer_name,
+          delivery_id: o.delivery_id,
+          items: o.order_items || [],
+        }))
+      );
     }
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  useEffect(() => { fetchOrders(); }, []);
 
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case "Pending": return "text-amber-500 bg-amber-50 border-amber-100";
-      case "Processing": return "text-blue-500 bg-blue-50 border-blue-100";
-      case "Dispatched": return "text-purple-500 bg-purple-50 border-purple-100";
-      case "Received": return "text-green-500 bg-green-50 border-green-100";
-      case "Cancelled": return "text-red-500 bg-red-50 border-red-100";
-      default: return "text-gray-500 bg-gray-50 border-gray-100";
+      case "Pending":    return { color: "text-amber-700 bg-amber-50 border-amber-200",   icon: <Clock size={12} strokeWidth={2.5} /> };
+      case "Processing": return { color: "text-blue-700 bg-blue-50 border-blue-200",      icon: <RefreshCcw size={12} className="animate-spin-slow" strokeWidth={2.5} /> };
+      case "Dispatched": return { color: "text-violet-700 bg-violet-50 border-violet-200",icon: <Package size={12} strokeWidth={2.5} /> };
+      case "Received":   return { color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: <CheckCircle2 size={12} strokeWidth={2.5} /> };
+      case "Cancelled":  return { color: "text-red-700 bg-red-50 border-red-200",         icon: <XCircle size={12} strokeWidth={2.5} /> };
+      default:           return { color: "text-gray-600 bg-gray-50 border-gray-200",      icon: <Clock size={12} strokeWidth={2.5} /> };
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "Pending": return <Clock size={14} />;
-      case "Processing": return <RefreshCcw size={14} className="animate-spin-slow" />;
-      case "Dispatched": return <Package size={14} />;
-      case "Received": return <CheckCircle2 size={14} />;
-      case "Cancelled": return <XCircle size={14} />;
-      default: return null;
-    }
-  };
-
-  const filteredOrders = orders.filter(o => 
-    o.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.items.some(i => i.item_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredOrders = orders.filter(
+    (o) =>
+      o.order_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.items.some((i) => i.item_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const viewOrder = orders.find(o => o.order_id === viewOrderId);
+  const viewOrder = orders.find((o) => o.order_id === viewOrderId);
 
   return (
-    <div className="min-h-screen bg-[#FFFCEB] font-['Fredoka'] text-[#385E31]">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#385E31] text-[#F7B71D] px-6 py-4 shadow-lg">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
+    <div className="min-h-screen bg-[#F4F0E0] font-['Inter'] text-[#1C3319] selection:bg-[#F7B71D]/30">
+      <style>{`
+        .subtle-scroll::-webkit-scrollbar { width: 5px; }
+        .subtle-scroll::-webkit-scrollbar-track { background: transparent; }
+        .subtle-scroll::-webkit-scrollbar-thumb { background: rgba(56,94,49,0.18); border-radius: 8px; }
+        .subtle-scroll::-webkit-scrollbar-thumb:hover { background: rgba(56,94,49,0.35); }
+        .subtle-scroll { scrollbar-width: thin; scrollbar-color: rgba(56,94,49,0.18) transparent; }
+        .order-card { transition: box-shadow 0.22s ease, transform 0.22s ease; }
+        .order-card:hover { box-shadow: 0 12px 36px rgba(28,51,25,0.12); transform: translateY(-3px); }
+      `}</style>
+
+      {/* ── Header — full width, 3-zone layout ── */}
+      <header className="sticky top-0 z-40 bg-[#2E5128] shadow-[0_2px_20px_rgba(28,51,25,0.2)]">
+        <div className="w-full px-10 py-3.5 flex items-center gap-4">
+
+          {/* LEFT — back + title */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 rounded-xl bg-white/8 hover:bg-white/15 border border-white/12 text-white/80 hover:text-white transition-all"
             >
-              <ArrowLeft size={24} />
+              <ArrowLeft size={18} strokeWidth={2.5} />
             </button>
-            <h1 className="text-2xl font-bold">My Orders</h1>
+            <div>
+              <h1 className="text-[21px] font-black tracking-wide leading-tight text-[#F7B71D]">
+                My Orders
+              </h1>
+              <p className="text-[11px] font-semibold text-white/50 leading-none mt-0.5 tracking-wide">
+                Order history &amp; tracking
+              </p>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-[#F7B71D]/20 flex items-center justify-center border border-[#F7B71D]/30">
-            <Package size={20} />
+
+          {/* CENTER — search bar, grows to fill middle */}
+          <div className="flex-1 flex justify-center px-4">
+            <div className="relative w-full max-w-md">
+              <Search
+                size={14}
+                strokeWidth={2.5}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+              />
+              <input
+                type="text"
+                placeholder="Search orders or items…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/10 border border-white/15 focus:border-[#F7B71D]/60 focus:bg-white/15 text-white placeholder:text-white/40 rounded-xl pl-9 pr-4 py-2.5 text-[13px] font-medium outline-none transition-all"
+              />
+            </div>
           </div>
+
+          {/* RIGHT — spacer to balance left zone */}
+          <div className="flex-shrink-0 w-[160px]" />
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-8">
-        {/* Search & Filter */}
-        <div className="relative mb-8">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#385E31]/40" size={20} />
-          <input 
-            type="text"
-            placeholder="Search orders by ID or items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-[#385E31]/10 rounded-2xl pl-12 pr-6 py-4 text-[15px] shadow-sm focus:ring-2 focus:ring-[#F7B71D] outline-none transition-all"
-          />
-        </div>
+      <main className="w-full px-25 py-7">
+        {/* Result count */}
+        {!loading && filteredOrders.length > 0 && (
+          <p className="text-[11.5px] font-black text-[#385E31]/50 uppercase tracking-widest mb-5 px-0.5">
+            {filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""}
+            {searchQuery ? ` for "${searchQuery}"` : ""}
+          </p>
+        )}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-12 h-12 border-4 border-[#385E31]/10 border-t-[#F7B71D] rounded-full animate-spin" />
-            <p className="text-[#8C9B85]">Loading your history...</p>
+          <div className="flex flex-col items-center justify-center py-40 gap-5">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#F7B71D]/15 rounded-full blur-2xl animate-pulse" />
+              <RefreshCcw size={34} className="text-[#F7B71D] animate-spin-slow relative z-10" strokeWidth={2} />
+            </div>
+            <p className="text-[#385E31]/55 font-semibold text-[15px] tracking-wide animate-pulse">
+              Loading your orders…
+            </p>
           </div>
+
         ) : filteredOrders.length > 0 ? (
-          <div className="flex flex-col gap-6">
+          /* ── Responsive grid — 1 col mobile, 2 col md, 3 col xl ── */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             <AnimatePresence>
-              {filteredOrders.map((order, idx) => (
-                <motion.div
-                  key={order.order_id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="bg-white border border-[#385E31]/10 rounded-[24px] overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-                >
-                  <div className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[12px] font-bold text-[#8C9B85] uppercase tracking-wider">
-                          Order #{order.order_id.slice(0, 8)}
-                        </span>
-                        <span className="text-[13px] text-[#385E31]/60 font-medium">
-                          {new Date(order.created_at).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }).replace(',', ' •')}
+              {filteredOrders.map((order, idx) => {
+                const status = getStatusConfig(order.fulfillment_status);
+                return (
+                  <motion.div
+                    key={order.order_id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05, type: "spring", stiffness: 320, damping: 26 }}
+                    onClick={() => setViewOrderId(order.order_id)}
+                    className="order-card bg-white rounded-2xl border border-[#2E5128]/8 cursor-pointer overflow-hidden shadow-[0_4px_16px_rgba(28,51,25,0.06)] flex flex-col"
+                  >
+                    {/* Card top — order ID + status */}
+                    <div className="px-4 pt-4 pb-3 flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Receipt size={11} className="text-[#385E31]/35" strokeWidth={2.5} />
+                          <span className="text-[10px] font-black text-[#385E31]/45 uppercase tracking-[0.12em]">
+                            #{order.order_id.slice(0, 8).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-[12px] font-semibold text-[#1C3319]/60">
+                          {new Date(order.created_at).toLocaleString("en-US", {
+                            month: "short", day: "numeric", year: "numeric",
+                          })}
+                          {" · "}
+                          {new Date(order.created_at).toLocaleString("en-US", {
+                            hour: "numeric", minute: "2-digit", hour12: true,
+                          })}
                         </span>
                       </div>
-                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[12px] font-bold ${getStatusColor(order.fulfillment_status)}`}>
-                        {getStatusIcon(order.fulfillment_status)}
+                      <span className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold ${status.color}`}>
+                        {status.icon}
                         {order.fulfillment_status}
-                      </div>
+                      </span>
                     </div>
 
-                    <div className="flex flex-col gap-3 mb-6">
-                      {order.items.map((item, i) => (
-                        <div key={i} className="flex justify-between items-center text-[14px]">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 bg-[#385E31]/5 rounded flex items-center justify-center font-bold text-[11px]">
-                              {item.quantity}x
+                    {/* Dashed divider */}
+                    <div className="mx-4 border-t border-dashed border-[#2E5128]/10" />
+
+                    {/* Items list — flex-grow so footer always pins to bottom */}
+                    <div className="px-4 py-3 flex flex-col gap-2 flex-grow">
+                      {order.items.slice(0, 3).map((item, i) => (
+                        <div key={i} className="flex items-center justify-between gap-2 text-[13px]">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="flex-shrink-0 w-6 h-6 bg-[#385E31]/8 rounded-md flex items-center justify-center font-black text-[10.5px] text-[#2E5128]">
+                              {item.quantity}×
                             </span>
-                            <span className="font-semibold">{item.item_name}</span>
-                            {item.size_label && (
-                              <span className="text-[11px] bg-[#F7B71D]/10 text-[#385E31] px-1.5 py-0.5 rounded uppercase font-bold">
-                                {item.size_label}
-                              </span>
-                            )}
+                            <div className="min-w-0">
+                              <p className="font-semibold text-[#1C3319] truncate">{item.item_name}</p>
+                              {item.size_label && (
+                                <p className="text-[10.5px] text-[#385E31]/50 font-semibold">{item.size_label}</p>
+                              )}
+                            </div>
                           </div>
-                          <span className="font-bold">₱{(item.unit_price * item.quantity).toFixed(2)}</span>
+                          <span className="flex-shrink-0 font-bold text-[#1C3319] text-[12.5px]">
+                            ₱{(item.unit_price * item.quantity).toFixed(2)}
+                          </span>
                         </div>
                       ))}
+                      {order.items.length > 3 && (
+                        <p className="text-[11px] font-semibold text-[#385E31]/40 italic pl-8">
+                          +{order.items.length - 3} more item{order.items.length - 3 !== 1 ? "s" : ""}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="flex justify-between items-center pt-4 border-t border-[#385E31]/5">
-                      <div className="flex flex-col">
-                        <span className="text-[12px] text-[#8C9B85] font-bold uppercase">Total Amount</span>
-                        <span className="text-[22px] font-black text-[#385E31]">₱{order.total_amount.toFixed(2)}</span>
+                    {/* Card footer */}
+                    <div className="border-t border-[#2E5128]/8 bg-[#2E5128]/[0.025] px-4 py-3 flex items-center justify-between mt-auto">
+                      <div>
+                        <p className="text-[9.5px] font-black text-[#385E31]/45 uppercase tracking-widest mb-0.5">Total</p>
+                        <p className="text-[17px] font-black text-[#1C3319] leading-none">
+                          ₱{order.total_amount.toFixed(2)}
+                        </p>
                       </div>
-                      <button 
-                        onClick={() => setViewOrderId(order.order_id)}
-                        className="flex items-center gap-2 text-[#385E31] font-bold text-[14px] hover:text-[#F7B71D] transition-colors"
-                      >
-                        View Details <ChevronRight size={18} />
-                      </button>
+                      <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-[#385E31]/50">
+                        <span className="hidden sm:inline">Details</span>
+                        <div className="w-7 h-7 rounded-full border border-[#2E5128]/15 bg-white flex items-center justify-center text-[#2E5128] shadow-sm">
+                          <ChevronRight size={14} strokeWidth={2.5} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
+
         ) : (
-          <div className="flex flex-col items-center justify-center py-24 text-center gap-4">
-            <div className="w-20 h-20 bg-[#385E31]/5 rounded-full flex items-center justify-center text-[#385E31]/20">
-              <ShoppingBag size={48} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-24 text-center gap-5 bg-white rounded-2xl border border-[#2E5128]/8 shadow-sm"
+          >
+            <div className="w-20 h-20 bg-[#F4F0E0] rounded-2xl flex items-center justify-center text-[#F7B71D] shadow-inner">
+              <ShoppingBag size={34} strokeWidth={1.8} />
             </div>
             <div>
-              <h3 className="text-xl font-bold">No orders found</h3>
-              <p className="text-[#8C9B85] text-sm mt-1">Looks like you haven't placed any orders yet.</p>
+              <h3 className="text-xl font-black text-[#1C3319]">No orders found</h3>
+              <p className="text-[#385E31]/55 font-medium mt-1.5 max-w-[240px] mx-auto text-[13.5px] leading-relaxed">
+                {searchQuery ? "No orders match your search query." : "You haven't placed any orders yet."}
+              </p>
             </div>
-            <button 
-              onClick={() => router.push(`/${businessName}/customer/food-and-beverage/storefront`)}
-              className="mt-4 bg-[#385E31] text-[#F7B71D] px-8 py-3 rounded-full font-bold hover:bg-[#2A4725] transition-colors"
+            <button
+              onClick={() => {
+                if (searchQuery) setSearchQuery("");
+                else router.push(`/${businessName}/customer/food-and-beverage/storefront`);
+              }}
+              className="mt-1 bg-[#2E5128] text-[#F7B71D] px-7 py-3 rounded-xl font-black text-[13.5px] hover:bg-[#253F20] hover:-translate-y-0.5 hover:shadow-lg transition-all active:scale-95"
             >
-              Start Shopping
+              {searchQuery ? "Clear Search" : "Browse Menu"}
             </button>
-          </div>
+          </motion.div>
         )}
       </main>
 
-      {/* Order Details Modal */}
+      {/* ── Order Detail Modal ── */}
       <AnimatePresence>
         {viewOrder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#385E31]/60 backdrop-blur-sm" onClick={() => setViewOrderId(null)}>
+          <div
+            className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6 bg-[#0A1209]/50 backdrop-blur-sm"
+            onClick={() => setViewOrderId(null)}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, y: 80 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 80 }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl bg-[#FFFCEB] rounded-[24px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] font-['Fredoka']"
+              className="w-full md:max-w-[580px] bg-[#FDFAF0] rounded-t-[28px] md:rounded-[24px] shadow-2xl flex flex-col max-h-[92vh] md:max-h-[88vh] font-['Inter'] overflow-hidden border border-white/20"
             >
-              <div className="p-6 border-b border-[#385E31]/10 flex justify-between items-center bg-[#385E31] text-[#F7B71D]">
-                <div>
-                  <h2 className="text-xl font-bold">Order Details</h2>
-                  <p className="text-sm opacity-80 font-['Inter']">#{viewOrder.order_id.slice(0, 8).toUpperCase()}</p>
-                </div>
-                <button onClick={() => setViewOrderId(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <X size={20} />
-                </button>
+              {/* Mobile drag handle */}
+              <div className="w-full flex justify-center pt-3.5 pb-1 md:hidden bg-[#2E5128]">
+                <div className="w-10 h-1 bg-white/20 rounded-full" />
               </div>
-              
-              <div className="p-6 overflow-y-auto space-y-6">
-                <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-[#385E31]/10 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <Clock className="text-[#385E31]/60" size={20} />
-                    <div>
-                      <p className="text-[11px] font-bold text-[#8C9B85] uppercase tracking-wider font-['Inter']">Date Placed</p>
-                      <p className="text-[14px] font-bold text-[#385E31]">
-                        {new Date(viewOrder.created_at).toLocaleString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
-                      </p>
-                    </div>
+
+              {/* Modal Header */}
+              <div className="px-7 pb-6 pt-5 md:pt-7 bg-[#2E5128] text-white relative flex-shrink-0">
+                <button
+                  onClick={() => setViewOrderId(null)}
+                  className="absolute top-5 right-5 p-2 bg-white/10 hover:bg-white/18 rounded-xl transition-colors border border-white/10"
+                >
+                  <X size={18} strokeWidth={2.5} />
+                </button>
+                <div className="pr-12">
+                  <div className="flex items-center gap-2 mb-2 text-[#F7B71D]">
+                    <Receipt size={14} strokeWidth={2.5} />
+                    <span className="text-[11px] font-black uppercase tracking-[0.14em]">Order Details</span>
                   </div>
-                  <div className={`px-4 py-1.5 rounded-full border font-bold text-[13px] flex items-center gap-2 ${getStatusColor(viewOrder.fulfillment_status)}`}>
-                    {getStatusIcon(viewOrder.fulfillment_status)}
+                  <h2 className="text-2xl font-black mb-1 tracking-wide">
+                    #{viewOrder.order_id.slice(0, 8).toUpperCase()}
+                  </h2>
+                  <p className="text-white/55 font-semibold text-[13px]">
+                    Placed on{" "}
+                    {new Date(viewOrder.created_at).toLocaleString("en-US", {
+                      month: "long", day: "numeric", year: "numeric",
+                      hour: "numeric", minute: "2-digit", hour12: true,
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 md:p-7 overflow-y-auto subtle-scroll flex flex-col gap-5">
+
+                {/* Status */}
+                <div className="flex justify-between items-center bg-white px-5 py-4 rounded-xl border border-[#2E5128]/8 shadow-[0_2px_8px_rgba(28,51,25,0.05)]">
+                  <div>
+                    <p className="text-[10px] font-black text-[#385E31]/45 uppercase tracking-widest mb-1">Fulfillment Status</p>
+                    <p className="font-bold text-[#1C3319] text-[14px]">Current Stage</p>
+                  </div>
+                  <span className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border font-bold text-[12.5px] ${getStatusConfig(viewOrder.fulfillment_status).color}`}>
+                    {getStatusConfig(viewOrder.fulfillment_status).icon}
                     {viewOrder.fulfillment_status}
-                  </div>
+                  </span>
                 </div>
 
+                {/* Cancellation reason */}
                 {viewOrder.fulfillment_status === "Cancelled" && viewOrder.cancel_reason && (
-                  <div className="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm">
-                    <div className="flex items-center gap-2 text-red-600 mb-1">
-                      <XCircle size={18} />
-                      <span className="font-bold text-sm">Cancellation Reason</span>
+                  <div className="bg-red-50 px-5 py-4 rounded-xl border border-red-200 flex gap-3 items-start">
+                    <XCircle className="text-red-500 mt-0.5 flex-shrink-0" size={17} strokeWidth={2.5} />
+                    <div>
+                      <p className="font-bold text-red-800 text-[13px] mb-1">Cancellation Reason</p>
+                      <p className="text-red-600 text-[13px] font-medium leading-relaxed">{viewOrder.cancel_reason}</p>
                     </div>
-                    <p className="text-red-700 text-[14px] font-['Inter']">{viewOrder.cancel_reason}</p>
                   </div>
                 )}
 
+                {/* Delivery info */}
                 {viewOrder.deliverer_name && (
-                  <div className="bg-white p-4 rounded-xl border border-[#385E31]/10 shadow-sm">
-                    <p className="text-[11px] font-bold text-[#8C9B85] uppercase tracking-wider mb-2 font-['Inter']">Delivery Info</p>
-                    <div className="flex items-center gap-3 text-[#385E31]">
-                      <Package size={20} className="opacity-60" />
+                  <div className="bg-white px-5 py-4 rounded-xl border border-[#2E5128]/8 shadow-[0_2px_8px_rgba(28,51,25,0.04)]">
+                    <p className="text-[10px] font-black text-[#385E31]/45 uppercase tracking-widest mb-3">Delivery Information</p>
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-xl bg-[#F7B71D]/15 text-[#C49115] flex items-center justify-center flex-shrink-0">
+                        <Truck size={22} strokeWidth={1.8} />
+                      </div>
                       <div>
-                        <p className="font-bold">{viewOrder.deliverer_name}</p>
-                        {viewOrder.delivery_id && <p className="text-sm opacity-80 font-['Inter']">ID: {viewOrder.delivery_id}</p>}
+                        <p className="font-bold text-[#1C3319] text-[15px]">{viewOrder.deliverer_name}</p>
+                        {viewOrder.delivery_id && (
+                          <p className="text-[12px] font-semibold text-[#385E31]/50 mt-0.5">ID: {viewOrder.delivery_id}</p>
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="bg-white rounded-xl border border-[#385E31]/10 overflow-hidden shadow-sm">
-                  <div className="bg-[#385E31]/5 px-4 py-3 border-b border-[#385E31]/10">
-                    <h3 className="font-bold text-[#385E31]">Items</h3>
+                {/* Order Summary */}
+                <div className="bg-white rounded-xl border border-[#2E5128]/8 overflow-hidden shadow-[0_2px_8px_rgba(28,51,25,0.04)]">
+                  <div className="bg-[#2E5128]/[0.04] px-5 py-3.5 border-b border-[#2E5128]/8">
+                    <h3 className="font-black text-[#1C3319] text-[13px] uppercase tracking-wider">Order Summary</h3>
                   </div>
-                  <div className="p-4 space-y-4">
+                  <div className="divide-y divide-[#2E5128]/6">
                     {viewOrder.items.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center text-[14px]">
+                      <div key={i} className="flex justify-between items-center px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <span className="w-8 h-8 bg-[#385E31]/5 rounded flex items-center justify-center font-bold text-[#385E31]">
-                            {item.quantity}x
+                          <span className="w-8 h-8 bg-[#385E31]/8 rounded-lg flex items-center justify-center font-black text-[11.5px] text-[#2E5128] flex-shrink-0">
+                            {item.quantity}×
                           </span>
                           <div>
-                            <span className="font-bold text-[#385E31] block">{item.item_name}</span>
+                            <p className="font-semibold text-[#1C3319] text-[14px]">{item.item_name}</p>
                             {item.size_label && (
-                              <span className="text-[11px] text-[#8C9B85] uppercase font-bold">
-                                Size: {item.size_label}
-                              </span>
+                              <p className="text-[11px] font-semibold text-[#385E31]/50 mt-0.5">Size: {item.size_label}</p>
                             )}
                           </div>
                         </div>
-                        <span className="font-bold text-[#385E31]">₱{(item.unit_price * item.quantity).toFixed(2)}</span>
+                        <span className="font-bold text-[#1C3319] text-[13.5px]">
+                          ₱{(item.unit_price * item.quantity).toFixed(2)}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-xl border border-[#385E31]/10 shadow-sm">
-                    <p className="text-[11px] font-bold text-[#8C9B85] uppercase tracking-wider mb-1 font-['Inter']">Payment Method</p>
-                    <p className="font-bold text-[#385E31]">{viewOrder.payment_method === 'Cash-on-Delivery' ? 'Cash on Delivery' : viewOrder.payment_method}</p>
+                {/* Payment & Total */}
+                <div className="grid grid-cols-2 gap-3.5 pb-2">
+                  <div className="bg-white px-5 py-4 rounded-xl border border-[#2E5128]/8 shadow-[0_2px_8px_rgba(28,51,25,0.04)]">
+                    <p className="text-[10px] font-black text-[#385E31]/45 uppercase tracking-widest mb-2">Payment Method</p>
+                    <p className="font-bold text-[#1C3319] text-[14px] leading-snug">
+                      {viewOrder.payment_method === "Cash-on-Delivery" ? "Cash on Delivery" : viewOrder.payment_method}
+                    </p>
                   </div>
-                  <div className="bg-[#F7B71D]/10 p-4 rounded-xl border border-[#F7B71D]/30 flex flex-col items-end justify-center shadow-sm">
-                    <p className="text-[11px] font-bold text-[#8C9B85] uppercase tracking-wider mb-1 font-['Inter']">Total</p>
-                    <p className="text-2xl font-black text-[#385E31]">₱{viewOrder.total_amount.toFixed(2)}</p>
+                  <div className="bg-[#2E5128] px-5 py-4 rounded-xl flex flex-col justify-center items-end shadow-[0_4px_16px_rgba(46,81,40,0.3)]">
+                    <p className="text-[10px] font-black text-white/45 uppercase tracking-widest mb-1">Total Paid</p>
+                    <p className="text-2xl font-black text-[#F7B71D] leading-none tracking-tight">
+                      ₱{viewOrder.total_amount.toFixed(2)}
+                    </p>
                   </div>
                 </div>
               </div>
