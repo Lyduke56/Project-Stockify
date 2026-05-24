@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom"; // <-- IMPORT PORTAL
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Package, Clock, User, CreditCard, MapPin, Phone, Mail, 
@@ -19,7 +20,7 @@ import {
   type OrderItem,
 } from "@/lib/employee/order-actions";
 
-// ─── Cancel Order Modal (Styled to match the new UI) ─────────────
+// ─── Cancel Order Modal ─────────────
 function CancelOrderModal({
   order,
   onConfirm,
@@ -32,13 +33,22 @@ function CancelOrderModal({
   busy: boolean;
 }) {
   const [reason, setReason] = useState("");
+  
+  // <-- MOUNT STATE FOR PORTAL
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
+  if (!mounted) return null;
+
+  // <-- PORTAL THE CANCEL MODAL
+  return createPortal(
     <AnimatePresence>
       <motion.div
         key="cancel-backdrop"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-[#385E31]/60 backdrop-blur-sm z-[200]"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[9998]"
         onClick={onClose}
       />
       <motion.div
@@ -46,7 +56,7 @@ function CancelOrderModal({
         initial={{ opacity: 0, scale: 0.94, y: 24 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 24 }}
-        className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none font-inter"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none font-inter"
       >
         <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[460px] shadow-2xl pointer-events-auto overflow-hidden border-[1.5px] border-red-500/20">
           <div className="bg-red-500 px-6 py-5 flex items-center justify-between">
@@ -99,7 +109,8 @@ function CancelOrderModal({
           </div>
         </div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
@@ -126,6 +137,12 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
   const [paymentFile, setPaymentFile] = useState<File | null>(null);
   const [resolutionRemarks, setResolutionRemarks] = useState("");
 
+  // <-- MOUNT STATE FOR PORTAL
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!order) return;
     const init = async () => {
@@ -150,7 +167,7 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
     init();
   }, [order]);
 
-  if (!order) return null;
+  if (!order || !mounted) return null; // Added mounted check
 
   // ─── Action Handlers ───
   const act = async (fn: () => Promise<{ error: string | null }>, successMsg: string) => {
@@ -218,8 +235,9 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
   const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
   const cardStyle = "bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#385E31]/40 backdrop-blur-sm p-4">
+  // <-- PORTAL THE MAIN MODAL
+  return createPortal(
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <motion.div 
         initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
         className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-inter relative"
@@ -643,6 +661,7 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
           {showCancel && <CancelOrderModal order={order} onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

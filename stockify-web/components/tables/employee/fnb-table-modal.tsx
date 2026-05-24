@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom"; // <-- Added createPortal
 import {
   fetchFnbItems,
   addFnbItem,
@@ -67,12 +68,19 @@ export default function FnbIngredientsTable({ tenantId, onLoadComplete }: FnbIng
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
 
-const loadItems = useCallback(async () => {
+  // <-- Mounted state for Next.js SSR / Portal safety
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const loadItems = useCallback(async () => {
     try { setLoading(true); setError(null); setItems(await fetchFnbItems(tenantId)); }
     catch (e: any) { setError(e.message); }
     finally { 
       setLoading(false);
-      onLoadComplete?.(); // ← add this
+      onLoadComplete?.();
     }
   }, [tenantId, onLoadComplete]);
 
@@ -301,8 +309,8 @@ const loadItems = useCallback(async () => {
         )}
       </div>
 
-      {/* ── Fixed dropdown — renders OUTSIDE the overflow container ── */}
-      {openRow && dropdownPos && (
+      {/* ── Fixed dropdown — renders OUTSIDE the overflow container via PORTAL ── */}
+      {openRow && dropdownPos && mounted && createPortal(
         <div
           data-dropdown-menu
           style={{
@@ -343,7 +351,8 @@ const loadItems = useCallback(async () => {
           >
             Delete Item
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Pagination */}
