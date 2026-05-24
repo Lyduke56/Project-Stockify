@@ -24,7 +24,7 @@ const ACTION_COLORS: Record<string, string> = {
   DELETE:   "bg-red-100 text-red-700",
   CANCEL:   "bg-red-100 text-red-600",
   RESTOCK:  "bg-amber-100 text-amber-700",
-  COMPLETE: "bg-[#3A6131]/10 text-[#3A6131]",
+  COMPLETE: "bg-primary/10 text-primary",
   STATUS:   "bg-purple-100 text-purple-700",
 };
 
@@ -72,14 +72,14 @@ function LogRow({
 
   return (
     <div
-      className={`w-full grid grid-cols-6 px-4 py-[13px] items-center hover:bg-[#3A6131]/5 transition-colors ${
-        !isLast ? "border-b border-[#3A6131]/10" : ""
+      className={`w-full grid grid-cols-6 px-4 py-[13px] items-center hover:bg-primary/5 transition-colors ${
+        !isLast ? "border-b border-primary/10" : ""
       }`}
     >
-      <div className="text-center text-[#3A6131]/70 text-[11px] font-medium">
+      <div className="text-center text-primary/70 text-[11px] font-medium">
         {formatDate(log.created_at)}
       </div>
-      <div className="text-center text-[#3A6131] text-[12px] font-bold truncate px-1">
+      <div className="text-center text-primary text-[12px] font-bold truncate px-1">
         {log.user_name || "System"}
       </div>
       <div className="flex justify-center">
@@ -92,20 +92,20 @@ function LogRow({
           {log.entity_type}
         </span>
       </div>
-      <div className="text-center text-[#3A6131] text-[12px] font-medium truncate px-1">
+      <div className="text-center text-primary text-[12px] font-medium truncate px-1">
         {log.entity_name ?? log.entity_id?.slice(0, 8).toUpperCase() ?? "—"}
       </div>
       <div className="flex justify-center">
         {log.details && Object.keys(log.details).length > 0 ? (
           <button
             onClick={() => onViewDetails(log)}
-            className="px-4 py-1.5 rounded-full bg-[#F7B71D] text-[#385E31] text-[11px] font-black hover:bg-[#e5a91a] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+            className="px-4 py-1.5 rounded-full bg-accent text-primary text-[11px] font-black hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
           >
             <FileText size={12} strokeWidth={2.5} />
             View
           </button>
         ) : (
-          <span className="text-[#3A6131]/25 text-[11px]">—</span>
+          <span className="text-primary/25 text-[11px]">—</span>
         )}
       </div>
     </div>
@@ -115,7 +115,7 @@ function LogRow({
 const COLUMNS = ["DATE & TIME", "USER", "ACTION", "ENTITY TYPE", "ENTITY NAME", "DETAILS"];
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: () => void }) {
+export default function AuditLogsTable({ onLoadComplete, colors }: { onLoadComplete?: () => void; colors?: any }) {
   const [tenantId,   setTenantId]   = useState("");
   const [logs,       setLogs]       = useState<AuditLog[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -189,9 +189,9 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
             placeholder="Search by action, user, or entity…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-[#3A6131] rounded-full px-5 py-2.5 bg-transparent text-[#3A6131] placeholder-[#3A6131]/70 outline-none font-medium text-[13px]"
+            className="w-full border border-primary rounded-full px-5 py-2.5 bg-transparent text-primary placeholder-primary/70 outline-none font-medium text-[13px]"
           />
-          <div className="absolute right-4 top-3 text-[#3A6131]"><Search size={16} /></div>
+          <div className="absolute right-4 top-3 text-primary"><Search size={16} /></div>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-end">
           {entityTypes.map((type) => (
@@ -200,8 +200,8 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
               onClick={() => setFilterType(type)}
               className={`px-4 py-2 rounded-full text-[12px] font-bold border transition-all capitalize ${
                 filterType === type
-                  ? "bg-[#3A6131] text-[#FFFCEB] border-transparent shadow-sm"
-                  : "border-[#3A6131] text-[#3A6131] hover:bg-[#3A6131]/5"
+                  ? "bg-primary text-background border-transparent shadow-sm"
+                  : "border-primary text-primary hover:bg-primary/5"
               }`}
             >
               {type}
@@ -210,7 +210,7 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2.5 rounded-full border border-[#3A6131] text-[#3A6131] hover:bg-[#3A6131]/10 transition-all disabled:opacity-50"
+            className="p-2.5 rounded-full border border-primary text-primary hover:bg-primary/10 transition-all disabled:opacity-50"
           >
             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
           </button>
@@ -218,15 +218,15 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
       </div>
 
       {/* Table */}
-      <div className="w-full bg-transparent rounded-[10px] border border-[#3A6131]/30 flex flex-col overflow-hidden shadow-sm">
-        <div className="w-full grid grid-cols-6 bg-[#3A6131] px-4 py-3 rounded-t-[8px]">
+      <div className="w-full bg-transparent rounded-[10px] border border-primary/30 flex flex-col overflow-hidden shadow-sm">
+        <div className="w-full grid grid-cols-6 bg-primary px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
-            <div key={col} className="text-center text-[#FFFCEB] text-[12px] font-bold">{col}</div>
+            <div key={col} className="text-center text-sidebar-text text-[12px] font-bold">{col}</div>
           ))}
         </div>
 
         {displayedLogs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-[#3A6131]/40 gap-3">
+          <div className="flex flex-col items-center justify-center py-16 text-primary/40 gap-3">
             <ShieldCheck size={40} strokeWidth={1} />
             <p className="font-medium text-[14px]">
               {search || filterType !== "all" ? "No matching log entries." : "No audit logs yet."}
@@ -247,14 +247,14 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
       {/* Pagination */}
       {filtered.length > 0 && (
         <div className="flex flex-col items-center mt-6 gap-4">
-          <p className="text-center text-[#3A6131]/50 text-[12px] font-semibold">
+          <p className="text-center text-primary/50 text-[12px] font-semibold">
             Showing {displayedLogs.length} of {filtered.length} entries
           </p>
           <div className="flex items-center gap-3">
             {hasLess && (
               <button
                 onClick={() => setVisibleRows(ITEMS_PER_LOAD)}
-                className="px-6 py-2.5 rounded-full border-[1.5px] border-[#3A6131] text-[#3A6131] font-bold text-[13px] hover:bg-[#3A6131]/5 transition-colors flex items-center gap-2"
+                className="px-6 py-2.5 rounded-full border-[1.5px] border-primary text-primary font-bold text-[13px] hover:bg-primary/5 transition-colors flex items-center gap-2"
               >
                 <ChevronUp size={16} /> Show Less
               </button>
@@ -262,7 +262,7 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
             {hasMore && (
               <button
                 onClick={() => setVisibleRows((prev) => prev + ITEMS_PER_LOAD)}
-                className="px-6 py-2.5 rounded-full bg-[#3A6131] text-[#FFFCEB] font-bold text-[13px] hover:opacity-90 shadow-sm transition-all flex items-center gap-2"
+                className="px-6 py-2.5 rounded-full bg-primary text-background font-bold text-[13px] hover:opacity-90 shadow-sm transition-all flex items-center gap-2"
               >
                 Load More <ChevronDown size={16} />
               </button>
@@ -272,7 +272,7 @@ export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: ()
       )}
 
       {activeLog && (
-        <DetailModal log={activeLog} onClose={() => setActiveLog(null)} />
+        <DetailModal log={activeLog} onClose={() => setActiveLog(null)} colors={colors} />
       )}
     </div>
   );

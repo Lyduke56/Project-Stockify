@@ -8,6 +8,7 @@ import {
 import ProductsTable    from "@/components/tables/employee/product-table";
 import NfbProductsTable from "@/components/tables/employee/nfnb-table-modal";
 import LoadingScreen    from "@/app/loading-screen/loading";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 type UserContext = {
   userId:       string;
@@ -15,7 +16,7 @@ type UserContext = {
   businessType: BusinessType;
 };
 
-export default function ProductsSection() {
+export default function ProductsSection({ colors }: { colors?: StorefrontConfig | null }) {
   const [ctx,          setCtx]          = useState<UserContext | null>(null);
   const [ctxLoading,   setCtxLoading]   = useState(true);
   const [tableLoading, setTableLoading] = useState(true);
@@ -77,8 +78,8 @@ export default function ProductsSection() {
         {/* Route by business type */}
         {ctx && (
           isFnb
-            ? <ProductsTable    tenantId={ctx.tenantId} onLoadComplete={handleLoadComplete} />
-            : <NfbProductsTable tenantId={ctx.tenantId} onLoadComplete={handleLoadComplete} />
+            ? <ProductsTable    tenantId={ctx.tenantId} onLoadComplete={handleLoadComplete} colors={colors} />
+            : <NfbProductsTable tenantId={ctx.tenantId} onLoadComplete={handleLoadComplete} colors={colors} />
         )}
       </div>
 

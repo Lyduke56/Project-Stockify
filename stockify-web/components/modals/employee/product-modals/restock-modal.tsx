@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { logAuditEvent } from "@/lib/employee/order-actions";
 import type { Product } from "@/lib/employee/products";
 import type { NfbProduct } from "@/lib/employee/nfb-products";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,13 +39,22 @@ interface RestockModalProps {
   tenantId: string;
   onClose: () => void;
   onSuccess: () => void;
+  colors?: StorefrontConfig | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function RestockModal({
-  type, product, tenantId, onClose, onSuccess,
+  type, product, tenantId, onClose, onSuccess, colors,
 }: RestockModalProps) {
+  const modalStyles = {
+    "--color-primary": colors?.color_primary ?? "#385E31",
+    "--color-secondary": colors?.color_secondary ?? "#2A4725",
+    "--color-accent": colors?.color_accent ?? "#F7B71D",
+    "--color-background": colors?.color_background ?? "#FFFCEB",
+    "--color-text": colors?.color_text ?? "#3A6131",
+    "--color-sidebar-text": colors?.color_sidebar_text ?? "#FFF9D7",
+  } as React.CSSProperties;
   const supabase = createClient();
 
   // ── F&B state ─────────────────────────────────────────────────
@@ -297,24 +307,24 @@ export default function RestockModal({
         transition={{ type: "spring", stiffness: 340, damping: 28 }}
         className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none"
       >
-        <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[520px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
+        <div style={modalStyles} className="bg-background rounded-[24px] w-full max-w-[520px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
 
           {/* Header */}
-          <div className="bg-[#385E31] px-6 py-5 flex items-center justify-between shrink-0">
+          <div className="bg-primary px-6 py-5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                <PackagePlus size={18} className="text-[#F7B71D]" />
+                <PackagePlus size={18} className="text-accent" />
               </div>
               <div>
-                <h2 className="text-white font-black text-[16px]">Restock</h2>
-                <p className="text-white/60 text-[11px] font-medium truncate max-w-[280px]">
+                <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] font-black text-[16px]">Restock</h2>
+                <p className="text-[var(--color-sidebar-text,#FFF9D7)]/60 text-[11px] font-medium truncate max-w-[280px]">
                   {product.name}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
             >
               <X size={16} />
             </button>
@@ -324,7 +334,7 @@ export default function RestockModal({
           <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
 
             {loading ? (
-              <div className="flex items-center justify-center py-12 text-[#385E31]/40 gap-3">
+              <div className="flex items-center justify-center py-12 text-primary/40 gap-3">
                 <Loader2 size={22} className="animate-spin" />
                 <span className="text-[13px] font-semibold">Loading stock data…</span>
               </div>
@@ -333,8 +343,8 @@ export default function RestockModal({
               /* ── F&B: Ingredient Restock ────────────────────────── */
               <>
                 <div className="flex items-center gap-2 mb-1">
-                  <FlaskConical size={14} className="text-[#385E31]/60" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">
+                  <FlaskConical size={14} className="text-primary/60" />
+                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
                     Restock Ingredients
                   </p>
                 </div>
@@ -351,16 +361,16 @@ export default function RestockModal({
                     {ingredients.map((ing: any, idx) => (
                       <div
                         key={ing.item_id}
-                        className="bg-white border border-[#385E31]/10 rounded-2xl px-4 py-3 flex items-center gap-4"
+                        className="bg-background border border-primary/10 rounded-2xl px-4 py-3 flex items-center gap-4 shadow-sm"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-[#385E31] font-bold text-[13px] truncate">{ing.name}</p>
-                          <p className="text-[#385E31]/50 text-[11px] font-medium mt-0.5">
+                          <p className="text-primary font-bold text-[13px] truncate">{ing.name}</p>
+                          <p className="text-primary/50 text-[11px] font-medium mt-0.5">
                             Current stock: <span className="font-black">{ing.stock}</span> {ing.unit}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[#385E31]/40 text-[11px] font-bold">+</span>
+                          <span className="text-primary/40 text-[11px] font-bold">+</span>
                           <input
                             type="number"
                             min="0"
@@ -372,9 +382,9 @@ export default function RestockModal({
                                 prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
                               )
                             }
-                            className="w-[80px] border border-[#385E31]/20 focus:border-[#385E31] rounded-xl px-3 py-2 text-[13px] text-[#385E31] font-bold text-center outline-none transition-colors bg-[#FFFCEB]"
+                            className="w-[80px] border border-primary/20 focus:border-primary rounded-xl px-3 py-2 text-[13px] text-primary font-bold text-center outline-none transition-colors bg-background"
                           />
-                          <span className="text-[#385E31]/50 text-[11px] font-medium w-[30px]">{ing.unit}</span>
+                          <span className="text-primary/50 text-[11px] font-medium w-[30px]">{ing.unit}</span>
                         </div>
                       </div>
                     ))}
@@ -386,21 +396,21 @@ export default function RestockModal({
               /* ── NF&B Simple: single qty input ─────────────────── */
               <>
                 <div className="flex items-center gap-2 mb-1">
-                  <PackagePlus size={14} className="text-[#385E31]/60" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">
+                  <PackagePlus size={14} className="text-primary/60" />
+                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
                     Add Stock
                   </p>
                 </div>
-                <div className="bg-white border border-[#385E31]/10 rounded-2xl px-5 py-4 flex items-center gap-4">
+                <div className="bg-background border border-primary/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm">
                   <div className="flex-1">
-                    <p className="text-[#385E31] font-bold text-[13px]">{product.name}</p>
-                    <p className="text-[#385E31]/50 text-[11px] font-medium mt-0.5">
+                    <p className="text-primary font-bold text-[13px]">{product.name}</p>
+                    <p className="text-primary/50 text-[11px] font-medium mt-0.5">
                       Current qty: <span className="font-black">{nfbProduct.quantity}</span>{" "}
                       {nfbProduct.unit_of_measure}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[#385E31]/40 text-[13px] font-black">+</span>
+                    <span className="text-primary/40 text-[13px] font-black">+</span>
                     <input
                       type="number"
                       min="0"
@@ -408,9 +418,9 @@ export default function RestockModal({
                       placeholder="0"
                       value={simpleAdd}
                       onChange={(e) => setSimpleAdd(e.target.value)}
-                      className="w-[90px] border border-[#385E31]/20 focus:border-[#385E31] rounded-xl px-3 py-2.5 text-[14px] text-[#385E31] font-black text-center outline-none transition-colors bg-[#FFFCEB]"
+                      className="w-[90px] border border-primary/20 focus:border-primary rounded-xl px-3 py-2.5 text-[14px] text-primary font-black text-center outline-none transition-colors bg-background"
                     />
-                    <span className="text-[#385E31]/50 text-[11px] font-medium">
+                    <span className="text-primary/50 text-[11px] font-medium">
                       {nfbProduct.unit_of_measure}
                     </span>
                   </div>
@@ -421,8 +431,8 @@ export default function RestockModal({
               /* ── NF&B Variants: per-option stock inputs ─────────── */
               <>
                 <div className="flex items-center gap-2 mb-1">
-                  <Layers size={14} className="text-[#385E31]/60" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/60">
+                  <Layers size={14} className="text-primary/60" />
+                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
                     Restock Variants
                   </p>
                 </div>
@@ -430,21 +440,21 @@ export default function RestockModal({
                   {variantRows.map((row: any, idx) => (
                     <div
                       key={row.option_id}
-                      className="bg-white border border-[#385E31]/10 rounded-2xl px-4 py-3 flex items-center gap-4"
+                      className="bg-background border border-primary/10 rounded-2xl px-4 py-3 flex items-center gap-4 shadow-sm"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-black text-[#385E31]/40 uppercase tracking-wider">{row.variant_type}</span>
-                          <ChevronRight size={10} className="text-[#385E31]/30" />
-                          <span className="text-[#385E31] font-bold text-[13px]">{row.label}</span>
+                          <span className="text-[10px] font-black text-primary/40 uppercase tracking-wider">{row.variant_type}</span>
+                          <ChevronRight size={10} className="text-primary/30" />
+                          <span className="text-primary font-bold text-[13px]">{row.label}</span>
                         </div>
-                        <p className="text-[#385E31]/50 text-[11px] font-medium mt-0.5">
+                        <p className="text-primary/50 text-[11px] font-medium mt-0.5">
                           Current stock: <span className="font-black">{row.stock}</span>{" "}
                           {row.unit_of_measure}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[#385E31]/40 text-[11px] font-bold">+</span>
+                        <span className="text-primary/40 text-[11px] font-bold">+</span>
                         <input
                           type="number"
                           min="0"
@@ -456,9 +466,9 @@ export default function RestockModal({
                               prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
                             )
                           }
-                          className="w-[80px] border border-[#385E31]/20 focus:border-[#385E31] rounded-xl px-3 py-2 text-[13px] text-[#385E31] font-bold text-center outline-none transition-colors bg-[#FFFCEB]"
+                          className="w-[80px] border border-primary/20 focus:border-primary rounded-xl px-3 py-2 text-[13px] text-primary font-bold text-center outline-none transition-colors bg-background"
                         />
-                        <span className="text-[#385E31]/50 text-[11px] font-medium w-[30px]">
+                        <span className="text-primary/50 text-[11px] font-medium w-[30px]">
                           {row.unit_of_measure}
                         </span>
                       </div>
@@ -487,17 +497,17 @@ export default function RestockModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 pb-6 pt-4 border-t border-[#385E31]/10 flex gap-3 shrink-0">
+          <div className="px-6 pb-6 pt-4 border-t border-primary/10 flex gap-3 shrink-0">
             <button
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl border border-[#385E31]/20 text-[#385E31]/60 font-bold text-[13px] hover:bg-[#385E31]/5 transition-colors"
+              className="flex-1 py-3 rounded-2xl border border-primary/20 text-primary/60 font-bold text-[13px] hover:bg-primary/5 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving || loading || (isFnb && ingredients.length === 0)}
-              className="flex-1 bg-[#385E31] text-[#F7B71D] py-3 rounded-2xl font-black text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-opacity"
+              className="flex-1 bg-primary text-[var(--color-sidebar-text,#FFF9D7)] py-3 rounded-2xl font-black text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-opacity"
             >
               {saving
                 ? <><Loader2 size={15} className="animate-spin" /> Saving…</>

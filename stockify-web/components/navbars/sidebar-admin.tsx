@@ -51,12 +51,21 @@ interface SidebarAdminProps {
   activeSection: SectionKey;
   setActiveSection: (section: SectionKey) => void;
   openSettings: () => void;
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
 }
 
 export default function SidebarAdmin({
   activeSection,
   setActiveSection,
   openSettings, 
+  colors,
 }: SidebarAdminProps) {
   const router = useRouter();
   const params = useParams();
@@ -123,8 +132,16 @@ export default function SidebarAdmin({
     }
   };
 
+  const sidebarStyles = {
+    "--color-primary": colors?.color_primary || "#385E31",
+    "--color-background": colors?.color_background || "#FFFCEB",
+    "--color-secondary": colors?.color_secondary || "#2A4725",
+    "--color-accent": colors?.color_accent || "#E5AC24",
+    "--color-sidebar-text": colors?.color_sidebar_text || "#FFF9D7",
+  } as React.CSSProperties;
+
   return (
-    <div className="w-64 h-screen pt-12 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
+    <div style={sidebarStyles} className="w-64 h-screen pt-12 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
       {/* Top Navigation */}
       <div className="flex flex-col gap-1">
         {adminNavItems.map((item) => (
@@ -166,6 +183,7 @@ export default function SidebarAdmin({
         isOpen={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
         onConfirm={handleLogout}
+        colors={colors}
       />
     </div>
   );

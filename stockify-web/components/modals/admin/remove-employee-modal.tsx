@@ -11,6 +11,14 @@ interface DeleteEmployeeModalProps {
   isDeleting: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
 }
 
 export default function DeleteEmployeeModal({
@@ -19,6 +27,7 @@ export default function DeleteEmployeeModal({
   isDeleting,
   onClose,
   onConfirm,
+  colors,
 }: DeleteEmployeeModalProps) {
   
   // <-- MOUNT STATE FOR PORTAL
@@ -52,7 +61,13 @@ export default function DeleteEmployeeModal({
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               transition={{ duration: 0.3, type: "spring", bounce: 0.25 }}
-              className="bg-[#FFFCEB] rounded-2xl shadow-2xl w-[420px] max-w-[95vw] overflow-hidden border border-red-200 font-['Inter'] pointer-events-auto"
+              style={{
+                "--color-primary": colors?.color_primary || "#385E31",
+                "--color-background": colors?.color_background || "#FFFCEB",
+                "--color-secondary": colors?.color_secondary || "#2A4725",
+                "--color-accent": colors?.color_accent || "#E5AC24",
+              } as React.CSSProperties}
+              className="bg-background rounded-2xl shadow-2xl w-[420px] max-w-[95vw] overflow-hidden border border-red-200 font-['Inter'] pointer-events-auto"
             >
               
               {/* Header */}
@@ -79,9 +94,9 @@ export default function DeleteEmployeeModal({
                 </div>
 
                 <div>
-                  <p className="text-[#385E31] font-bold text-lg">Are you sure?</p>
+                  <p className="text-primary font-bold text-lg">Are you sure?</p>
                   <p className="text-gray-500 text-sm mt-1 leading-relaxed">
-                    You are about to delete the account of <span className="font-bold text-[#385E31]">{user.display_name}</span>.
+                    You are about to delete the account of <span className="font-bold text-primary">{user.display_name}</span>.
                   </p>
                 </div>
 
@@ -97,7 +112,7 @@ export default function DeleteEmployeeModal({
                 <button
                   onClick={onClose}
                   disabled={isDeleting}
-                  className="flex-1 py-2.5 border-2 border-[#385E31] text-[#385E31] font-semibold rounded-xl hover:bg-[#385E31]/5 transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 border-2 border-primary text-primary font-semibold rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
                 >
                   Go Back
                 </button>

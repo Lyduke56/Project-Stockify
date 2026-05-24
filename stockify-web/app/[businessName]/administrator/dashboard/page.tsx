@@ -104,9 +104,10 @@ export default function AdminDashboard() {
       <DashboardSection
         data={dashboardData}
         onManageShop={() => handleSetSection("store-settings")}
+        colors={config || undefined}
       />
     ) : <div />,
-    "user-admin":     <UserAdminSection />,
+    "user-admin":     <UserAdminSection colors={config || undefined} />,
     "storefront":     <StorefrontSection />,
     "store-settings": <StoreSettingsSection />,
     "admin-settings": <div />,
@@ -122,6 +123,8 @@ export default function AdminDashboard() {
         "--color-accent":       config?.color_accent       ?? "#F7B71D",
         "--color-text":         config?.color_text         ?? "#3A6131",
         "--color-sidebar-text": config?.color_sidebar_text ?? "#FFF9D7",
+        "--color-background":   config?.color_background   ?? "#FFFCEB",
+        "--color-navbar-text":  config?.color_navbar_text  ?? "#385E31",
       } as React.CSSProperties}
     >
       {/* Sidebar — slides in from left */}
@@ -134,6 +137,7 @@ export default function AdminDashboard() {
           activeSection={activeSection}
           setActiveSection={handleSetSection}
           openSettings={() => handleSetSection("admin-settings")}
+          colors={config || undefined}
         />
       </motion.div>
 
@@ -175,9 +179,9 @@ export default function AdminDashboard() {
         </motion.main>
       </div>
 
-      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} isAdmin={true} />
-      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} role="admin" tenantId={tenantId} />
-      <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} />
+      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} isAdmin={true} colors={config || undefined} />
+      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} role="admin" tenantId={tenantId} colors={config || undefined} />
+      <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} colors={config || undefined} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import ManageCategoriesModal from "@/components/modals/employee/product-modals/m
 import DeleteItemModal       from "@/components/modals/employee/ingredients-modals/delete-item-modal";
 import RestockModal          from "@/components/modals/employee/product-modals/restock-modal";
 import { RefreshCw } from "lucide-react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -44,9 +45,10 @@ const COLUMNS = [
 interface ProductsTableProps {
   tenantId:       string;
   onLoadComplete?: () => void;
+  colors?: StorefrontConfig | null;
 }
 
-export default function ProductsTable({ tenantId, onLoadComplete }: ProductsTableProps) {
+export default function ProductsTable({ tenantId, onLoadComplete, colors }: ProductsTableProps) {
   const [products,     setProducts]     = useState<Product[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState<string | null>(null);
@@ -231,9 +233,9 @@ export default function ProductsTable({ tenantId, onLoadComplete }: ProductsTabl
                     Action <ChevronDown />
                   </button>
                   {isOpen && (
-                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                      <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Edit Product</button>
-                      <button onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors">Delete Product</button>
+                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-background border border-primary shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col text-left">
+                      <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-left transition-colors">Edit Product</button>
+                      <button onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors">Delete Product</button>
                     </div>
                   )}
                 </div>
@@ -248,10 +250,10 @@ export default function ProductsTable({ tenantId, onLoadComplete }: ProductsTabl
         {filtered.length > visibleCount && <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-accent text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">Load More</button>}
       </div>
 
-      {showAdd      && <ProductModal mode="add"  tenantId={tenantId} onSave={handleAdd}  onClose={() => setShowAdd(false)} />}
-      {editTarget   && <ProductModal mode="edit" tenantId={tenantId} productId={editTarget.product_id} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />}
+      {showAdd      && <ProductModal mode="add"  tenantId={tenantId} onSave={handleAdd}  onClose={() => setShowAdd(false)} colors={colors} />}
+      {editTarget   && <ProductModal mode="edit" tenantId={tenantId} productId={editTarget.product_id} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} colors={colors} />}
       {deleteTarget && <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
-      {showCategories && <ManageCategoriesModal tenantId={tenantId} type="fnb_product" placeholder="e.g. Cold Beverage" onClose={() => { setShowCategories(false); loadProducts(); }} />}
+      {showCategories && <ManageCategoriesModal tenantId={tenantId} type="fnb_product" placeholder="e.g. Cold Beverage" onClose={() => { setShowCategories(false); loadProducts(); }} colors={colors} />}
     </div>
   );
 }

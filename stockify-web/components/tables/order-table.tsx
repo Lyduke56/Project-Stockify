@@ -13,6 +13,7 @@ import {
 } from "@/lib/employee/order-actions";
 import { createClient } from "@/lib/supabase/client";
 import ViewOrderModal from "./orders-modals/view-modal";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 const TABS: FulfillmentStatus[] = ["Pending", "Processing", "Dispatched", "Received", "Reported", "Cancelled"];
 const COLUMNS = ["ORDER ID", "DATE / TIME", "CUSTOMER", "TOTAL AMOUNT", "PAYMENT METHOD", "ACTIONS"];
@@ -28,9 +29,10 @@ const TAB_META: Record<FulfillmentStatus, { bg: string; text: string; badge: str
 
 interface OrdersTableProps {
   onLoadComplete?: () => void;
+  colors?: StorefrontConfig;
 }
 
-export default function OrdersTable({ onLoadComplete }: OrdersTableProps) {
+export default function OrdersTable({ onLoadComplete, colors }: OrdersTableProps) {
   const [tenantId,   setTenantId]   = useState("");
   const [orders,     setOrders]     = useState<Order[]>([]);
   const [loading,    setLoading]    = useState(true);
@@ -243,6 +245,7 @@ export default function OrdersTable({ onLoadComplete }: OrdersTableProps) {
             order={viewOrder}
             onClose={() => setViewOrder(null)}
             onStatusChange={() => tenantId && loadOrders(tenantId)}
+            colors={colors}
           />
         )}
       </AnimatePresence>

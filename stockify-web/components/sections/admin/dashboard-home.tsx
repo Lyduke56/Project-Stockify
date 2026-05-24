@@ -9,6 +9,12 @@ import type { ClientDashboardStats } from "@/lib/client/dashboard-stats";
 interface DashboardHomeProps {
   data: ClientDashboardStats;
   onManageShop?: () => void;
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+  };
 }
 
 const formatCurrency = (n: number) => {
@@ -16,7 +22,10 @@ const formatCurrency = (n: number) => {
   return n.toString();
 };
 
-export default function DashboardHome({ data, onManageShop }: DashboardHomeProps) {
+export default function DashboardHome({ data, onManageShop, colors }: DashboardHomeProps) {
+  const primary = colors?.color_primary;
+  const background = colors?.color_background;
+
   return (
     <div className="flex-1 flex flex-col h-full w-full font-['Inter']">
       
@@ -45,6 +54,8 @@ export default function DashboardHome({ data, onManageShop }: DashboardHomeProps
               svgName="AC_active"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
               trendText="Newly registered active users" 
+              primaryColor={primary}
+              backgroundColor={background}
             />
           </motion.div>
           
@@ -55,6 +66,8 @@ export default function DashboardHome({ data, onManageShop }: DashboardHomeProps
               svgName="AC_peso"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[3.8rem]" 
               trendText="Total revenue for the current month"
+              primaryColor={primary}
+              backgroundColor={background}
             />
           </motion.div>
           
@@ -65,6 +78,8 @@ export default function DashboardHome({ data, onManageShop }: DashboardHomeProps
               svgName="AC_orders"
               className="w-full pb-5 h-full [&_.shrink-0]:!w-20 [&_.shrink-0]:!h-20 [&_.font-black]:!text-[4rem]" 
               trendText="Successfully completed orders"
+              primaryColor={primary}
+              backgroundColor={background}
             />
           </motion.div>
         </div>
@@ -84,6 +99,7 @@ export default function DashboardHome({ data, onManageShop }: DashboardHomeProps
             revenue={`₱${formatCurrency(data.shopStatus?.revenue ?? 0)}`}
             orders={data.shopStatus?.orders ?? 0}
             onManageShop={onManageShop}
+            colors={colors ? { primary: colors.color_primary, background: colors.color_background } : undefined}
           />
         </motion.div>
 

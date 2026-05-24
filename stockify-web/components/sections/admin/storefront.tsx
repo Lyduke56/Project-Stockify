@@ -293,12 +293,13 @@ export default function StorefrontSection() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="flex flex-col w-full min-h-screen bg-[#FFFCEB] font-['Inter'] pt-5 pb-12"
+      className="flex flex-col w-full min-h-screen font-['Inter'] pt-5 pb-12"
       style={{
         '--color-primary': config?.color_primary ?? '#385E31',
         '--color-secondary': config?.color_secondary ?? '#2A4725',
         '--color-accent': config?.color_accent ?? '#E5AC24',
         '--color-background': config?.color_background ?? '#FFFCEB',
+        backgroundColor: 'var(--color-background)',
       } as React.CSSProperties}
     >
       {/* PAGE HEADER */}
@@ -376,8 +377,10 @@ export default function StorefrontSection() {
               transition={{ duration: 0.2 }}
               className="flex flex-col lg:flex-row gap-6 w-full mb-6"
             >
-              {/* Left Column: Color Inputs */}
-              <div className="flex flex-col gap-4 p-6 w-full lg:w-2/3 bg-[#FFFCEB] rounded-[10px] border border-primary shadow-sm">
+              <div 
+                className="flex flex-col gap-4 p-6 w-full lg:w-2/3 rounded-[10px] border border-primary shadow-sm"
+                style={{ backgroundColor: "var(--color-background)" }}
+              >
                 <h3 className="text-primary text-[16px] font-extrabold uppercase mb-2">Brand Colors</h3>
                 <div className="flex flex-col gap-5">
                   {COLOR_FIELDS.map((f) => (
@@ -441,8 +444,10 @@ export default function StorefrontSection() {
               transition={{ duration: 0.2 }}
               className="flex flex-col lg:flex-row gap-6 w-full mb-6"
             >
-              {/* Media Assets */}
-              <div className="flex flex-col gap-4 p-6 w-full flex-1 bg-[#FFFCEB] rounded-[10px] border border-primary shadow-sm">
+              <div 
+                className="flex flex-col gap-4 p-6 w-full flex-1 rounded-[10px] border border-primary shadow-sm"
+                style={{ backgroundColor: "var(--color-background)" }}
+              >
                 <h3 className="text-primary text-[16px] font-extrabold uppercase mb-2">Media Assets</h3>
                 <div className="flex flex-col gap-6">
                   {/* Shop Logo */}
@@ -475,8 +480,10 @@ export default function StorefrontSection() {
                 </div>
               </div>
 
-              {/* Typography */}
-              <div className="flex flex-col gap-4 p-6 w-full flex-1 bg-[#FFFCEB] rounded-[10px] border border-primary shadow-sm">
+              <div 
+                className="flex flex-col gap-4 p-6 w-full flex-1 rounded-[10px] border border-primary shadow-sm"
+                style={{ backgroundColor: "var(--color-background)" }}
+              >
                 <h3 className="text-primary text-[16px] font-extrabold uppercase mb-2">Typography</h3>
                 <div className="flex flex-col gap-5">
                   <div className="flex items-center gap-4">
@@ -521,7 +528,8 @@ export default function StorefrontSection() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 10 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col gap-4 p-6 w-full bg-[#FFFCEB] rounded-[10px] border border-primary shadow-sm mb-6"
+              className="flex flex-col gap-4 p-6 w-full rounded-[10px] border border-primary shadow-sm mb-6"
+              style={{ backgroundColor: "var(--color-background)" }}
             >
               <div className="flex items-center justify-between mb-1">
                 <div>
@@ -539,7 +547,7 @@ export default function StorefrontSection() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                       transition={{ duration: 0.2 }}
-                      className="border border-primary/30 rounded-xl p-4 flex flex-col gap-3 bg-white/60"
+                      className="border border-primary rounded-xl p-4 flex flex-col gap-3 bg-background"
                     >
                       {/* Banner header */}
                       <div className="flex items-center justify-between">
@@ -765,7 +773,8 @@ export default function StorefrontSection() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[#FFFCEB] rounded-[20px] p-6 max-w-sm w-full border border-primary/20 shadow-xl"
+              className="rounded-[20px] p-6 max-w-sm w-full border border-primary/20 shadow-xl"
+              style={{ backgroundColor: "var(--color-background)" }}
             >
               <h3 className="text-primary font-extrabold text-xl mb-2">Reset to Default?</h3>
               <p className="text-primary/70 text-sm mb-6">

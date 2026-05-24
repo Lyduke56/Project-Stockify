@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 import AuditLogs from "@/components/tables/audit-logs-table";
 import LoadingScreen from "@/app/loading-screen/loading";
 
-export default function EmployeeAuditLogs() {
+export default function EmployeeAuditLogs({ colors }: { colors?: StorefrontConfig | null }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -19,7 +20,7 @@ export default function EmployeeAuditLogs() {
       {isLoading && <LoadingScreen fullScreen={false} />}
 
       <div
-        className={`flex min-h-screen w-full bg-[#FFFCEB] font-['Inter'] transition-all duration-700 ease-out ${
+        className={`flex min-h-screen w-full bg-background font-['Inter'] transition-all duration-700 ease-out ${
           isLoading
             ? "hidden"
             : isVisible
@@ -35,7 +36,7 @@ export default function EmployeeAuditLogs() {
             <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
 
-          <AuditLogs onLoadComplete={handleLoadComplete} />
+          <AuditLogs onLoadComplete={handleLoadComplete} colors={colors} />
         </div>
       </div>
     </>

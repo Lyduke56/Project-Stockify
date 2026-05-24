@@ -37,32 +37,50 @@ export default function NavbarEmployee({
   }, []);
 
   // Sync the reset function with the parent component if provided
+  // NOTE: Must wrap in arrow fn — React useState setter calls functions directly as updaters
   useEffect(() => {
     if (setResetNotificationBadge) {
-      setResetNotificationBadge(resetBadge);
+      setResetNotificationBadge(() => resetBadge);
     }
   }, [setResetNotificationBadge, resetBadge]);
-
   const calculateOperationalMetrics = useCallback(async (tId: string) => {
     try {
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
-        supabase.from("fnb_inventory_items").select("item_id, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
-        supabase.from("nfb_products").select("product_id, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("nfb_products").select("product_name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
         supabase.from("orders").select("order_id, fulfillment_status").eq("tenant_id", tId).in("fulfillment_status", ["Pending", "Reported"])
       ]);
 
-      const lowFnbCount = fnbResult.data?.filter(
-        (item: { stock: number; alert_limit: number }) => item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit)
-      ).length || 0;
+      let dismissed: string[] = [];
+      try {
+        const stored = localStorage.getItem("stockify_dismissed_alerts");
+        dismissed = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(dismissed)) dismissed = [];
+      } catch {
+        dismissed = [];
+      }
 
-      const lowNfbCount = nfbResult.data?.filter(
-        (item: { quantity: number; reorder_threshold: any }) => 
-          Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold))
-      ).length || 0;
+      const activeLowFnb = fnbResult.data?.filter((item: { item_name: string; stock: number; alert_limit: number }) => {
+        const isLow = item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit);
+        if (!isLow) return false;
+        const alertId = `fnb-stock-${item.item_name}-${item.stock}`;
+        return !dismissed.includes(alertId);
+      }) || [];
 
-      const pendingAndReportedOrdersCount = orderResult.data?.length || 0;
+      const activeLowNfb = nfbResult.data?.filter((item: { product_name: string; quantity: number; reorder_threshold: any }) => {
+        const isLow = Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold));
+        if (!isLow) return false;
+        const alertId = `nfb-stock-${item.product_name}-${item.quantity}`;
+        return !dismissed.includes(alertId);
+      }) || [];
 
-      setOperationalAlerts(lowFnbCount + lowNfbCount + pendingAndReportedOrdersCount);
+      const activeOrders = orderResult.data?.filter((order: { order_id: string; fulfillment_status: string }) => {
+        const prefix = order.fulfillment_status === "Reported" ? "order-reported-" : "order-pending-";
+        const alertId = `${prefix}${order.order_id}`;
+        return !dismissed.includes(alertId);
+      }) || [];
+
+      setOperationalAlerts(activeLowFnb.length + activeLowNfb.length + activeOrders.length);
     } catch (err) {
       console.error("Failed calculating operational notification badge counts:", err);
     }
@@ -176,14 +194,42 @@ export default function NavbarEmployee({
       </div>
 
       {/* RIGHT SIDE: Controls */}
-      <div className="flex items-center gap-4 md:gap-8">
+      <div className="flex items-center gap-4 md:gap-8 text-primary">
         <button onClick={() => setActiveSection("dashboard")} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Home">
-          <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
+          <div
+            className="w-full h-full bg-current"
+            style={{
+              WebkitMaskImage: "url(/navbar-home.svg)",
+              maskImage: "url(/navbar-home.svg)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+            role="img"
+            aria-label="Home"
+          />
         </button>
 
         <div className="relative flex items-center justify-center">
           <button onClick={handleNotifClick} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Notifications">
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
+            <div
+              className="w-full h-full bg-current"
+              style={{
+                WebkitMaskImage: "url(/navbar-notif.svg)",
+                maskImage: "url(/navbar-notif.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              role="img"
+              aria-label="Notifications"
+            />
           </button>
           
           {operationalAlerts > 0 && !hasSeenNotifs && (
@@ -194,7 +240,23 @@ export default function NavbarEmployee({
         </div>
 
         <button onClick={(e) => { e.preventDefault(); openProfile(); }} className="w-9 h-9 relative flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer focus:outline-none rounded-full p-0 bg-transparent border-0 group" title="Profile Settings">
-          <img src="/navbar-profile-settings.svg" alt="Profile Settings" className="w-8 h-8 object-contain rounded-full border border-[#385E31] group-hover:brightness-95 pointer-events-none" />
+          <div className="w-8 h-8 rounded-full border border-primary p-0.5 flex items-center justify-center group-hover:brightness-95 pointer-events-none">
+            <div
+              className="w-full h-full bg-current"
+              style={{
+                WebkitMaskImage: "url(/navbar-profile-settings.svg)",
+                maskImage: "url(/navbar-profile-settings.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              role="img"
+              aria-label="Profile Settings"
+            />
+          </div>
         </button>
       </div>
     </nav>
