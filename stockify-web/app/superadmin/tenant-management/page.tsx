@@ -217,7 +217,7 @@ export default function TenantManagement() {
         </div>
       </motion.div>
 
-      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} />
+      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} role="superadmin" />
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );

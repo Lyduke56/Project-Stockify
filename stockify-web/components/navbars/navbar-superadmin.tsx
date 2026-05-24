@@ -18,14 +18,16 @@ export interface NotificationItem {
 
 interface NavbarSuperAdminProps {
   onHome?: () => void; 
+  openNotifs?: () => void;
 }
 
-export default function NavbarApp({ onHome }: NavbarSuperAdminProps) {
+export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps) {
   const router = useRouter(); 
   const supabase = createClient();
   
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false); 
+  const [systemAlertCount, setSystemAlertCount] = useState<number>(0);
   
   // Explicitly typing state arrays to keep TypeScript happy 🚀
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -109,7 +111,6 @@ export default function NavbarApp({ onHome }: NavbarSuperAdminProps) {
   };
 
   // 🌟 FIX: Explicitly typed 'n' as NotificationItem to fix line 64 parameter rule
-  const systemAlertCount = notifications.filter((n: NotificationItem) => n.isUnread).length;
 
   const handleHomeClick = () => {
     router.push("/superadmin/dashboard");
@@ -136,7 +137,7 @@ export default function NavbarApp({ onHome }: NavbarSuperAdminProps) {
 
           {/* Notifications with Real-time Count */}
           <div className="relative flex items-center justify-center">
-            <button onClick={() => setIsNotifModalOpen(true)} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer" title="Notifications">
+            <button onClick={() => { if (openNotifs) openNotifs(); else setIsNotifModalOpen(true); }} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer" title="Notifications">
               <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
             </button>
             

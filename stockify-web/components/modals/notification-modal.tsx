@@ -40,6 +40,7 @@ const getDetailedBody = (type: string, subject: string): string => {
 export default function NotificationModal({
   isOpen,
   onClose,
+  role = "client",
   tenantId = null,
 }: NotificationModalProps) {
   const supabase = createClient();
@@ -93,6 +94,7 @@ export default function NotificationModal({
             if (currentStock <= 0 || currentStock <= limit) {
               const isOut = currentStock <= 0;
               collectedAlerts.push({
+                id: `fnb-stock-${item.item_name}-${item.created_at}`,
                 title: "Inventory Alert",
                 subject: isOut ? "⚠️ F&B Item Out of Stock" : "⚠️ Low F&B Stock Warning",
                 body: isOut 
@@ -114,6 +116,7 @@ export default function NotificationModal({
             if (currentQty <= 0 || currentQty <= threshold) {
               const isOut = currentQty <= 0;
               collectedAlerts.push({
+                id: `nfb-stock-${item.product_name}-${item.created_at}`,
                 title: "Inventory Alert",
                 subject: isOut ? "⚠️ Product Out of Stock" : "⚠️ Product Low Stock Warning",
                 body: isOut 
@@ -131,6 +134,7 @@ export default function NotificationModal({
           orderResult.data.forEach((order: { order_id: string; created_at: string; fulfillment_status: string }) => {
             if (order.fulfillment_status === "Reported") {
               collectedAlerts.push({
+                id: `order-reported-${order.order_id}`,
                 title: "Reported Order",
                 subject: "⚠️ Order Issue Reported",
                 body: `Order #${order.order_id.slice(0, 8).toUpperCase()} has been reported by the customer. Please review the dispute details and comments.`,
@@ -139,6 +143,7 @@ export default function NotificationModal({
               });
             } else {
               collectedAlerts.push({
+                id: `order-pending-${order.order_id}`,
                 title: "Order Alert",
                 subject: "📦 Pending Order Fulfillment",
                 body: `Order #${order.order_id.slice(0, 8).toUpperCase()} requires immediate floor processing. Please coordinate packaging.`,
@@ -164,6 +169,7 @@ export default function NotificationModal({
         if (tenantRow) {
           if (tenantRow.is_suspended) {
             collectedAlerts.push({
+              id: `suspension-${tenantId}`,
               title: "Suspension Alert",
               subject: "⛔ Account Suspended by Superadmin",
               body: "Your business account has been suspended due to unresolved subscription billing or compliance issues. Please contact billing/support at support@stockify.com immediately to restore access.",
@@ -187,6 +193,7 @@ export default function NotificationModal({
 
             if (diffDays <= 0) {
               collectedAlerts.push({
+                id: `trial-expired-${tenantId}`,
                 title: "Trial Expired",
                 subject: "⚠️ Your Free Trial Has Expired",
                 body: "Your 7-day free trial has expired. To continue using Stockify services and manage your shop floor, please subscribe to an active billing plan.",
@@ -195,6 +202,7 @@ export default function NotificationModal({
               });
             } else if (diffDays <= 2) {
               collectedAlerts.push({
+                id: `trial-ending-${tenantId}-${diffDays}`,
                 title: "Trial Alert",
                 subject: `⏳ Free Trial Ends in ${diffDays} Day(s)`,
                 body: `Your free trial period ends on ${trialEnd.toLocaleDateString()}. Subscribe soon to keep your shop dashboard active without interruptions.`,
@@ -208,13 +216,14 @@ export default function NotificationModal({
         // 2. Fetch billing notifications (sent by superadmin)
         const { data: billingData } = await supabase
           .from("billing_notifications")
-          .select("notification_type, subject, sent_at")
+          .select("id, notification_type, subject, sent_at")
           .eq("tenant_id", tenantId)
           .order("sent_at", { ascending: false });
 
         if (billingData) {
           billingData.forEach((notif: any) => {
             collectedAlerts.push({
+              id: notif.id || `billing-notif-${notif.sent_at}`,
               title: notif.notification_type === "reminder" ? "Billing Reminder" : "Trial Started",
               subject: notif.subject || "Billing Notification",
               body: getDetailedBody(notif.notification_type || "", notif.subject || ""),
@@ -227,13 +236,13 @@ export default function NotificationModal({
               }),
               isRead: false,
             });
-          }
-        });
+          });
+        }
 
         // 3. Fetch subscription records for pending/overdue/missed warnings
         const { data: subData } = await supabase
           .from("subscription_records")
-          .select("billing_period, payment_status, amount, overdue_at")
+          .select("subscription_id, billing_period, payment_status, amount, overdue_at")
           .eq("tenant_id", tenantId)
           .in("payment_status", ["Pending", "Overdue", "Missed"]);
 
@@ -243,6 +252,7 @@ export default function NotificationModal({
             if (record.payment_status === "Overdue") {
               const overdueDate = record.overdue_at ? new Date(record.overdue_at) : new Date();
               collectedAlerts.push({
+                id: `sub-overdue-${record.subscription_id}`,
                 title: "Overdue Alert",
                 subject: "⛔ Subscription Payment Overdue",
                 body: `Your subscription payment of ₱${record.amount} for period ending ${record.billing_period} is overdue. Please settle this immediately to avoid service interruption.`,
@@ -252,6 +262,7 @@ export default function NotificationModal({
             } else if (record.payment_status === "Missed") {
               const overdueDate = record.overdue_at ? new Date(record.overdue_at) : new Date();
               collectedAlerts.push({
+                id: `sub-missed-${record.subscription_id}`,
                 title: "Missed Payment",
                 subject: "⛔ Subscription Payment Missed",
                 body: `Your monthly subscription payment of ₱${record.amount} for period ending ${record.billing_period} was missed. Please pay immediately to prevent account suspension.`,
@@ -266,6 +277,7 @@ export default function NotificationModal({
               // Show warning if 2 or 3 days before overdue_at
               if (diffDays >= 0 && diffDays <= 3) {
                 collectedAlerts.push({
+                  id: `sub-pending-warning-${record.subscription_id}`,
                   title: "Billing Alert",
                   subject: "⚠️ Subscription Overdue Warning",
                   body: `Your subscription payment of ₱${record.amount} for period ending ${record.billing_period} is pending. Overdue in ${diffDays} day(s) on ${overdueDate.toLocaleDateString()}. Please settle this charge.`,
@@ -312,6 +324,7 @@ export default function NotificationModal({
 
             if (tenant.is_suspended) {
               collectedAlerts.push({
+                id: `sa-tenant-suspended-${tenant.tenant_id}`,
                 title: "Tenant Suspended",
                 subject: `Account suspended: ${tenant.business_name}`,
                 body: `The tenant account organization entity "${tenant.business_name}" has been flagged as suspended by the system compliance rules.`,
@@ -320,6 +333,7 @@ export default function NotificationModal({
               });
             } else {
               collectedAlerts.push({
+                id: `sa-tenant-pending-${tenant.tenant_id}`,
                 title: "Pending Registration",
                 subject: `New registration pending: ${tenant.business_name}`,
                 body: `The tenant enterprise profile registration request for "${tenant.business_name}" is awaiting access authorization approval.`,
@@ -345,6 +359,7 @@ export default function NotificationModal({
 
             if (record.payment_status === "Paid") {
               collectedAlerts.push({
+                id: `sa-sub-paid-${record.subscription_id}`,
                 title: "Payment Recorded",
                 subject: `Payment recorded: ${businessName}`,
                 body: `A subscription payment of ₱${record.amount_paid || record.amount} has been successfully recorded for billing period ending ${record.billing_period}.`,
@@ -353,6 +368,7 @@ export default function NotificationModal({
               });
             } else if (record.payment_status === "Overdue") {
               collectedAlerts.push({
+                id: `sa-sub-overdue-${record.subscription_id}`,
                 title: "Overdue Warning",
                 subject: `Payment overdue: ${businessName}`,
                 body: `The monthly subscription fee of ₱${record.amount} for period ending ${record.billing_period} is currently overdue. Settle immediately.`,
@@ -361,6 +377,7 @@ export default function NotificationModal({
               });
             } else if (record.payment_status === "Missed") {
               collectedAlerts.push({
+                id: `sa-sub-missed-${record.subscription_id}`,
                 title: "Missed Payment",
                 subject: `Payment missed: ${businessName}`,
                 body: `The monthly subscription fee of ₱${record.amount} for period ending ${record.billing_period} has been missed. Please contact the tenant to resolve the payment issue.`,
@@ -380,7 +397,7 @@ export default function NotificationModal({
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, [supabase, tenantId, deletedIds, readIds]);
+  }, [supabase, tenantId, deletedIds, readIds, role]);
 
   // Click handler to toggle read status (Facebook style background tint)
   const handleToggleRead = (id: string) => {
@@ -423,7 +440,7 @@ export default function NotificationModal({
           .on(
             "postgres_changes",
             { event: "*", schema: "public", table: tableName, filter: `tenant_id=eq.${tenantId}` },
-            () => fetchLiveSystemAlerts(false)
+            () => fetchLiveBillingAlerts(false)
           )
           .subscribe();
       });
@@ -441,7 +458,7 @@ export default function NotificationModal({
           .on(
             "postgres_changes",
             { event: "*", schema: "public", table: tableName, filter: filterStr },
-            () => fetchLiveSystemAlerts(false)
+            () => fetchLiveBillingAlerts(false)
           )
           .subscribe();
       });
@@ -453,14 +470,14 @@ export default function NotificationModal({
       const channel1 = supabase
         .channel("modal-system-tenants")
         .on("postgres_changes", { event: "*", schema: "public", table: "tenants" }, () => {
-          fetchLiveSystemAlerts(false);
+          fetchLiveBillingAlerts(false);
         })
         .subscribe();
 
       const channel2 = supabase
         .channel("modal-system-subscriptions")
         .on("postgres_changes", { event: "*", schema: "public", table: "subscription_records" }, () => {
-          fetchLiveSystemAlerts(false);
+          fetchLiveBillingAlerts(false);
         })
         .subscribe();
 
@@ -469,7 +486,7 @@ export default function NotificationModal({
         supabase.removeChannel(channel2);
       };
     }
-  }, [isOpen, supabase, fetchLiveSystemAlerts, role, tenantId]);
+  }, [isOpen, supabase, fetchLiveBillingAlerts, role, tenantId]);
 
   if (!isOpen || !mounted) return null;
 
