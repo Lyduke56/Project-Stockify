@@ -10,7 +10,7 @@ import UserAdminSection from "@/components/sections/admin/user-admin";
 import StorefrontSection from "@/components/sections/admin/storefront";
 import StoreSettingsSection from "@/components/sections/admin/store-settings";
 import AdminSettingsModal from "@/components/sections/admin/client-settings"; 
-import ClientProfileModal from "@/components/modals/client-profile-modal";
+import ClientProfileModal from "@/components/modals/client/profile/modal";
 import NotificationModal from "@/components/modals/notification-modal";
 import ClientSettingsModal from "@/components/modals/client-settings-modal";
 import LoadingScreen from "@/app/loading-screen/loading";
@@ -35,6 +35,7 @@ export default function AdminDashboard() {
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
   const [dashboardData, setDashboardData] = useState<ClientDashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [tenantId, setTenantId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -50,6 +51,7 @@ export default function AdminDashboard() {
           .single();
 
         if (userData?.tenant_id) {
+          setTenantId(userData.tenant_id);
           // fetch everything in parallel
           const [cfg, stats] = await Promise.all([
             fetchStorefrontConfig(userData.tenant_id),
@@ -132,8 +134,8 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} />
+      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} isAdmin={true} />
+      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} role="admin" tenantId={tenantId} />
       <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} />
     </div>
   );

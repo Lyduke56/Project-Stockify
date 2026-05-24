@@ -33,45 +33,34 @@ export default function NavbarApp({ onHome }: NavbarSuperAdminProps) {
   const [removedNotifIds, setRemovedNotifIds] = useState<string[]>([]);
 
   const checkGlobalPlatformIssues = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("tenants")
-      .select("tenant_id, company_name, subscription_status, is_suspended")
-      .or("subscription_status.eq.Pending,is_suspended.eq.true");
+    // Query tenants and subscription records across global context scope
+    const [tenantsRes, subRes] = await Promise.all([
+      supabase
+        .from("tenants")
+        .select("tenant_id")
+        .or("subscription_status.eq.Pending,is_suspended.eq.true"),
+      supabase
+        .from("subscription_records")
+        .select("subscription_id")
+        .or("payment_status.eq.Paid,payment_status.eq.Overdue,payment_status.eq.Missed")
+    ]);
 
-    if (!error && data) {
-      const mappedNotifs: NotificationItem[] = data
-        .map((tenant: {
-          tenant_id: any;
-          company_name: string | null;
-          subscription_status: string | null;
-          is_suspended: boolean | null;
-        }) => {
-          const idStr = tenant.tenant_id.toString();
-          const isPending = tenant.subscription_status === "Pending";
-          
-          return {
-            id: idStr,
-            title: isPending ? "Pending Registration" : "Account Suspended",
-            description: isPending 
-              ? `${tenant.company_name || "A new tenant"} is waiting for subscription verification.`
-              : `${tenant.company_name || "A tenant account"} has been temporarily suspended from the platform.`,
-            time: "Just Now",
-            isUnread: !readNotifIds.includes(idStr), 
-            type: isPending ? "tenant" : "alert",
-          };
-        })
-        // Added explicit type parsing inside loop checks to remove any residual bugs
-        .filter((n: NotificationItem) => !removedNotifIds.includes(n.id));
-
-      setNotifications(mappedNotifs);
+    let totalCount = 0;
+    if (!tenantsRes.error && tenantsRes.data) {
+      totalCount += tenantsRes.data.length;
     }
-  }, [supabase, readNotifIds, removedNotifIds]);
+    if (!subRes.error && subRes.data) {
+      totalCount += subRes.data.length;
+    }
+    setSystemAlertCount(totalCount);
+  }, [supabase]);
 
   useEffect(() => {
     checkGlobalPlatformIssues();
 
-    const channel = supabase
-      .channel("global-system-compliance")
+    // Listen to changes globally across all tenants
+    const channelTenants = supabase
+      .channel("global-system-tenants")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "tenants" },
@@ -81,8 +70,21 @@ export default function NavbarApp({ onHome }: NavbarSuperAdminProps) {
       )
       .subscribe();
 
+    // Listen to changes globally across subscription records
+    const channelSubs = supabase
+      .channel("global-system-subs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "subscription_records" },
+        () => {
+          checkGlobalPlatformIssues();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelTenants);
+      supabase.removeChannel(channelSubs);
     };
   }, [checkGlobalPlatformIssues, supabase]);
 

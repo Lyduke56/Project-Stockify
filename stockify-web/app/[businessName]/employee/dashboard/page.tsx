@@ -152,7 +152,7 @@ export default function EmployeeDashboard() {
       <SidebarEmployee
         activeSection={activeSection}
         setActiveSection={handleSetSection}
-        onOpenSettings={() => console.log("Open settings clicked")}
+        onOpenSettings={handleOpenSettings}
         sidebarData={sidebarData!}
       />
 

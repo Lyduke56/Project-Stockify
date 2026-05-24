@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
-interface SettingsModalProps {
+interface ClientSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
@@ -37,7 +37,6 @@ const EyeIcon = ({ show }: { show: boolean }) =>
     </svg>
   );
 
-
 const ShieldIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
     fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -60,9 +59,8 @@ const LoaderIcon = () => (
   </svg>
 );
 
-
 // --- Main Modal Component ---
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export default function ClientSettingsModal({ isOpen, onClose }: ClientSettingsModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -146,7 +144,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     { key: "security", label: "Security", Icon: ShieldIcon },
   ];
 
-  // ── Styles matched to FnbItemModal ──
   const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
   const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
 
@@ -167,16 +164,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-['Inter'] relative z-10"
       >
-        {/* LEFT SIDEBAR */}
-        <div className="w-full md:w-[320px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
-          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl pointer-events-none" />
+        {/* LEFT SIDEBAR (Opposite Primary Accent: Yellow Background & Green Text/Accents) */}
+        <div className="w-full md:w-[320px] bg-[#F7B71D] p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#3A6131]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10">
-            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
-            <h2 className="text-[#FFFCEB] text-3xl font-black leading-tight mb-2 tracking-wide uppercase">
+            <div className="bg-[#3A6131] w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[#3A6131] text-3xl font-black leading-tight mb-2 tracking-wide uppercase">
               Settings
             </h2>
-            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-12">
-              Manage your account security, passwords, and notification preferences here.
+            <p className="text-[#3A6131]/75 text-xs font-semibold leading-relaxed mb-12">
+              Manage your account security, passwords, and preferences here.
             </p>
             <nav className="flex flex-col gap-8">
               {tabs.map((t) => (
@@ -185,18 +182,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   className="flex items-center gap-4 transition-all duration-300 w-full text-left outline-none translate-x-2"
                 >
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                      activeTab === t.key
-                        ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20"
-                        : "bg-white/10 text-white"
-                    }`}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-[#3A6131] text-[#FFFCEB] shadow-lg shadow-[#3A6131]/20"
                   >
                     <t.Icon />
                   </div>
                   <span
-                    className={`text-sm font-bold tracking-wide ${
-                      activeTab === t.key ? "text-[#FFFCEB]" : "text-white"
-                    }`}
+                    className="text-sm font-bold tracking-wide text-[#3A6131]"
                   >
                     {t.label}
                   </span>
@@ -209,9 +200,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               {tabs.map((t) => (
                 <div
                   key={t.key}
-                  className={`h-1.5 rounded-full transition-all duration-500 ${
-                    activeTab === t.key ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
-                  }`}
+                  className="h-1.5 rounded-full transition-all duration-500 w-8 bg-[#3A6131]"
                 />
               ))}
             </div>
@@ -230,12 +219,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             )}
             {passSaved && (
               <div className="mb-6 px-4 py-3 bg-[#3A6131]/10 border border-[#3A6131]/20 rounded-2xl text-[#3A6131] text-xs font-semibold">
-                ✓ Successfully updated {activeTab === "security" ? "password" : "preferences"}.
+                ✓ Successfully updated password.
               </div>
             )}
 
             <AnimatePresence mode="wait">
-              {/* STEP 1: SECURITY */}
               {activeTab === "security" && (
                 <motion.div
                   key="security"
@@ -351,16 +339,22 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </AnimatePresence>
           </div>
 
-          {/* Footer */}
-          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-end items-center z-20 shrink-0">
+          {/* Footer (Save Button styled with Yellow!) */}
+          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-between items-center z-20 shrink-0">
+            <button
+              onClick={onClose}
+              className="bg-transparent border border-[#3A6131]/30 text-[#3A6131] px-6 py-3 rounded-2xl text-sm font-bold hover:bg-[#3A6131]/5 transition-colors"
+            >
+              Cancel
+            </button>
             <button
               onClick={handlePasswordSave}
               disabled={saving}
-              className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-[#F7B71D] text-[#385E31] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:brightness-105 transition-all shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>
-                  <LoaderIcon /> Saving...
+                  <LoaderIcon /> Updating...
                 </>
               ) : (
                 <>Update Password</>
