@@ -505,7 +505,7 @@ export default function AuditLogs() {
       </motion.div>
 
       {/* Modals */}
-      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} />
+      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} role="superadmin" />
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
   );

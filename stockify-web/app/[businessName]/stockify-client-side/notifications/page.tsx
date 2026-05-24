@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import SidebarClient from "@/components/navbars/sidebar-client";
 import NavbarClient from "@/components/navbars/navbar-client";
 import { createClient } from "@/lib/supabase/client";
@@ -62,6 +62,7 @@ export default function ClientNotifications() {
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
 
   const fetchNotifications = async (tid: string) => {
     try {
