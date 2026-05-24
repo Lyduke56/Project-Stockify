@@ -29,12 +29,12 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
-  CREATE:   "Created",
-  UPDATE:   "Updated",
-  DELETE:   "Deleted",
-  CANCEL:   "Cancelled",
-  RESTOCK:  "Restocked",
-  COMPLETE: "Completed",
+  CREATE:             "Created",
+  UPDATE:             "Updated",
+  DELETE:             "Deleted",
+  CANCEL:             "Cancelled",
+  RESTOCK:            "Restocked",
+  COMPLETE:           "Completed",
   STATUS_PENDING:     "→ Pending",
   STATUS_PROCESSING:  "→ Processing",
   STATUS_DISPATCHED:  "→ Dispatched",
@@ -79,32 +79,26 @@ function LogRow({
       <div className="text-center text-[#3A6131]/70 text-[11px] font-medium">
         {formatDate(log.created_at)}
       </div>
-
       <div className="text-center text-[#3A6131] text-[12px] font-bold truncate px-1">
         {log.user_name || "System"}
       </div>
-
       <div className="flex justify-center">
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${getActionColor(log.action)}`}>
           {getActionLabel(log.action)}
         </span>
       </div>
-
       <div className="flex justify-center">
         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full capitalize ${getEntityColor(log.entity_type)}`}>
           {log.entity_type}
         </span>
       </div>
-
       <div className="text-center text-[#3A6131] text-[12px] font-medium truncate px-1">
         {log.entity_name ?? log.entity_id?.slice(0, 8).toUpperCase() ?? "—"}
       </div>
-
       <div className="flex justify-center">
         {log.details && Object.keys(log.details).length > 0 ? (
           <button
             onClick={() => onViewDetails(log)}
-            // Improved the view button with Gold/Dark Green Theme 
             className="px-4 py-1.5 rounded-full bg-[#F7B71D] text-[#385E31] text-[11px] font-black hover:bg-[#e5a91a] active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
           >
             <FileText size={12} strokeWidth={2.5} />
@@ -121,16 +115,15 @@ function LogRow({
 const COLUMNS = ["DATE & TIME", "USER", "ACTION", "ENTITY TYPE", "ENTITY NAME", "DETAILS"];
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function AuditLogsTable() {
-  const [tenantId,  setTenantId]  = useState("");
-  const [logs,      setLogs]      = useState<AuditLog[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [refreshing,setRefreshing]= useState(false);
-  const [search,    setSearch]    = useState("");
-  const [filterType,setFilterType]= useState("all");
-  const [activeLog, setActiveLog] = useState<AuditLog | null>(null);
+export default function AuditLogsTable({ onLoadComplete }: { onLoadComplete?: () => void }) {
+  const [tenantId,   setTenantId]   = useState("");
+  const [logs,       setLogs]       = useState<AuditLog[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search,     setSearch]     = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [activeLog,  setActiveLog]  = useState<AuditLog | null>(null);
 
-  // Pagination state
   const ITEMS_PER_LOAD = 15;
   const [visibleRows, setVisibleRows] = useState(ITEMS_PER_LOAD);
 
@@ -139,14 +132,19 @@ export default function AuditLogsTable() {
     setLogs(data);
     setLoading(false);
     setRefreshing(false);
-  }, []);
+    onLoadComplete?.();
+  }, [onLoadComplete]);
 
   useEffect(() => {
     const init = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", user.id).single();
+      const { data: u } = await supabase
+        .from("users")
+        .select("tenant_id")
+        .eq("user_id", user.id)
+        .single();
       if (!u?.tenant_id) return;
       setTenantId(u.tenant_id);
       loadLogs(u.tenant_id);
@@ -154,12 +152,15 @@ export default function AuditLogsTable() {
     init();
   }, [loadLogs]);
 
-  // Reset pagination when searching or filtering
   useEffect(() => {
     setVisibleRows(ITEMS_PER_LOAD);
   }, [search, filterType]);
 
-  const handleRefresh = () => { if (!tenantId) return; setRefreshing(true); loadLogs(tenantId); };
+  const handleRefresh = () => {
+    if (!tenantId) return;
+    setRefreshing(true);
+    loadLogs(tenantId);
+  };
 
   const entityTypes = ["all", ...Array.from(new Set(logs.map((l) => l.entity_type)))];
 
@@ -174,7 +175,6 @@ export default function AuditLogsTable() {
     return matchSearch && matchType;
   });
 
-  // Calculate items to display based on visibleRows state
   const displayedLogs = filtered.slice(0, visibleRows);
   const hasMore = visibleRows < filtered.length;
   const hasLess = visibleRows > ITEMS_PER_LOAD;
@@ -225,11 +225,7 @@ export default function AuditLogsTable() {
           ))}
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-[#3A6131]/40 gap-3">
-            <Loader2 size={22} className="animate-spin" /> Loading audit logs…
-          </div>
-        ) : displayedLogs.length === 0 ? (
+        {displayedLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-[#3A6131]/40 gap-3">
             <ShieldCheck size={40} strokeWidth={1} />
             <p className="font-medium text-[14px]">
@@ -248,25 +244,23 @@ export default function AuditLogsTable() {
         )}
       </div>
 
-      {/* Pagination Controls */}
-      {!loading && filtered.length > 0 && (
+      {/* Pagination */}
+      {filtered.length > 0 && (
         <div className="flex flex-col items-center mt-6 gap-4">
           <p className="text-center text-[#3A6131]/50 text-[12px] font-semibold">
             Showing {displayedLogs.length} of {filtered.length} entries
           </p>
-          
           <div className="flex items-center gap-3">
             {hasLess && (
-               <button 
-                 onClick={() => setVisibleRows(ITEMS_PER_LOAD)}
-                 className="px-6 py-2.5 rounded-full border-[1.5px] border-[#3A6131] text-[#3A6131] font-bold text-[13px] hover:bg-[#3A6131]/5 transition-colors flex items-center gap-2"
-               >
-                 <ChevronUp size={16} /> Show Less
-               </button>
+              <button
+                onClick={() => setVisibleRows(ITEMS_PER_LOAD)}
+                className="px-6 py-2.5 rounded-full border-[1.5px] border-[#3A6131] text-[#3A6131] font-bold text-[13px] hover:bg-[#3A6131]/5 transition-colors flex items-center gap-2"
+              >
+                <ChevronUp size={16} /> Show Less
+              </button>
             )}
-            
             {hasMore && (
-              <button 
+              <button
                 onClick={() => setVisibleRows((prev) => prev + ITEMS_PER_LOAD)}
                 className="px-6 py-2.5 rounded-full bg-[#3A6131] text-[#FFFCEB] font-bold text-[13px] hover:opacity-90 shadow-sm transition-all flex items-center gap-2"
               >
@@ -277,7 +271,6 @@ export default function AuditLogsTable() {
         </div>
       )}
 
-      {/* Detail modal */}
       {activeLog && (
         <DetailModal log={activeLog} onClose={() => setActiveLog(null)} />
       )}

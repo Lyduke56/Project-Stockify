@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { motion } from "framer-motion";
 import { fetchDashboardData, type DashboardData } from "@/lib/employee/dashboard-stats";
 import StatCard from "@/components/cards/stat-cards";
 import {
@@ -9,6 +9,23 @@ import {
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
 import { Loader2, AlertTriangle, Package, TrendingUp } from "lucide-react";
+
+// ─── Animation Variants ───────────────────────────────────────────────────────
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show:   { opacity: 1, y: 0 },
+};
+
+const container = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -204,14 +221,10 @@ export default function DashboardSection({ initialData, tenantId }: Props) {
     setLoading(false);
   }, []);
 
-  // Only fetch if initialData was not provided
   useEffect(() => {
-    if (!initialData && tenantId) {
-      load(tenantId);
-    }
+    if (!initialData && tenantId) load(tenantId);
   }, [initialData, tenantId, load]);
 
-  // Silent background polling every 30 seconds
   useEffect(() => {
     if (!tenantId) return;
     const intervalId = setInterval(() => load(tenantId), 30000);
@@ -221,9 +234,18 @@ export default function DashboardSection({ initialData, tenantId }: Props) {
   const stats = data?.stats;
 
   return (
-    <div className="w-full flex flex-col font-['Inter']">
-
-      <div className="w-full flex flex-col items-center mt-2 mb-10">
+    <motion.div
+      className="w-full flex flex-col font-['Inter']"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      {/* Header */}
+      <motion.div
+        variants={fadeUp}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="w-full flex flex-col items-center mt-2 mb-10"
+      >
         <div className="w-full flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
             <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
@@ -232,41 +254,50 @@ export default function DashboardSection({ initialData, tenantId }: Props) {
             <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="Total Orders"
-          value={loading ? "—" : (stats?.totalOrders ?? 0).toString()}
-          trendText="All orders placed"
-          className="w-full"
-          svgName="employee-icons/orders"
-        />
-        <StatCard
-          title="Top Selling"
-          value={loading ? "—" : (stats?.topProductCount ?? 0).toString()}
-          trendText={loading ? "Loading…" : `${stats?.topProduct ?? "—"}`}
-          className="w-full"
-          svgName="employee-icons/topseller"
-        />
-        <StatCard
-          title="Pending Orders"
-          value={loading ? "—" : (stats?.pendingOrders ?? 0).toString()}
-          trendText="Awaiting processing"
-          className="w-full"
-          svgName="employee-icons/orders"
-        />
-      </div>
+      {/* Stat Cards */}
+      <motion.div
+        className="w-full grid grid-cols-1 md:grid-cols-3 gap-6"
+        variants={container}
+      >
+        {[
+          { title: "Total Orders",    value: stats?.totalOrders ?? 0,      trend: "All orders placed",      svg: "employee-icons/orders"    },
+          { title: "Top Selling",     value: stats?.topProductCount ?? 0,  trend: stats?.topProduct ?? "—", svg: "employee-icons/topseller" },
+          { title: "Pending Orders",  value: stats?.pendingOrders ?? 0,    trend: "Awaiting processing",    svg: "employee-icons/orders"    },
+        ].map((card) => (
+          <motion.div
+            key={card.title}
+            variants={fadeUp}
+            transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <StatCard
+              title={card.title}
+              value={loading ? "—" : card.value.toString()}
+              trendText={loading ? "Loading…" : card.trend}
+              className="w-full"
+              svgName={card.svg}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
 
-      <div className="w-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8">
+      {/* Alerts + Chart */}
+      <motion.div
+        className="w-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8"
+        variants={fadeUp}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      >
         <LiveAlertsCard alerts={data?.alerts ?? []} loading={loading} />
-        {data ? <LiveRevenueCard data={data} /> : (
+        {data ? (
+          <LiveRevenueCard data={data} />
+        ) : (
           <div className="bg-primary rounded-[20px] p-6 flex items-center justify-center text-white/40 gap-3">
             <Loader2 size={22} className="animate-spin" />
             <span className="font-medium text-[14px]">Loading chart…</span>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

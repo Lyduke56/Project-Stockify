@@ -368,7 +368,7 @@ export default function ActiveTenantsTab() {
 
                 {/* Subscription pill */}
                 <div className="flex-1 flex justify-center items-center">
-                  <div className={`w-[75px] py-[3px] rounded-[40px] flex justify-center items-center ${pill.bg}`}>
+                  <div className={`w-[75px] py-[5px] rounded-[40px] flex justify-center items-center ${pill.bg}`}>
                     <span className={`${pill.text} text-[10px] font-bold leading-3`}>
                       {row.subscription_status}
                     </span>

@@ -53,9 +53,10 @@ type DropdownPos = { top: number; right: number };
 
 interface NfbProductsTableProps {
   tenantId: string;
+  onLoadComplete?: () => void;  
 }
 
-export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
+export default function NfbProductsTable({ tenantId, onLoadComplete }: NfbProductsTableProps) {
   const [products,      setProducts]      = useState<NfbProduct[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState<string | null>(null);
@@ -77,11 +78,19 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const loadProducts = useCallback(async () => {
-    try { setLoading(true); setError(null); setProducts(await fetchNfbProducts(tenantId)); }
-    catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [tenantId]);
+ const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setProducts(await fetchNfbProducts(tenantId));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      onLoadComplete?.();  // ← add this
+    }
+  }, [tenantId, onLoadComplete]);
+  
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
@@ -185,6 +194,8 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
     setDeleteTarget(null);
     loadProducts();
   };
+
+  
 
   // ── Render ────────────────────────────────────────────────────
 

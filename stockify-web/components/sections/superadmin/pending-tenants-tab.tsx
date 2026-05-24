@@ -188,7 +188,7 @@ export default function PendingTenantsTab() {
                 <div className="flex-1 flex justify-center items-center">
                   <button
                     onClick={() => setReviewingId(row.tenant_id)}
-                    className="bg-[#385E31] text-[#FFFCEB] px-5 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 transition-colors"
+                    className="bg-[#F7B71D] text-[#3A6131] px-5 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 hover:text-[#FFFCEB] transition-colors"
                   >
                     Review
                   </button>
