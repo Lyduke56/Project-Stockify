@@ -153,14 +153,6 @@ export default function EmployeeDashboard() {
         sidebarData={sidebarData!}
       />
 
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
-        <NavbarEmployee
-          setActiveSection={handleSetSection}
-          onOpenSettings={() => console.log("Open settings clicked")}
-          sidebarData={sidebarData!}
-        />
-      </motion.div>
-
       {/* Main column */}
       <div className="flex-1 flex flex-col h-full overflow-y-auto pb-10 px-15 pt-5">
 

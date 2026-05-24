@@ -18,6 +18,7 @@ interface NotificationModalProps {
   onClose: () => void;
   role?: "superadmin" | "employee" | "client" | "admin";
   tenantId?: string | null;
+  onClear?: () => void; 
 }
 
 const getDetailedBody = (type: string, subject: string): string => {
@@ -42,6 +43,7 @@ export default function NotificationModal({
   onClose,
   role = "client",
   tenantId = null,
+  onClear, // Destructured properly here
 }: NotificationModalProps) {
   const supabase = createClient();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -397,7 +399,7 @@ export default function NotificationModal({
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, [supabase, tenantId, deletedIds, readIds, role]);
+  }, [supabase, tenantId, role]);
 
   // Click handler to toggle read status (Facebook style background tint)
   const handleToggleRead = (id: string) => {
@@ -419,6 +421,11 @@ export default function NotificationModal({
     const currentIds = notifications.map(n => n.id);
     setDeletedIds(prev => [...prev, ...currentIds]);
     setNotifications([]);
+    
+    // Fire up the sync callback to reset the Navbar counter
+    if (onClear) {
+      onClear();
+    }
   };
 
   useEffect(() => {
@@ -498,9 +505,9 @@ export default function NotificationModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-[600px] rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: "#FFFCF0" }}>
+      <div className="w-[600px] rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ backgroundColor: "#FFFCF0" }}>
         {/* Header */}
-        <header className="px-8 py-5 flex justify-between items-center" style={{ borderBottom: `1px solid ${borderColor}` }}>
+        <header className="px-8 py-5 flex justify-between items-center shrink-0" style={{ borderBottom: `1px solid ${borderColor}` }}>
           <h2 className="text-2xl font-bold uppercase tracking-widest font-['Inter']" style={{ color: primaryColor }}>
             Notifications
           </h2>
@@ -510,7 +517,7 @@ export default function NotificationModal({
         </header>
 
         {/* Notification list view */}
-        <div className="flex flex-col max-h-[440px] overflow-y-auto">
+        <div className="flex flex-col max-h-[440px] overflow-y-auto flex-1">
           {loading ? (
             <div className="px-8 py-12 text-center text-sm font-medium font-['Inter']" style={{ color: primaryColor, opacity: 0.6 }}>
               Syncing live system metrics...
@@ -552,7 +559,10 @@ export default function NotificationModal({
               return (
                 <div
                   key={i}
-                  onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                  onClick={() => {
+                    setExpandedIndex(isExpanded ? null : i);
+                    if (!notif.isRead) handleToggleRead(notif.id);
+                  }}
                   className={`flex flex-col px-8 py-5 cursor-pointer ${hoverBg} transition-colors`}
                   style={{
                     backgroundColor: rowBg,
@@ -573,12 +583,10 @@ export default function NotificationModal({
                         </span>
                       </div>
                       
-                      {/* Subject displayed when collapsed or expanded */}
                       <span className={`text-base font-semibold font-['Inter'] mt-1 ${isExpanded ? "" : "line-clamp-1"}`} style={{ color: primaryColor }}>
                         {notif.subject}
                       </span>
                       
-                      {/* Body displayed ONLY when expanded */}
                       {isExpanded && (
                         <span 
                           className="text-sm font-normal font-['Inter'] mt-2 leading-relaxed whitespace-pre-wrap" 
@@ -602,6 +610,19 @@ export default function NotificationModal({
             })
           )}
         </div>
+
+        {/* Action Controls Footer */}
+        {notifications.length > 0 && (
+          <footer className="px-8 py-4 flex justify-end items-center shrink-0 bg-black/[0.01]" style={{ borderTop: `1px solid ${borderColor}` }}>
+            <button 
+              onClick={handleClearAll}
+              className="text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg hover:bg-black/[0.04] active:scale-95 transition-all focus:outline-none"
+              style={{ color: primaryColor }}
+            >
+              Clear All
+            </button>
+          </footer>
+        )}
       </div>
     </div>,
     document.body
