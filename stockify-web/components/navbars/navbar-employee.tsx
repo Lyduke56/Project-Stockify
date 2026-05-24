@@ -9,19 +9,35 @@ interface NavbarEmployeeProps {
   openProfile: () => void;
   openNotifs: () => void;
   openSettings: () => void;
+  // Expose this so the parent can pass it to the Modal
+  setResetNotificationBadge?: (fn: () => void) => void; 
 }
 
 export default function NavbarEmployee({ 
   setActiveSection,
   openProfile, 
   openNotifs, 
-  openSettings 
+  openSettings,
+  setResetNotificationBadge
 }: NavbarEmployeeProps) {
   const router = useRouter();
   const supabase = createClient();
   const [operationalAlerts, setOperationalAlerts] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [hasSeenNotifs, setHasSeenNotifs] = useState<boolean>(false);
+
+  // Function to be called by the parent (via Modal's "Clear All")
+  const resetBadge = useCallback(() => {
+    setOperationalAlerts(0);
+    setHasSeenNotifs(true);
+  }, []);
+
+  // Sync the reset function with the parent component if provided
+  useEffect(() => {
+    if (setResetNotificationBadge) {
+      setResetNotificationBadge(resetBadge);
+    }
+  }, [setResetNotificationBadge, resetBadge]);
 
   const calculateOperationalMetrics = useCallback(async (tId: string) => {
     try {
@@ -92,46 +108,27 @@ export default function NavbarEmployee({
   }, [tenantId, calculateOperationalMetrics, supabase]);
 
   const handleNotifClick = () => {
-    setHasSeenNotifs(true);
+    // Only set as "seen" when explicitly opened
     openNotifs();
   };
 
   return (
     <nav className="relative w-full h-[55px] px-12 bg-[var(--color-accent)] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
-      
       {/* Brand Group */}
-      <div 
-        className="flex items-center gap-1.5 cursor-pointer select-none" 
-        onClick={() => setActiveSection("dashboard")}
-      >
+      <div className="flex items-center gap-1.5 cursor-pointer select-none" onClick={() => setActiveSection("dashboard")}>
         <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
           <img src="/stockify-logo-1.svg" alt="Stockify Logo" className="h-7 md:h-9 w-auto" />
         </div>
-        <div className="text-[var(--color-primary)] text-3xl font-bold font-fredoka tracking-tight">
-          STOCKIFY
-        </div>
+        <div className="text-[var(--color-primary)] text-3xl font-bold font-fredoka tracking-tight">STOCKIFY</div>
       </div>
 
-      {/* Toolbar Options Control Rack */}
-      {/* RESPONSIVE UPGRADE: gap-4 on mobile expanding to gap-8 on wider grids */}
       <div className="flex items-center gap-4 md:gap-8">
-        
-        {/* Home Link */}
-        <button
-          onClick={() => setActiveSection("dashboard")}
-          className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none"
-          title="Home"
-        >
+        <button onClick={() => setActiveSection("dashboard")} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Home">
           <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
         </button>
 
-        {/* Notifications Icon with Dynamic Operational Counter */}
         <div className="relative flex items-center justify-center">
-          <button
-            onClick={handleNotifClick}
-            className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none"
-            title="Notifications"
-          >
+          <button onClick={handleNotifClick} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Notifications">
             <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
           </button>
           
@@ -142,23 +139,9 @@ export default function NavbarEmployee({
           )}
         </div>
 
-        {/* Profile Button - Layout Enhanced with relative block hitting areas */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            openProfile();
-          }}
-          className="w-9 h-9 relative flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer focus:outline-none rounded-full p-0 bg-transparent border-0 group"
-          title="Profile Settings"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-        >
-          <img 
-            src="/navbar-profile-settings.svg" 
-            alt="Profile Settings" 
-            className="w-8 h-8 object-contain rounded-full border border-[#385E31] group-hover:brightness-95 pointer-events-none" 
-          />
+        <button onClick={(e) => { e.preventDefault(); openProfile(); }} className="w-9 h-9 relative flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer focus:outline-none rounded-full p-0 bg-transparent border-0 group" title="Profile Settings">
+          <img src="/navbar-profile-settings.svg" alt="Profile Settings" className="w-8 h-8 object-contain rounded-full border border-[#385E31] group-hover:brightness-95 pointer-events-none" />
         </button>
-
       </div>
     </nav>
   );
