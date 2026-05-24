@@ -18,6 +18,10 @@ export default function NavbarAdmin({
   const supabase = createClient();
   const [notifCount, setNotifCount] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  
+  // ── NEW BRAND STATES ────────────────────────────────────────────────────────
+  const [businessName, setBusinessName] = useState<string>("STOCKIFY");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const fetchNotificationCount = async (tid: string) => {
     try {
@@ -81,8 +85,25 @@ export default function NavbarAdmin({
         .single();
 
       if (userProfile?.tenant_id) {
-        setTenantId(userProfile.tenant_id);
-        fetchNotificationCount(userProfile.tenant_id);
+        const tid = userProfile.tenant_id;
+        setTenantId(tid);
+        fetchNotificationCount(tid);
+
+        // ── FETCH BRAND INFORMATION FROM THE TENANTS TABLE ───────────────────
+        const { data: tenantBrand } = await supabase
+          .from("tenants")
+          .select("business_name, logo_url")
+          .eq("tenant_id", tid)
+          .single();
+
+        if (tenantBrand) {
+          if (tenantBrand.business_name) {
+            setBusinessName(tenantBrand.business_name.toUpperCase());
+          }
+          if (tenantBrand.logo_url) {
+            setLogoUrl(tenantBrand.logo_url);
+          }
+        }
       }
     };
 
@@ -126,20 +147,33 @@ export default function NavbarAdmin({
       .subscribe();
 
     const channel3 = supabase
-      .channel("realtime-admin-tenants")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "tenants",
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => {
-          fetchNotificationCount(tenantId);
-        }
-      )
-      .subscribe();
+  .channel("realtime-admin-tenants")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "tenants",
+      filter: `tenant_id=eq.${tenantId}`,
+    },
+    () => {
+      fetchNotificationCount(tenantId);
+      
+      // Real-time update for logo or business name adjustments
+      supabase
+        .from("tenants")
+        .select("business_name, logo_url")
+        .eq("tenant_id", tenantId)
+        .single()
+        .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
+          if (data) {
+            if (data.business_name) setBusinessName(data.business_name.toUpperCase());
+            if (data.logo_url) setLogoUrl(data.logo_url);
+          }
+        });
+    }
+  )
+  .subscribe();
 
     return () => {
       supabase.removeChannel(channel1);
@@ -151,16 +185,23 @@ export default function NavbarAdmin({
   return (
     <nav className="relative w-full h-[48px] px-4 md:px-12 bg-accent rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
       
-      {/* LEFT SIDE: Logo and Brand Name */}
+      {/* LEFT SIDE: Dynamic Logo and Brand Name */}
       <div 
-        className="flex items-center gap-1.5 cursor-pointer select-none" 
+        className="flex items-center gap-2 cursor-pointer select-none" 
         onClick={() => setActiveSection("dashboard")}
       >
-        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-          <img src="/stockify-logo-1.svg" alt="Stockify Icon" className="h-7 md:h-9 w-auto" />
+        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full overflow-hidden bg-white/10 p-0.5">
+          <img 
+            src={logoUrl || "/stockify-logo-1.svg"} 
+            alt={`${businessName} Logo`} 
+            className="h-full w-full object-contain" 
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/stockify-logo-1.svg";
+            }}
+          />
         </div>
-        <div className="text-primary text-xl md:text-3xl font-bold font-fredoka">
-          STOCKIFY
+        <div className="text-primary text-xl md:text-2xl font-bold font-fredoka truncate max-w-[180px] md:max-w-[280px]">
+          {businessName}
         </div>
       </div>
 
