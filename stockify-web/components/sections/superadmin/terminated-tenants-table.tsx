@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 // Use the ANON key for client-side components to stay secure!
@@ -8,6 +8,11 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+// ── Added the interface here! ─────────────────────────────────────────────────
+interface TabProps {
+  onReview: (id: string) => void;
+}
 
 // --- CUSTOM SVG COMPONENTS ---
 const SearchIcon = () => (
@@ -46,7 +51,8 @@ const SkeletonRow = () => (
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function TerminatedTenantsTab() {
+// ── Added the prop to the definition! ─────────────────────────────────────────
+export default function TerminatedTenantsTab({ onReview }: TabProps) {
   const [data, setData] = useState<TerminatedBusiness[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,6 +154,7 @@ export default function TerminatedTenantsTab() {
                   }`}
                 >
                   <div className="w-[200px] shrink-0 text-center text-[#3A6131] text-[13px] font-bold pt-0.5">
+                    {/* IF you ever want to add click-to-review, you would just wrap this in a span with onClick={() => onReview(row.id)} */}
                     {row.business_name}
                   </div>
                   <div className="w-[200px] shrink-0 text-center text-[#3A6131] text-[13px] font-bold pt-0.5">

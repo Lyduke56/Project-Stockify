@@ -4,15 +4,10 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Components
-import Sidebar from "@/components/navbars/sidebar-superadmin";
-import NavbarApp from "@/components/navbars/navbar-superadmin";
-
+// Tab Components
 import PendingTenantsTab from "@/components/sections/superadmin/pending-tenants-tab";
 import ActiveTenantsTab from "@/components/sections/superadmin/active-tenants-tab";
 import TerminatedTenantsTab from "@/components/sections/superadmin/terminated-tenants-table";
-import NotificationModal from "@/components/modals/notification-modal";
-import ClientProfileModal from "@/components/modals/client-profile-modal";
 import SuspendedTenantsTab from "@/components/sections/superadmin/supend-tenant-modal";
 import TrialTenantsTab from "@/components/sections/superadmin/trial-tenants-tab";
 
@@ -53,6 +48,10 @@ interface StatCardProps {
   delay?:     number;
 }
 
+interface TenantManagementProps {
+  onReviewTenant: (id: string) => void;
+}
+
 function StatCard({ title, value, trendText, className = "", svgName, delay = 0 }: StatCardProps) {
   return (
     <motion.div
@@ -73,11 +72,9 @@ function StatCard({ title, value, trendText, className = "", svgName, delay = 0 
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
-export default function TenantManagement() {
-  const [activeTab,     setActiveTab]     = useState("Active");
-  const [isNotifsOpen,  setIsNotifsOpen]  = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+// ── Main Component ────────────────────────────────────────────────────────────
+export default function TenantManagementSection({ onReviewTenant }: TenantManagementProps) {
+  const [activeTab, setActiveTab] = useState("Active");
 
   const [stats, setStats] = useState({
     active:     0,
@@ -97,7 +94,7 @@ export default function TenantManagement() {
         ]);
 
         setStats({
-          active:     activeRes.count    || 0,
+          active:     activeRes.count     || 0,
           pending:    pendingRes.count    || 0,
           suspended:  suspendedRes.count  || 0,
           terminated: terminatedRes.count || 0,
@@ -118,106 +115,86 @@ export default function TenantManagement() {
   }, []);
 
   return (
-    <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">
-      <Sidebar />
-
+    <div className="w-full flex flex-col items-center">
+      {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="flex-1 flex flex-col h-full overflow-y-auto px-10 md:px-20 pt-5 pb-12"
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="w-full flex flex-col items-center mt-10 mb-8 gap-2"
       >
-        <NavbarApp
-          onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        />
+        <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+          TENANT MANAGEMENT
+        </h1>
+        <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
+      </motion.div>
 
-        <div className="w-full flex flex-col items-center mt-10 mb-8 gap-2">
-          <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
-            TENANT MANAGEMENT
-          </h1>
-          <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
-        </div>
+      {/* Stat Cards */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <StatCard title="Active Tenants" value={stats.active} trendText="Verified and operational" svgName="SA-active-tenants" delay={0.1} />
+        <StatCard title="Pending Applications" value={stats.pending} trendText={`${stats.pending} awaiting review`} svgName="SA-pending-app" delay={0.2} />
+        <StatCard title="Suspended Tenants" value={stats.suspended} trendText="Temporary access restrictions" svgName="SA-suspended-tenants" delay={0.3} />
+        <StatCard title="Terminated Tenants" value={stats.terminated} trendText="Permanently closed accounts" svgName="SA-terminated-tenants" delay={0.4} />
+      </div>
 
-        {/* Stat Cards */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          <StatCard
-            title="Active Tenants"
-            value={stats.active}
-            trendText="Verified and operational"
-            svgName="SA-active-tenants"
-            delay={0.1}
+      {/* Tab navigation */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="w-full flex justify-center mb-8"
+      >
+        <div className="relative flex w-full max-w-[800px] h-[45px] items-center my-2">
+          <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
+
+          <div
+            className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
+            style={{
+              width: "calc(25% + 4px)",
+              left:  `calc(${tabs.indexOf(activeTab) * 25}% - 2px)`,
+            }}
           />
-          <StatCard
-            title="Pending Applications"
-            value={stats.pending}
-            trendText={`${stats.pending} awaiting review`}
-            svgName="SA-pending-app"
-            delay={0.2}
-          />
-          <StatCard
-            title="Suspended Tenants"
-            value={stats.suspended}
-            trendText="Temporary access restrictions"
-            svgName="SA-suspended-tenants"
-            delay={0.3}
-          />
-          <StatCard
-            title="Terminated Tenants"
-            value={stats.terminated}
-            trendText="Permanently closed accounts"
-            svgName="SA-terminated-tenants"
-            delay={0.4}
-          />
-        </div>
 
-        {/* Tab navigation */}
-        <div className="w-full flex justify-center mb-8">
-          <div className="relative flex w-full max-w-[800px] h-[45px] items-center my-2">
-            <div className="absolute inset-0 border-2 border-[#385E31] rounded-[8px] pointer-events-none" />
-
-            <div
-              className={`absolute top-[-2px] bottom-[-2px] rounded-[8px] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] z-10 ${getTabConfig(activeTab).bg}`}
-              style={{
-                width: "calc(25% + 4px)",
-                left:  `calc(${tabs.indexOf(activeTab) * 25}% - 2px)`,
-              }}
-            />
-
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 h-full z-20 text-center font-bold text-[18px] transition-colors duration-300 cursor-pointer ${
-                    isActive ? getTabConfig(tab).text : "text-[#385E31]"
-                  }`}
-                >
-                  {tab}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tab content */}
-        <div className="w-full flex flex-col items-center">
-          <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-4">
-            {activeTab === "Pending"
-              ? "Pending Applications Database"
-              : `${activeTab} Tenants Database`}
-          </h2>
-
-          {activeTab === "Active"     && <ActiveTenantsTab />}
-          {activeTab === "Active"     && <TrialTenantsTab />}
-          {activeTab === "Pending"    && <PendingTenantsTab />}
-          {activeTab === "Terminated" && <TerminatedTenantsTab />}
-          {activeTab === "Suspended"  && <SuspendedTenantsTab />}
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 h-full z-20 text-center font-bold text-[18px] transition-colors duration-300 cursor-pointer ${
+                  isActive ? getTabConfig(tab).text : "text-[#385E31]"
+                }`}
+              >
+                {tab}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
-      <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} role="superadmin" />
-      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      {/* Tab content */}
+      <motion.div 
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.4 }}
+        className="w-full flex flex-col items-center"
+      >
+        <h2 className="text-[#385E31] text-[26px] font-extrabold font-['Inter'] mb-4">
+          {activeTab === "Pending"
+            ? "Pending Applications Database"
+            : `${activeTab} Tenants Database`}
+        </h2>
+
+        {activeTab === "Active"     && (
+          <>
+            <ActiveTenantsTab onReview={onReviewTenant} />
+            <TrialTenantsTab onReview={onReviewTenant} />
+          </>
+        )}
+        {activeTab === "Pending"    && <PendingTenantsTab onReview={onReviewTenant} />}
+        {activeTab === "Terminated" && <TerminatedTenantsTab onReview={onReviewTenant} />}
+        {activeTab === "Suspended"  && <SuspendedTenantsTab onReview={onReviewTenant} />}
+      </motion.div>
     </div>
   );
 }

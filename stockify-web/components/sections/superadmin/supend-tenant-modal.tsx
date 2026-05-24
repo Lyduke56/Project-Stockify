@@ -14,6 +14,11 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+// ── Added the interface here! ─────────────────────────────────────────────────
+interface TabProps {
+  onReview: (id: string) => void;
+}
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 const SearchIcon = () => (
@@ -52,7 +57,6 @@ const SkeletonRow = () => (
     <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80%]" style={{ animationDelay: "0ms" }} /></div>
     <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80%]" style={{ animationDelay: "100ms" }} /></div>
     <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80%]" style={{ animationDelay: "200ms" }} /></div>
-    {/* Remarks Column (Wider, left aligned) */}
     <div className="flex-[1.5] px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse w-[90%]" style={{ animationDelay: "300ms" }} /></div>
     <div className="flex-1 px-4"><div className="h-4 bg-[#385E31]/10 rounded-full animate-pulse mx-auto w-[80px]" style={{ animationDelay: "400ms" }} /></div>
   </div>
@@ -60,7 +64,8 @@ const SkeletonRow = () => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function SuspendedTenantsTab() {
+// ── Added the prop to the definition! ─────────────────────────────────────────
+export default function SuspendedTenantsTab({ onReview }: TabProps) {
   const [tenants,        setTenants]        = useState<SuspendedTenant[]>([]);
   const [filtered,       setFiltered]       = useState<SuspendedTenant[]>([]);
   const [loading,        setLoading]        = useState(true);
@@ -200,17 +205,14 @@ export default function SuspendedTenantsTab() {
 
       {/* ── Modals ───────────────────────────────────────────────────────── */}
 
-      {/* View — custom: shows billing history, expiry countdown */}
       {activeModal?.type === "view" && (
         <ViewSuspendModal tenant={activeModal.tenant} onClose={() => setActiveModal(null)} />
       )}
 
-      {/* Notify — custom: suspension-specific email preview */}
       {activeModal?.type === "notify" && (
         <SendSuspendNotificationModal tenant={activeModal.tenant} onClose={() => setActiveModal(null)} />
       )}
 
-      {/* Restore — custom: remarks textarea + sends restoration email */}
       {activeModal?.type === "restore" && (
         <RestoreModal
           tenant={activeModal.tenant}
@@ -219,7 +221,6 @@ export default function SuspendedTenantsTab() {
         />
       )}
 
-      {/* Terminate — reuses shared ConfirmActionModal (remarks textarea + warning box built-in) */}
       <ConfirmActionModal
         isOpen={activeModal?.type === "terminate"}
         actionType="terminate"
@@ -300,7 +301,6 @@ export default function SuspendedTenantsTab() {
                     {formatDate(row.suspended_at)}
                   </div>
 
-                  {/* Styled like Audit Logs Description */}
                   <div className="flex-[1.5] text-left text-[#3A6131] text-[13px] leading-relaxed pt-0.5 font-medium">
                     {row.reason || "N/A"}
                   </div>

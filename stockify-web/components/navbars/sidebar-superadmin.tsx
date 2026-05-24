@@ -1,10 +1,14 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client"; // Ensure this import exists
+import { createClient } from "@/lib/supabase/client"; 
 import LogoutModal from "../modals/logout-modal";
 import SettingsModal from "../modals/navbar-modals/settings";
+
+// ── IMPORT YOUR NEW TYPE FROM THE DASHBOARD ──
+// Make sure this path points to your main dashboard page file
+import type { SuperadminSectionKey } from "@/app/superadmin/dashboard/page"; 
 
 interface NavItemProps {
   label: string;
@@ -40,37 +44,30 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
   );
 }
 
-export default function SidebarSuperAdmin() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const supabase = createClient(); // Initialize supabase client
+// ── ADD THE PROPS HERE ──
+interface SidebarSuperAdminProps {
+  activeSection: SuperadminSectionKey;
+  setActiveSection: (section: SuperadminSectionKey) => void;
+}
+
+export default function SidebarSuperAdmin({
+  activeSection,
+  setActiveSection,
+}: SidebarSuperAdminProps) {
+  const router = useRouter(); // Kept for the logout redirect
+  const supabase = createClient();
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
-  const adminNavItems = [
-    { label: "Dashboard",            iconFileName: "icon-dashboard",            path: "/superadmin/dashboard" },
-    { label: "Tenant Management",    iconFileName: "icon-tenant-management",    path: "/superadmin/tenant-management" },
-    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", path: "/superadmin/subscription-billing" },
-    { label: "Audit Logs",           iconFileName: "icon-audit-logs",           path: "/superadmin/audit-logs" },
+  // ── MAP TO SECTIONS INSTEAD OF PATHS ──
+  const adminNavItems: { label: string; iconFileName: string; section: SuperadminSectionKey }[] = [
+    { label: "Dashboard",            iconFileName: "icon-dashboard",            section: "dashboard" },
+    { label: "Tenant Management",    iconFileName: "icon-tenant-management",    section: "tenant-management" },
+    { label: "Tenant Review",        iconFileName: "icon-storefront",           section: "tenant-review" },
+    { label: "Subscription Billing", iconFileName: "icon-subscription-billing", section: "subscription-billing" },
+    { label: "Audit Logs",           iconFileName: "icon-audit-logs",           section: "audit-logs" },
   ];
-
-  const bottomItems = [
-    { label: "Settings", iconFileName: "icon-settings", path: "/superadmin/profile-settings" },
-    { label: "Logout",   iconFileName: "icon-logout",   path: "/logout" },
-  ];
-
-  const handleNavigation = (label: string, path: string) => {
-    if (label === "Logout") {
-      setShowLogoutModal(true);
-      return;
-    }
-    if (label === "Settings") {
-      setShowSettingsModal(true);
-      return;
-    }
-    router.push(path);
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -89,14 +86,16 @@ export default function SidebarSuperAdmin() {
 
   return (
     <div className="w-64 h-screen pt-12 pb-8 bg-[#385E31] shadow-[2px_4px_18px_0px_rgba(0,0,0,0.25)] flex flex-col justify-between shrink-0 sticky top-0 overflow-y-auto">
+      
+      {/* Top Navigation */}
       <div className="w-full flex flex-col gap-1">
         {adminNavItems.map((item) => (
           <NavItem
             key={item.label}
             label={item.label}
             iconFileName={item.iconFileName}
-            isActive={pathname === item.path}
-            onClick={() => handleNavigation(item.label, item.path)}
+            isActive={activeSection === item.section}
+            onClick={() => setActiveSection(item.section)}
           />
         ))}
       </div>
@@ -105,15 +104,20 @@ export default function SidebarSuperAdmin() {
       <div className="w-full flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
         <div className="w-full flex flex-col gap-1">
-          {bottomItems.map((item) => (
-            <NavItem
-              key={item.label}
-              label={item.label}
-              iconFileName={item.iconFileName}
-              isActive={item.label !== "Settings" && pathname === item.path}
-              onClick={() => handleNavigation(item.label, item.path)}
-            />
-          ))}
+          {/* Settings */}
+          <NavItem
+            label="Settings"
+            iconFileName="icon-settings"
+            isActive={false} // Settings opens a modal, so it doesn't need an active state
+            onClick={() => setShowSettingsModal(true)}
+          />
+          {/* Logout */}
+          <NavItem
+            label="Logout"
+            iconFileName="icon-logout"
+            isActive={false}
+            onClick={() => setShowLogoutModal(true)}
+          />
         </div>
       </div>
 
