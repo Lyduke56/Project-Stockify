@@ -18,6 +18,13 @@ interface NotificationModalProps {
   onClose: () => void;
   role?: "superadmin" | "employee" | "client" | "admin";
   tenantId?: string | null;
+  onClear?: () => void; 
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+  };
 }
 
 const getDetailedBody = (type: string, subject: string): string => {
@@ -42,6 +49,8 @@ export default function NotificationModal({
   onClose,
   role = "client",
   tenantId = null,
+  onClear, // Destructured properly here
+  colors,
 }: NotificationModalProps) {
   const supabase = createClient();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -64,19 +73,36 @@ export default function NotificationModal({
   // Keep track of which notification IDs have been read locally
   const [readIds, setReadIds] = useState<string[]>([]);
 
+  const applyNotifications = useCallback((collected: NotificationItem[]) => {
+    let dismissed: string[] = [];
+    try {
+      const stored = localStorage.getItem("stockify_dismissed_alerts");
+      dismissed = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(dismissed)) dismissed = [];
+    } catch {
+      dismissed = [];
+    }
+
+    // Self-cleaning: only keep dismissed IDs that are still present in collected alerts
+    const collectedIds = collected.map(c => c.id);
+    const prunedDismissed = dismissed.filter(id => collectedIds.includes(id));
+    try {
+      localStorage.setItem("stockify_dismissed_alerts", JSON.stringify(prunedDismissed));
+    } catch (e) {
+      console.error(e);
+    }
+
+    const visibleNotifications = collected.filter(n => !prunedDismissed.includes(n.id));
+    setNotifications(visibleNotifications);
+  }, []);
+
   const fetchLiveBillingAlerts = useCallback(async (showLoadingState = false) => {
     if (!tenantId) return;
     if (showLoadingState) setLoading(true);
     
     try {
-      // Querying your requested billing_notifications table directly
-      const { data, error } = await supabase
-        .from("billing_notifications")
-        .select("id, title, message, created_at")
-        .eq("tenant_id", tenantId)
-        .order("created_at", { ascending: false });
-
-      if (!error && data) {
+      // ── EMPLOYEE: operational alerts (inventory + orders) ──────────────────
+      if (role === "employee") {
         const collectedAlerts: NotificationItem[] = [];
 
         const [fnbResult, nfbResult, orderResult] = await Promise.all([
@@ -94,7 +120,7 @@ export default function NotificationModal({
             if (currentStock <= 0 || currentStock <= limit) {
               const isOut = currentStock <= 0;
               collectedAlerts.push({
-                id: `fnb-stock-${item.item_name}-${item.created_at}`,
+                id: `fnb-stock-${item.item_name}-${currentStock}`,
                 title: "Inventory Alert",
                 subject: isOut ? "⚠️ F&B Item Out of Stock" : "⚠️ Low F&B Stock Warning",
                 body: isOut 
@@ -116,7 +142,7 @@ export default function NotificationModal({
             if (currentQty <= 0 || currentQty <= threshold) {
               const isOut = currentQty <= 0;
               collectedAlerts.push({
-                id: `nfb-stock-${item.product_name}-${item.created_at}`,
+                id: `nfb-stock-${item.product_name}-${currentQty}`,
                 title: "Inventory Alert",
                 subject: isOut ? "⚠️ Product Out of Stock" : "⚠️ Product Low Stock Warning",
                 body: isOut 
@@ -154,8 +180,12 @@ export default function NotificationModal({
           });
         }
 
-        setNotifications(collectedAlerts);
-      } else if (role === "client" || role === "admin") {
+        applyNotifications(collectedAlerts);
+        return; // done for employee
+      }
+
+      // ── CLIENT / ADMIN: billing + subscription alerts ──────────────────────
+      if (role === "client" || role === "admin") {
         if (!tenantId) return;
         const collectedAlerts: NotificationItem[] = [];
 
@@ -297,7 +327,7 @@ export default function NotificationModal({
 
         // Sort by date/timestamp desc
         collectedAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setNotifications(collectedAlerts);
+        applyNotifications(collectedAlerts);
       } else {
         // === SUPERADMIN STRATEGY ===
         const collectedAlerts: NotificationItem[] = [];
@@ -390,14 +420,14 @@ export default function NotificationModal({
 
         // Sort combined list desc by timestamp date value
         collectedAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setNotifications(collectedAlerts);
+        applyNotifications(collectedAlerts);
       }
     } catch (err) {
       console.error("Failed executing real-time billing notifications fetch:", err);
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, [supabase, tenantId, deletedIds, readIds, role]);
+  }, [supabase, tenantId, role, applyNotifications]);
 
   // Click handler to toggle read status (Facebook style background tint)
   const handleToggleRead = (id: string) => {
@@ -410,15 +440,48 @@ export default function NotificationModal({
   // Delete a single notification element manually
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Stops row click event from firing simultaneously
-    setDeletedIds(prev => [...prev, id]);
+    let dismissed: string[] = [];
+    try {
+      const stored = localStorage.getItem("stockify_dismissed_alerts");
+      dismissed = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(dismissed)) dismissed = [];
+    } catch {
+      dismissed = [];
+    }
+    if (!dismissed.includes(id)) {
+      dismissed.push(id);
+      try {
+        localStorage.setItem("stockify_dismissed_alerts", JSON.stringify(dismissed));
+      } catch (err) {
+        console.error(err);
+      }
+    }
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   // Mass action to clear out the active lists immediately
   const handleClearAll = () => {
     const currentIds = notifications.map(n => n.id);
-    setDeletedIds(prev => [...prev, ...currentIds]);
+    let dismissed: string[] = [];
+    try {
+      const stored = localStorage.getItem("stockify_dismissed_alerts");
+      dismissed = stored ? JSON.parse(stored) : [];
+      if (!Array.isArray(dismissed)) dismissed = [];
+    } catch {
+      dismissed = [];
+    }
+    const updated = Array.from(new Set([...dismissed, ...currentIds]));
+    try {
+      localStorage.setItem("stockify_dismissed_alerts", JSON.stringify(updated));
+    } catch (err) {
+      console.error(err);
+    }
     setNotifications([]);
+    
+    // Fire up the sync callback to reset the Navbar counter
+    if (onClear) {
+      onClear();
+    }
   };
 
   useEffect(() => {
@@ -491,16 +554,17 @@ export default function NotificationModal({
   if (!isOpen || !mounted) return null;
 
   const isClient = role === "client";
-  const primaryColor = isClient ? "#F7B71D" : "#385E31";
-  const borderColor = isClient ? "rgba(247,183,29,0.15)" : "rgba(56,94,49,0.15)";
-  const itemBorderColor = isClient ? "rgba(247,183,29,0.10)" : "rgba(56,94,49,0.10)";
+  const primaryColor = colors?.color_primary ?? (isClient ? "#F7B71D" : "#385E31");
+  const modalBg = colors?.color_background ?? "#FFFCF0";
+  const borderColor = isClient ? "rgba(247,183,29,0.15)" : `${primaryColor}26`;
+  const itemBorderColor = isClient ? "rgba(247,183,29,0.10)" : `${primaryColor}1A`;
   const hoverBg = isClient ? "hover:bg-[#F7B71D]/[0.02]" : "hover:bg-black/[0.02]";
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-[600px] rounded-2xl shadow-2xl overflow-hidden" style={{ backgroundColor: "#FFFCF0" }}>
+      <div className="w-[600px] rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ backgroundColor: modalBg }}>
         {/* Header */}
-        <header className="px-8 py-5 flex justify-between items-center" style={{ borderBottom: `1px solid ${borderColor}` }}>
+        <header className="px-8 py-5 flex justify-between items-center shrink-0" style={{ borderBottom: `1px solid ${borderColor}` }}>
           <h2 className="text-2xl font-bold uppercase tracking-widest font-['Inter']" style={{ color: primaryColor }}>
             Notifications
           </h2>
@@ -510,7 +574,7 @@ export default function NotificationModal({
         </header>
 
         {/* Notification list view */}
-        <div className="flex flex-col max-h-[440px] overflow-y-auto">
+        <div className="flex flex-col max-h-[440px] overflow-y-auto flex-1">
           {loading ? (
             <div className="px-8 py-12 text-center text-sm font-medium font-['Inter']" style={{ color: primaryColor, opacity: 0.6 }}>
               Syncing live system metrics...
@@ -533,7 +597,7 @@ export default function NotificationModal({
               const isRedAlert = titleLower.includes("suspended") || titleLower.includes("suspension") || titleLower.includes("missed") || titleLower.includes("expired");
               const isOrangeAlert = titleLower.includes("overdue") || titleLower.includes("warning") || titleLower.includes("limit") || titleLower.includes("low");
               
-              let tagBg = isClient ? "rgba(247,183,29,0.10)" : "rgba(56,94,49,0.10)";
+              let tagBg = isClient ? "rgba(247,183,29,0.10)" : `${primaryColor}1A`;
               let tagColor = primaryColor;
               let rowBg = "transparent";
 
@@ -546,13 +610,16 @@ export default function NotificationModal({
                 tagColor = "#d97706";
                 rowBg = "rgba(245,158,11,0.04)";
               } else if (!notif.isRead) {
-                rowBg = isClient ? "rgba(247,183,29,0.04)" : "rgba(56,94,49,0.04)";
+                rowBg = isClient ? "rgba(247,183,29,0.04)" : `${primaryColor}0A`;
               }
 
               return (
                 <div
                   key={i}
-                  onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                  onClick={() => {
+                    setExpandedIndex(isExpanded ? null : i);
+                    if (!notif.isRead) handleToggleRead(notif.id);
+                  }}
                   className={`flex flex-col px-8 py-5 cursor-pointer ${hoverBg} transition-colors`}
                   style={{
                     backgroundColor: rowBg,
@@ -573,12 +640,10 @@ export default function NotificationModal({
                         </span>
                       </div>
                       
-                      {/* Subject displayed when collapsed or expanded */}
                       <span className={`text-base font-semibold font-['Inter'] mt-1 ${isExpanded ? "" : "line-clamp-1"}`} style={{ color: primaryColor }}>
                         {notif.subject}
                       </span>
                       
-                      {/* Body displayed ONLY when expanded */}
                       {isExpanded && (
                         <span 
                           className="text-sm font-normal font-['Inter'] mt-2 leading-relaxed whitespace-pre-wrap" 
@@ -602,6 +667,19 @@ export default function NotificationModal({
             })
           )}
         </div>
+
+        {/* Action Controls Footer */}
+        {notifications.length > 0 && (
+          <footer className="px-8 py-4 flex justify-end items-center shrink-0 bg-black/[0.01]" style={{ borderTop: `1px solid ${borderColor}` }}>
+            <button 
+              onClick={handleClearAll}
+              className="text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg hover:bg-black/[0.04] active:scale-95 transition-all focus:outline-none"
+              style={{ color: primaryColor }}
+            >
+              Clear All
+            </button>
+          </footer>
+        )}
       </div>
     </div>,
     document.body

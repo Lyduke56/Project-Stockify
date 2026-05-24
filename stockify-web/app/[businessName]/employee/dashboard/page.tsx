@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
@@ -35,7 +36,6 @@ export type SidebarData = {
   businessName: string;
 };
 
-
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
 
@@ -48,6 +48,7 @@ export default function EmployeeDashboard() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [resetBadgeFn, setResetBadgeFn] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -55,7 +56,6 @@ export default function EmployeeDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Single query to get everything we need from users + tenants
       const { data: userData } = await supabase
         .from("users")
         .select(`
@@ -81,7 +81,6 @@ export default function EmployeeDashboard() {
         businessName: tenant?.business_name ?? "",
       });
 
-      // Fetch everything else in parallel
       const [cfg, dash] = await Promise.all([
         fetchStorefrontConfig(tid),
         fetchDashboardData(tid),
@@ -117,7 +116,6 @@ export default function EmployeeDashboard() {
     if (querySection) setActiveSection(querySection);
   }, [searchParams]);
 
-  // Everything — sidebar, navbar, dashboard — waits here
   if (isLoading) return <LoadingScreen />;
 
   const handleSetSection = (section: SectionKey) => {
@@ -130,17 +128,17 @@ export default function EmployeeDashboard() {
   const handleOpenSettings = () => setIsSettingsOpen(true);
 
   const SECTIONS: Record<SectionKey, React.ReactNode> = {
-    "dashboard":    <DashboardSection initialData={dashboardData} tenantId={tenantId!} />,
-    "audit-logs":   <AuditLogsSection />,
-    "products":     <ProductsSection />,
-    "ingredients":  <IngredientsSection />,
-    "orders":       <OrdersSection />,
-    "transactions": <TransactionsSection />,
+    "dashboard":    <DashboardSection initialData={dashboardData} tenantId={tenantId!} colors={config || undefined} />,
+    "audit-logs":   <AuditLogsSection colors={config || undefined} />,
+    "products":     <ProductsSection colors={config || undefined} />,
+    "ingredients":  <IngredientsSection colors={config || undefined} />,
+    "orders":       <OrdersSection colors={config || undefined} />,
+    "transactions": <TransactionsSection colors={config || undefined} />,
     "analytics":    <div />,
   };
 
   return (
-    <div className="flex min-h-screen" style={{
+    <div className="flex" style={{
       backgroundColor: config?.color_background ?? "#FFFCEB",
       '--color-primary': config?.color_primary ?? "#385E31",
       '--color-secondary': config?.color_secondary ?? "#2A4725",
@@ -154,38 +152,67 @@ export default function EmployeeDashboard() {
         setActiveSection={handleSetSection}
         onOpenSettings={handleOpenSettings}
         sidebarData={sidebarData!}
+        colors={config || undefined}
       />
 
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
-        <NavbarEmployee
-          setActiveSection={handleSetSection}
-          openProfile={handleOpenProfile}
-          openNotifs={handleOpenNotifs}
-          openSettings={handleOpenSettings}
-        />
-        <main className="px-5 pt-10">
-          {SECTIONS[activeSection]}
-        </main>
+      {/* Main column */}
+      <div className="flex-1 flex flex-col min-h-screen pb-10 px-15 pt-5">
+
+        {/* Navbar — drops from top */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: 0.15 }}
+        >
+          <NavbarEmployee
+            setActiveSection={handleSetSection}
+            openProfile={handleOpenProfile}
+            openNotifs={handleOpenNotifs}
+            openSettings={handleOpenSettings}
+            setResetNotificationBadge={setResetBadgeFn}
+          />
+        </motion.div>
+
+        {/* Content — rises up */}
+        <motion.main
+          className="px-5 pt-10"  
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1], delay: 0.25 }}
+        >
+           <div className="">  {/* ← scroll lives here instead */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeSection}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+              >
+                {SECTIONS[activeSection]}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </motion.main>
       </div>
 
-      {/*  WORKING PROFILE MODAL LAYER */}
       <EmployeeProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+        colors={config || undefined}
       />
-
-      {/*  WORKING NOTIFICATION MODAL LAYER */}
       <NotificationModal
         isOpen={isNotifsOpen}
         onClose={() => setIsNotifsOpen(false)}
         role="employee"
         tenantId={tenantId}
+        colors={config || undefined}
+        onClear={resetBadgeFn || undefined}
       />
-
-      {/*  WIRED UP UNIFIED SETTINGS MODAL OVERLAY */}
       <EmployeeSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        colors={config || undefined}
       />
     </div>
   );

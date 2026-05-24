@@ -9,6 +9,8 @@ export interface StatCardProps {
   className?: string;
   iconClassName?: string; 
   hideIcon?: boolean; // 👈 Add this new prop
+  primaryColor?: string; // 👈 Add primaryColor prop
+  backgroundColor?: string; // 👈 Add backgroundColor prop
 }
 
 export default function StatCard({
@@ -18,24 +20,44 @@ export default function StatCard({
   svgName,
   icon,
   className = "",
-  iconClassName = "w-16 h-16 text-[#3A6131]", 
+  iconClassName = "w-16 h-16", 
   hideIcon = false, // 👈 Default it to false so it doesn't break your other pages
+  primaryColor,
+  backgroundColor,
 }: StatCardProps) {
+  // Determine actual styles
+  const outerBg = primaryColor ?? "#3A6131";
+  const headerText = backgroundColor ?? "#FFFCEB";
+  const innerBg = backgroundColor ?? "#FFFCEB";
+  const innerText = primaryColor ?? "#3A6131";
+
   return (
-    <div className={`w-80 p-5 bg-[#3A6131] rounded-[10px] flex flex-col gap-3 shadow-md ${className}`}>
+    <div 
+      className={`w-80 p-5 rounded-[10px] flex flex-col gap-3 shadow-md ${className}`}
+      style={{ backgroundColor: outerBg }}
+    >
       {/* Title */}
-      <div className="text-[18px] font-bold font-['Inter'] text-[#FFFCEB]">
+      <div 
+        className="text-[18px] font-bold font-['Inter']"
+        style={{ color: headerText }}
+      >
         {title}
       </div>
 
       {/* Inner Content Box */}
-      <div className="w-full pt-4 pb-4 rounded-[5px] flex flex-col items-center justify-center bg-[#FFFCEB]">
+      <div 
+        className="w-full pt-4 pb-4 rounded-[5px] flex flex-col items-center justify-center"
+        style={{ backgroundColor: innerBg }}
+      >
         
         {/* Icon & Value Row */}
         <div className="flex items-center justify-center gap-3">
           {/* Conditionally render the icon block based on hideIcon */}
           {!hideIcon && (
-            <div className={`shrink-0 flex items-center justify-center ${iconClassName}`}>
+            <div 
+              className={`shrink-0 flex items-center justify-center ${iconClassName}`}
+              style={{ color: innerText }}
+            >
               {icon ? (
                 icon
               ) : svgName ? (
@@ -57,14 +79,20 @@ export default function StatCard({
             </div>
           )}
 
-          <div className="text-[#3A6131] text-[3.8rem] leading-none font-black font-['Inter'] tracking-tight">
+          <div 
+            className="text-[3.8rem] leading-none font-black font-['Inter'] tracking-tight"
+            style={{ color: innerText }}
+          >
             {value}
           </div>
         </div>
 
         {/* Trend Text */}
         {trendText && (
-          <div className="mt-1 text-[#3A6131] text-[13px] font-medium font-['Inter']">
+          <div 
+            className="mt-1 text-[13px] font-medium font-['Inter']"
+            style={{ color: innerText }}
+          >
             {trendText}
           </div>
         )}

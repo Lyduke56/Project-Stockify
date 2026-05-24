@@ -15,6 +15,8 @@ import {
   uploadNfbProductImage,
 } from "@/lib/employee/nfb-products";
 
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
+
 export interface NfbProductModalProps {
   mode: "add" | "edit";
   tenantId: string;
@@ -36,10 +38,11 @@ export interface NfbProductModalProps {
     variants: VariantTypeInput[]
   ) => Promise<void>;
   onClose: () => void;
+  colors?: StorefrontConfig | null;
 }
 
-const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
-const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
+const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 mb-2 block";
+const inputStyle = "w-full bg-background border-[1.5px] border-primary/10 rounded-2xl px-4 py-3 text-sm text-primary font-medium focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-gray-300";
 const selectStyle = `${inputStyle} appearance-none pr-10 bg-[image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'%233A6131'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpolyline%20points%3D'6%209%2012%2015%2018%209'%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")] bg-no-repeat bg-[right_14px_center]`;
 
 const ALL_STEPS = [
@@ -77,7 +80,7 @@ interface VariantTypeInputExtended {
   options: VariantOptionInputExtended[];
 }
 
-export default function NfbProductModal({ mode, tenantId, initial, onSave, onClose }: NfbProductModalProps) {
+export default function NfbProductModal({ mode, tenantId, initial, onSave, onClose, colors }: NfbProductModalProps) {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,6 +95,15 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
   const [productType, setProductType] = useState<"single" | "with_variants">(
     initial?.variants && initial.variants.length > 0 ? "with_variants" : "single"
   );
+
+  const modalStyles = {
+    "--color-primary": colors?.color_primary ?? "#385E31",
+    "--color-secondary": colors?.color_secondary ?? "#2A4725",
+    "--color-accent": colors?.color_accent ?? "#F7B71D",
+    "--color-background": colors?.color_background ?? "#FFFCEB",
+    "--color-text": colors?.color_text ?? "#3A6131",
+    "--color-sidebar-text": colors?.color_sidebar_text ?? "#FFF9D7",
+  } as React.CSSProperties;
 
   // Derive visible steps — single item skips step 2
   const visibleSteps = ALL_STEPS.filter((s) => !(s.variantsOnly && productType === "single"));
@@ -279,19 +291,20 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
   return (
     <ModalBackdrop onClose={onClose}>
       <motion.div
+        style={modalStyles}
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="w-full max-w-[960px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[680px] font-inter"
+        className="w-full max-w-[960px] bg-background rounded-[32px] overflow-hidden border-[1.5px] border-accent/20 shadow-[0_32px_80px_rgba(0,0,0,0.15)] flex flex-col md:flex-row h-[680px] font-inter"
       >
         {/* ── SIDEBAR ── */}
-        <div className="w-full md:w-[300px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
-          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl" />
+        <div className="w-full md:w-[300px] bg-primary p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full blur-3xl" />
           <div className="relative z-10">
-            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
-            <h2 className="text-[#FFFCEB] font-raleway text-3xl font-black leading-tight mb-2">
+            <div className="bg-accent w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] font-raleway text-3xl font-black leading-tight mb-2">
               {mode === "add" ? "Add Product" : "Edit Product"}
             </h2>
-            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-10">
+            <p className="text-[var(--color-sidebar-text,#FFF9D7)]/60 text-xs font-medium leading-relaxed mb-10">
               Set up your physical product, configure variants, then finalize pricing.
             </p>
             <nav className="flex flex-col gap-7">
@@ -310,13 +323,13 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     >
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id
-                            ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20"
+                            ? "bg-accent text-primary shadow-lg shadow-accent/20"
                             : "bg-white/10 text-white"
                           }`}
                       >
                         <s.icon size={18} strokeWidth={2.5} />
                       </div>
-                      <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[#FFFCEB]" : "text-white"}`}>
+                      <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[var(--color-sidebar-text,#FFF9D7)]" : "text-white"}`}>
                         {s.label}
                       </span>
                     </div>
@@ -328,14 +341,14 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
           <div className="mt-auto relative z-10 space-y-4">
             <div className="bg-white/10 rounded-2xl px-4 py-3">
-              <p className="text-[#FFFCEB]/40 text-[10px] font-black uppercase tracking-widest mb-1">Business Type</p>
-              <p className="text-[#F7B71D] text-sm font-bold">Non-Food &amp; Beverages</p>
+              <p className="text-[var(--color-sidebar-text,#FFF9D7)]/40 text-[10px] font-black uppercase tracking-widest mb-1">Business Type</p>
+              <p className="text-accent text-sm font-bold">Non-Food &amp; Beverages</p>
             </div>
             <div className="flex gap-2">
               {visibleSteps.map((s, i) => (
                 <div
                   key={s.id}
-                  className={`h-1.5 rounded-full transition-all duration-500 ${step === s.id ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
+                  className={`h-1.5 rounded-full transition-all duration-500 ${step === s.id ? "w-8 bg-accent" : "w-2 bg-white/20"
                     }`}
                 />
               ))}
@@ -344,15 +357,15 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
         </div>
 
         {/* ── CONTENT ── */}
-        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm">
+        <div className="flex-1 flex flex-col relative bg-background/50 backdrop-blur-sm">
           <button
             onClick={onClose}
-            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-[#FFFCEB] border border-[#3A6131]/10 flex items-center justify-center text-[#3A6131] hover:bg-[#3A6131] hover:text-[#FFFCEB] transition-all z-20"
+            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-background border border-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-[var(--color-sidebar-text,#FFF9D7)] transition-all z-20"
           >
             <X size={20} strokeWidth={2.5} />
           </button>
 
-          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full">
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/15 [&::-webkit-scrollbar-thumb]:rounded-full">
             {error && (
               <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold">
                 {error}
@@ -371,10 +384,10 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   className="space-y-4"
                 >
                   <div className="mb-6">
-                    <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                    <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
                       Step 01
                     </span>
-                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Product Information</h3>
+                    <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Product Information</h3>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -400,12 +413,12 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
                     {/* Image Upload */}
                     <div className="col-span-2">
-                      <label className={labelStyle}>Product Image <span className="text-[#3A6131]/40 font-normal">(optional)</span></label>
+                      <label className={labelStyle}>Product Image <span className="text-primary/40 font-normal">(optional)</span></label>
                       <div
                         onClick={() => imageInputRef.current?.click()}
                         className={`relative flex flex-col items-center justify-center gap-2 w-full h-36 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${imagePreview
-                            ? 'border-[#3A6131]/30 bg-transparent'
-                            : 'border-[#3A6131]/20 bg-[#3A6131]/3 hover:border-[#3A6131]/50 hover:bg-[#3A6131]/5'
+                            ? 'border-primary/30 bg-transparent'
+                            : 'border-primary/20 bg-primary/3 hover:border-primary/50 hover:bg-primary/5'
                           }`}
                       >
                         {imagePreview ? (
@@ -424,9 +437,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                           </>
                         ) : (
                           <>
-                            <Package size={28} className="text-[#3A6131]/30" />
-                            <p className="text-[#3A6131]/50 text-[12px] font-medium">Click to upload product image</p>
-                            <p className="text-[#3A6131]/30 text-[10px]">PNG, JPG, WEBP up to 5MB</p>
+                            <Package size={28} className="text-primary/30" />
+                            <p className="text-primary/50 text-[12px] font-medium">Click to upload product image</p>
+                            <p className="text-primary/30 text-[10px]">PNG, JPG, WEBP up to 5MB</p>
                           </>
                         )}
                       </div>
@@ -464,7 +477,7 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     <div>
                       <label className={labelStyle}>Category</label>
                       {loadingCats ? (
-                        <div className="flex items-center gap-2 text-[#3A6131]/50 text-sm py-3">
+                        <div className="flex items-center gap-2 text-primary/50 text-sm py-3">
                           <Loader2 size={16} className="animate-spin" /> Loading…
                         </div>
                       ) : (
@@ -484,13 +497,13 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                     {/* ── Product Type Toggle ── */}
                     <div className="col-span-2">
                       <label className={labelStyle}>Product Type</label>
-                      <div className="flex gap-2 p-1 bg-[#3A6131]/5 rounded-2xl border border-[#3A6131]/10">
+                      <div className="flex gap-2 p-1 bg-primary/5 rounded-2xl border border-primary/10">
                         <button
                           type="button"
                           onClick={() => handleProductTypeChange("single")}
                           className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${productType === "single"
-                              ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
-                              : "text-[#3A6131]/50 hover:text-[#3A6131]"
+                              ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)] shadow-md"
+                              : "text-primary/50 hover:text-primary"
                             }`}
                         >
                           Single Item
@@ -499,8 +512,8 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                           type="button"
                           onClick={() => handleProductTypeChange("with_variants")}
                           className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${productType === "with_variants"
-                              ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
-                              : "text-[#3A6131]/50 hover:text-[#3A6131]"
+                              ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)] shadow-md"
+                              : "text-primary/50 hover:text-primary"
                             }`}
                         >
                           With Variants
@@ -557,9 +570,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                           exit={{ opacity: 0, height: 0 }}
                           className="col-span-2 overflow-hidden"
                         >
-                          <div className="flex items-start gap-3 bg-[#F7B71D]/10 border border-[#F7B71D]/30 rounded-2xl px-4 py-3">
-                            <Layers size={16} className="text-[#F7B71D] mt-0.5 shrink-0" />
-                            <p className="text-[11px] text-[#3A6131]/70 font-semibold leading-relaxed">
+                          <div className="flex items-start gap-3 bg-accent/10 border border-accent/30 rounded-2xl px-4 py-3">
+                            <Layers size={16} className="text-accent mt-0.5 shrink-0" />
+                            <p className="text-[11px] text-primary/70 font-semibold leading-relaxed">
                               Stock and unit of measure will be configured per variant option in the next step.
                             </p>
                           </div>
@@ -581,29 +594,29 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                      <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
                         Step 02
                       </span>
-                      <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">
+                      <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">
                         Variants{" "}
                         {productType === "single" && (
-                          <span className="text-base font-medium text-[#3A6131]/40 not-italic ml-1">(optional)</span>
+                          <span className="text-base font-medium text-primary/40 not-italic ml-1">(optional)</span>
                         )}
                       </h3>
-                      <p className="text-[11px] text-[#3A6131]/50 mt-1 leading-relaxed pr-8">
+                      <p className="text-[11px] text-primary/50 mt-1 leading-relaxed pr-8">
                         Add variant types like Size or Color. Pricing is set in the next step.
                       </p>
                     </div>
                     <button
                       onClick={addVariantType}
-                      className="w-11 h-11 rounded-2xl bg-[#3A6131] text-[#FFFCEB] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"
+                      className="w-11 h-11 rounded-2xl bg-primary text-[var(--color-sidebar-text,#FFF9D7)] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"
                     >
                       <Plus size={22} strokeWidth={2.8} />
                     </button>
                   </div>
 
                   {variants.length === 0 ? (
-                    <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30 mt-4">
+                    <div className="py-12 border-2 border-dashed border-primary/10 rounded-[24px] flex flex-col items-center justify-center text-primary/30 mt-4">
                       <Layers size={40} strokeWidth={1} className="mb-2" />
                       <p className="text-sm font-medium">No variants — product has a single price &amp; stock</p>
                       <p className="text-xs mt-1">Click + to add a variant type (e.g. Size, Color)</p>
@@ -611,18 +624,18 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   ) : (
                     <div className="space-y-4 mt-4">
                       {variants.map((vt: any, ti: number) => (
-                        <div key={ti} className="bg-white rounded-2xl border border-[#3A6131]/10 overflow-hidden shadow-sm">
+                        <div key={ti} className="bg-background rounded-2xl border border-primary/10 overflow-hidden shadow-sm">
                           {/* Variant type header */}
-                          <div className="flex items-center gap-3 px-4 py-3 bg-[#3A6131]/5 border-b border-[#3A6131]/10">
+                          <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border-b border-primary/10">
                             <input
-                              className="flex-1 bg-transparent text-[13px] font-black text-[#3A6131] focus:outline-none border-b border-[#3A6131]/20 focus:border-[#F7B71D] py-0.5"
+                              className="flex-1 bg-transparent text-[13px] font-black text-primary focus:outline-none border-b border-primary/20 focus:border-accent py-0.5"
                               placeholder="Variant type (e.g. Size, Color, Material)"
                               value={vt.name}
                               onChange={(e) => updateVariantTypeName(ti, e.target.value)}
                             />
                             <button
                               onClick={() => addVariantOption(ti)}
-                              className="text-[11px] font-black text-[#3A6131] bg-[#F7B71D]/20 hover:bg-[#F7B71D]/40 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
+                              className="text-[11px] font-black text-primary bg-accent/20 hover:bg-accent/40 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
                             >
                               <Plus size={12} /> Add Option
                             </button>
@@ -633,9 +646,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
 
                           {/* Column labels */}
                           <div className="flex gap-2 px-4 pt-2 pb-1">
-                            <span className="flex-1 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40">Label</span>
-                            <span className="w-20 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Stock</span>
-                            <span className="w-24 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Unit</span>
+                            <span className="flex-1 text-[10px] font-black uppercase tracking-wider text-primary/40">Label</span>
+                            <span className="w-20 text-[10px] font-black uppercase tracking-wider text-primary/40 text-center">Stock</span>
+                            <span className="w-24 text-[10px] font-black uppercase tracking-wider text-primary/40 text-center">Unit</span>
                             <div className="w-8" />
                           </div>
 
@@ -644,21 +657,21 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                             {vt.options.map((opt: any, oi: number) => (
                               <div key={oi} className="flex gap-2 items-center">
                                 <input
-                                  className="flex-1 bg-[#FFFCEB]/60 border border-[#3A6131]/10 rounded-xl px-3 py-2 text-[12px] font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D]"
+                                  className="flex-1 bg-background/60 border border-primary/10 rounded-xl px-3 py-2 text-[12px] font-bold text-primary focus:outline-none focus:border-accent"
                                   placeholder="e.g. Small, Red…"
                                   value={opt.label}
                                   onChange={(e) => updateVariantOption(ti, oi, "label", e.target.value)}
                                 />
                                 <input
                                   type="number"
-                                  className="w-20 bg-[#FFFCEB]/60 border border-[#3A6131]/10 rounded-xl px-3 py-2 text-[12px] font-black text-[#3A6131] text-center focus:outline-none focus:border-[#F7B71D]"
+                                  className="w-20 bg-background/60 border border-primary/10 rounded-xl px-3 py-2 text-[12px] font-black text-primary text-center focus:outline-none focus:border-accent"
                                   placeholder="0"
                                   value={opt.stock}
                                   onChange={(e) => updateVariantOption(ti, oi, "stock", e.target.value)}
                                 />
                                 {/* Unit of Measure per option */}
                                 <select
-                                  className="w-24 bg-[#FFFCEB]/60 border border-[#3A6131]/10 rounded-xl px-2 py-2 text-[12px] font-bold text-[#3A6131] text-center focus:outline-none focus:border-[#F7B71D] appearance-none"
+                                  className="w-24 bg-background/60 border border-primary/10 rounded-xl px-2 py-2 text-[12px] font-bold text-primary text-center focus:outline-none focus:border-accent appearance-none"
                                   value={opt.unit_of_measure}
                                   onChange={(e) => updateVariantOption(ti, oi, "unit_of_measure", e.target.value)}
                                 >
@@ -690,11 +703,11 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   className="space-y-5"
                 >
                   <div className="mb-6">
-                    <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                    <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
                       Step 03
                     </span>
-                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Pricing &amp; Metrics</h3>
-                    <p className="text-[11px] text-[#3A6131]/50 mt-1">
+                    <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Pricing &amp; Metrics</h3>
+                    <p className="text-[11px] text-primary/50 mt-1">
                       {hasVariants
                         ? "Set unit cost and selling price for each variant option."
                         : "Set the unit cost and selling price for this product."}
@@ -706,9 +719,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   {!hasVariants && (
                     <div className="grid grid-cols-2 gap-4">
                       {/* Top Row: Financials */}
-                      <div className="bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/15">
-                        <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Unit Cost (Internal)</label>
-                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                      <div className="bg-primary/5 p-5 rounded-[24px] border border-primary/15">
+                        <label className="text-[10px] font-black uppercase text-primary/50 tracking-wider mb-2 block">Unit Cost (Internal)</label>
+                        <div className="flex items-center text-2xl font-black text-primary">
                           <span className="mr-2 opacity-30 text-xl">₱</span>
                           <input
                             type="number"
@@ -720,13 +733,13 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                         </div>
                       </div>
 
-                      <div className="p-5 rounded-[24px] border transition-all bg-[#F7B71D] border-[#F7B71D] shadow-lg shadow-[#F7B71D]/20">
-                        <label className="text-[10px] font-black uppercase tracking-wider mb-2 block text-[#385E31]/60">Base Selling Price</label>
-                        <div className="flex items-center text-2xl font-black text-[#385E31]">
+                      <div className="p-5 rounded-[24px] border transition-all bg-accent border-accent shadow-lg shadow-accent/20">
+                        <label className="text-[10px] font-black uppercase tracking-wider mb-2 block text-primary/60">Base Selling Price</label>
+                        <div className="flex items-center text-2xl font-black text-primary">
                           <span className="mr-2 opacity-30 text-xl">₱</span>
                           <input
                             type="number"
-                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl placeholder:text-[#385E31]/30"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl placeholder:text-primary/30"
                             value={form.price}
                             onChange={(e) => set("price", e.target.value)}
                             placeholder="0.00"
@@ -735,9 +748,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                       </div>
 
                       {/* Bottom Row: Inventory Health */}
-                      <div className="bg-white p-5 rounded-[24px] border border-[#3A6131]/20 shadow-sm transition-all hover:border-[#3A6131]/40">
-                        <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Current Stock</label>
-                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                      <div className="bg-background p-5 rounded-[24px] border border-primary/20 shadow-sm transition-all hover:border-primary/40">
+                        <label className="text-[10px] font-black uppercase text-primary/50 tracking-wider mb-2 block">Current Stock</label>
+                        <div className="flex items-center text-2xl font-black text-primary">
                           <input
                             type="number"
                             className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl"
@@ -749,12 +762,12 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                         </div>
                       </div>
 
-                      <div className="bg-white p-5 rounded-[24px] border border-[#3A6131]/20 shadow-sm transition-all hover:border-[#3A6131]/40">
+                      <div className="bg-background p-5 rounded-[24px] border border-primary/20 shadow-sm transition-all hover:border-primary/40">
                         <div className="flex justify-between items-center mb-2">
-                          <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider">Low Stock Alert</label>
-                          <PackageCheck size={12} className="text-[#F7B71D]" />
+                          <label className="text-[10px] font-black uppercase text-primary/50 tracking-wider">Low Stock Alert</label>
+                          <PackageCheck size={12} className="text-accent" />
                         </div>
-                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                        <div className="flex items-center text-2xl font-black text-primary">
                           <input
                             type="number"
                             className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl"
@@ -770,9 +783,9 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   {/* ── PATH B: Has variants summary metrics ── */}
                   {hasVariants && (
                     <div className="flex gap-4 mb-6">
-                      <div className="flex-1 bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/15">
-                        <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Avg Unit Cost (Internal)</label>
-                        <div className="flex items-center text-2xl font-black text-[#3A6131]">
+                      <div className="flex-1 bg-primary/5 p-5 rounded-[24px] border border-primary/15">
+                        <label className="text-[10px] font-black uppercase text-primary/50 tracking-wider mb-2 block">Avg Unit Cost (Internal)</label>
+                        <div className="flex items-center text-2xl font-black text-primary">
                           <span className="mr-2 opacity-30 text-xl">₱</span>
                           <span className="text-2xl">
                             {(() => {
@@ -784,12 +797,12 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                             })()}
                           </span>
                         </div>
-                        <p className="text-[10px] text-[#3A6131]/40 mt-1 font-bold">Cost range across variants</p>
+                        <p className="text-[10px] text-primary/40 mt-1 font-bold">Cost range across variants</p>
                       </div>
 
-                      <div className="flex-1 p-5 rounded-[24px] border bg-[#F7B71D] border-[#F7B71D] shadow-lg shadow-[#F7B71D]/20">
-                        <label className="text-[10px] font-black uppercase tracking-wider text-[#385E31]/60 mb-2 block">Price Range (Storefront)</label>
-                        <div className="flex items-center text-2xl font-black text-[#385E31]">
+                      <div className="flex-1 p-5 rounded-[24px] border bg-accent border-accent shadow-lg shadow-accent/20">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-primary/60 mb-2 block">Price Range (Storefront)</label>
+                        <div className="flex items-center text-2xl font-black text-primary">
                           <span className="mr-2 opacity-30 text-xl">₱</span>
                           <span className="text-2xl">
                             {(() => {
@@ -801,29 +814,29 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                             })()}
                           </span>
                         </div>
-                        <p className="text-[10px] text-[#385E31]/40 mt-1 font-bold">Visible on customer end</p>
+                        <p className="text-[10px] text-primary/40 mt-1 font-bold">Visible on customer end</p>
                       </div>
                     </div>
                   )}
 
                   {/* ── Option rows for variants ── */}
                   {hasVariants && (
-                    <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/15 [&::-webkit-scrollbar-thumb]:rounded-full">
                       {variants.map((vt: any, ti: number) => {
                         const visibleOpts = vt.options.filter((o: any) => o.label.trim());
                         if (!vt.name.trim() || visibleOpts.length === 0) return null;
                         return (
-                          <div key={ti} className="bg-white rounded-2xl border border-[#3A6131]/10 overflow-hidden shadow-sm">
-                            <div className="flex items-center px-4 py-3 bg-[#3A6131]/5 border-b border-[#3A6131]/10">
-                              <span className="text-[13px] font-black text-[#3A6131]">{vt.name}</span>
+                          <div key={ti} className="bg-background rounded-2xl border border-primary/10 overflow-hidden shadow-sm">
+                            <div className="flex items-center px-4 py-3 bg-primary/5 border-b border-primary/10">
+                              <span className="text-[13px] font-black text-primary">{vt.name}</span>
                             </div>
 
                             <div className="flex gap-2 px-4 pt-2 pb-1">
-                              <span className="flex-1 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40">Option</span>
-                              <span className="w-14 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Stock</span>
-                              <span className="w-14 text-[10px] font-black uppercase tracking-wider text-[#F7B71D] text-center">Alert</span>
-                              <span className="w-24 text-[10px] font-black uppercase tracking-wider text-[#3A6131]/40 text-center">Cost (₱)</span>
-                              <span className="w-24 text-[10px] font-black uppercase tracking-wider text-[#F7B71D] text-center">Price (₱)</span>
+                              <span className="flex-1 text-[10px] font-black uppercase tracking-wider text-primary/40">Option</span>
+                              <span className="w-14 text-[10px] font-black uppercase tracking-wider text-primary/40 text-center">Stock</span>
+                              <span className="w-14 text-[10px] font-black uppercase tracking-wider text-accent text-center">Alert</span>
+                              <span className="w-24 text-[10px] font-black uppercase tracking-wider text-primary/40 text-center">Cost (₱)</span>
+                              <span className="w-24 text-[10px] font-black uppercase tracking-wider text-accent text-center">Price (₱)</span>
                             </div>
 
                             <div className="space-y-1 px-4 pb-4">
@@ -831,33 +844,33 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                                 if (!opt.label.trim()) return null;
                                 return (
                                   <div key={oi} className="flex gap-2 items-center">
-                                    <div className="flex-1 bg-[#3A6131]/5 rounded-xl px-3 py-2 text-[12px] font-bold text-[#3A6131]">
+                                    <div className="flex-1 bg-primary/5 rounded-xl px-3 py-2 text-[12px] font-bold text-primary">
                                       {opt.label}
                                     </div>
                                     <input
                                       type="number"
-                                      className="w-14 bg-[#3A6131]/5 border border-[#3A6131]/10 rounded-xl px-2 py-1.5 text-[12px] font-black text-[#3A6131] text-center focus:outline-none"
+                                      className="w-14 bg-primary/5 border border-primary/10 rounded-xl px-2 py-1.5 text-[12px] font-black text-primary text-center focus:outline-none"
                                       value={opt.stock}
                                       onChange={(e) => updateVariantOption(ti, oi, "stock", e.target.value)}
                                       placeholder="0"
                                     />
                                     <input
                                       type="number"
-                                      className="w-14 bg-white border border-[#F7B71D]/30 rounded-xl px-2 py-1.5 text-[12px] font-black text-[#F7B71D] text-center focus:outline-none"
+                                      className="w-14 bg-background border border-accent/30 rounded-xl px-2 py-1.5 text-[12px] font-black text-accent text-center focus:outline-none"
                                       value={opt.reorder_threshold}
                                       onChange={(e) => updateVariantOption(ti, oi, "reorder_threshold", e.target.value)}
                                       placeholder="0"
                                     />
                                     <input
                                       type="number"
-                                      className="w-24 bg-[#3A6131]/5 border border-[#3A6131]/10 rounded-xl px-2 py-1.5 text-[12px] font-bold text-[#3A6131] text-center focus:outline-none"
+                                      className="w-24 bg-primary/5 border border-primary/10 rounded-xl px-2 py-1.5 text-[12px] font-bold text-primary text-center focus:outline-none"
                                       value={opt.unit_cost}
                                       onChange={(e) => updateVariantOption(ti, oi, "unit_cost", e.target.value)}
                                       placeholder="0.00"
                                     />
                                     <input
                                       type="number"
-                                      className="w-24 bg-[#F7B71D]/5 border border-[#F7B71D]/30 rounded-xl px-2 py-1.5 text-[12px] font-black text-[#7a5c00] text-center focus:outline-none"
+                                      className="w-24 bg-accent/5 border border-accent/30 rounded-xl px-2 py-1.5 text-[12px] font-black text-primary text-center focus:outline-none"
                                       value={opt.price}
                                       onChange={(e) => updateVariantOption(ti, oi, "price", e.target.value)}
                                       placeholder="0.00"
@@ -873,16 +886,16 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
                   )}
 
                   {/* Visible toggle — always at bottom */}
-                  <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#3A6131]/10">
+                  <div className="flex items-center justify-between bg-background p-4 rounded-2xl border border-primary/10">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#3A6131]/10 flex items-center justify-center text-[#3A6131]">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                         <PackageCheck size={20} />
                       </div>
-                      <span className="text-sm font-bold text-[#3A6131]">Show on Storefront</span>
+                      <span className="text-sm font-bold text-primary">Show on Storefront</span>
                     </div>
                     <button
                       onClick={() => set("visible", !form.visible)}
-                      className={`w-12 h-6 rounded-full transition-all relative ${form.visible ? "bg-[#3A6131]" : "bg-gray-200"}`}
+                      className={`w-12 h-6 rounded-full transition-all relative ${form.visible ? "bg-primary" : "bg-gray-200"}`}
                     >
                       <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.visible ? "right-1" : "left-1"}`} />
                     </button>
@@ -893,17 +906,17 @@ export default function NfbProductModal({ mode, tenantId, initial, onSave, onClo
             </AnimatePresence>
           </div>
 
-          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-between items-center z-20">
+          <div className="px-8 py-5 border-t border-primary/10 bg-background/80 flex justify-between items-center z-20">
             <button
               onClick={goBack}
-              className="text-[#3A6131]/50 text-sm font-bold hover:text-[#3A6131] transition-colors"
+              className="text-primary/50 text-sm font-bold hover:text-primary transition-colors"
             >
               {currentStepIdx === 0 ? "Cancel" : "Back"}
             </button>
             <button
               onClick={goNext}
               disabled={saving}
-              className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-primary text-[var(--color-sidebar-text,#FFF9D7)] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <><Loader2 size={16} className="animate-spin" /> Saving…</>

@@ -12,11 +12,12 @@ import {
   type RecipeInput,
   type SizeInput,
 } from "@/lib/employee/products";
-import ProductModal from "@/components/modals/employee/product-modals/product-modal";
+import ProductModal          from "@/components/modals/employee/product-modals/product-modal";
 import ManageCategoriesModal from "@/components/modals/employee/product-modals/manage-categories-modal";
-import DeleteItemModal from "@/components/modals/employee/ingredients-modals/delete-item-modal";
-import RestockModal from "@/components/modals/employee/product-modals/restock-modal";
-import { Loader2, RefreshCw } from "lucide-react";
+import DeleteItemModal       from "@/components/modals/employee/ingredients-modals/delete-item-modal";
+import RestockModal          from "@/components/modals/employee/product-modals/restock-modal";
+import { RefreshCw } from "lucide-react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 const SearchIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,19 +32,23 @@ const ChevronDown = () => (
 );
 
 const COLUMNS = [
-  { label: "NAME",      className: "flex-[1.5] justify-start text-left pl-4" },
-  { label: "SKU",       className: "flex-1 justify-center" },
-  { label: "CATEGORY",  className: "flex-1 justify-center" },
-  { label: "UNIT COST", className: "flex-1 justify-center" },
-  { label: "PRICE",     className: "flex-1 justify-center" },
+  { label: "NAME",         className: "flex-[1.5] justify-start text-left pl-4" },
+  { label: "SKU",          className: "flex-1 justify-center" },
+  { label: "CATEGORY",     className: "flex-1 justify-center" },
+  { label: "UNIT COST",    className: "flex-1 justify-center" },
+  { label: "PRICE",        className: "flex-1 justify-center" },
   { label: "AVAILABILITY", className: "flex-1 justify-center" },
-  { label: "VISIBLE",   className: "w-[70px] justify-center flex-none" },
-  { label: "ACTIONS",   className: "flex-[1.2] justify-center" },
+  { label: "VISIBLE",      className: "w-[70px] justify-center flex-none" },
+  { label: "ACTIONS",      className: "flex-[1.2] justify-center" },
 ];
 
-interface ProductsTableProps { tenantId: string; }
+interface ProductsTableProps {
+  tenantId:       string;
+  onLoadComplete?: () => void;
+  colors?: StorefrontConfig | null;
+}
 
-export default function ProductsTable({ tenantId }: ProductsTableProps) {
+export default function ProductsTable({ tenantId, onLoadComplete, colors }: ProductsTableProps) {
   const [products,     setProducts]     = useState<Product[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState<string | null>(null);
@@ -58,16 +63,24 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
   const tableRef = useRef<HTMLDivElement>(null);
 
   const loadProducts = useCallback(async () => {
-    try { setLoading(true); setError(null); setProducts(await fetchProducts(tenantId)); }
-    catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [tenantId]);
+    try {
+      setLoading(true);
+      setError(null);
+      setProducts(await fetchProducts(tenantId));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      onLoadComplete?.();
+    }
+  }, [tenantId, onLoadComplete]);
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (tableRef.current && !tableRef.current.contains(e.target as Node)) setOpenDropdownId(null);
+      if (tableRef.current && !tableRef.current.contains(e.target as Node))
+        setOpenDropdownId(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -76,8 +89,14 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
   useEffect(() => { setVisibleCount(5); }, [search, filterStatus]);
 
   const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()) || (p.category_name ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filterStatus === "All" || (filterStatus === "Visible" && p.visible) || (filterStatus === "Hidden" && !p.visible);
+    const matchSearch =
+      p.name.toLowerCase().includes(search.toLowerCase()) ||
+      p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      (p.category_name ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchFilter =
+      filterStatus === "All" ||
+      (filterStatus === "Visible" && p.visible) ||
+      (filterStatus === "Hidden"  && !p.visible);
     return matchSearch && matchFilter;
   });
 
@@ -142,64 +161,56 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
           ))}
         </div>
 
-        {loading ? (
-          <div className="w-full flex items-center justify-center py-16 text-primary/60 gap-3"><Loader2 size={20} className="animate-spin" /><span className="text-sm font-semibold">Loading products…</span></div>
-        ) : displayed.length === 0 ? (
-          <div className="w-full text-center py-10 text-primary font-semibold text-sm">{search || filterStatus !== "All" ? "No products match your filters." : "No products yet. Add your first product!"}</div>
+        {displayed.length === 0 ? (
+          <div className="w-full text-center py-10 text-primary font-semibold text-sm">
+            {search || filterStatus !== "All" ? "No products match your filters." : "No products yet. Add your first product!"}
+          </div>
         ) : (
           displayed.map((row, idx) => {
-            const isLast = idx === displayed.length - 1;
-            const isOpen = openDropdownId === row.product_id;
+            const isLast   = idx === displayed.length - 1;
+            const isOpen   = openDropdownId === row.product_id;
             const hasSizes = row.sizes && row.sizes.length > 0;
-
-            const totalQty = Number(row.max_yield) || 0;
 
             return (
               <div key={row.product_id} className={`w-full flex px-2 py-[10px] items-center ${!isLast ? "border-b border-primary/20" : ""}`}>
-                {/* Name + sizes hint */}
                 <div className={`flex flex-col justify-center ${COLUMNS[0].className}`}>
                   <span className="text-primary text-[13px] font-bold">{row.name}</span>
                   {hasSizes && (
                     <span className="text-[10px] text-primary/60 font-semibold mt-0.5">{row.sizes!.map((s) => s.label).join(" · ")}</span>
                   )}
                 </div>
-                {/* SKU */}
                 <div className={`flex text-primary text-[12px] font-bold font-mono items-center ${COLUMNS[1].className}`}>{row.sku}</div>
-                {/* Category */}
                 <div className={`flex text-primary text-[13px] font-bold items-center ${COLUMNS[2].className}`}>{row.category_name ?? "—"}</div>
-                {/* Unit Cost */}
                 <div className={`flex text-primary text-[13px] font-bold items-center ${COLUMNS[3].className}`}>
                   {(() => {
-                     const sizes = row.sizes || [];
-                     if (sizes.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
-                     const costs = sizes.map(s => Number(s.unit_cost) || 0);
-                     const min = Math.min(...costs); const max = Math.max(...costs);
-                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} – ₱${max.toFixed(2)}`;
+                    const sizes = row.sizes || [];
+                    if (sizes.length === 0) return `₱${Number(row.unit_cost).toFixed(2)}`;
+                    const costs = sizes.map(s => Number(s.unit_cost) || 0);
+                    const min = Math.min(...costs); const max = Math.max(...costs);
+                    return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} – ₱${max.toFixed(2)}`;
                   })()}
                 </div>
-                {/* Price */}
                 <div className={`flex flex-col items-center justify-center ${COLUMNS[4].className}`}>
                   <span className="text-primary text-[13px] font-extrabold text-center leading-tight">
-                  {(() => {
-                     const sizes = row.sizes || [];
-                     if (sizes.length === 0) return `₱${Number(row.price).toFixed(2)}`;
-                     const prices = sizes.map(s => Number(s.price) || 0);
-                     const min = Math.min(...prices); const max = Math.max(...prices);
-                     return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} – ₱${max.toFixed(2)}`;
-                  })()}
+                    {(() => {
+                      const sizes = row.sizes || [];
+                      if (sizes.length === 0) return `₱${Number(row.price).toFixed(2)}`;
+                      const prices = sizes.map(s => Number(s.price) || 0);
+                      const min = Math.min(...prices); const max = Math.max(...prices);
+                      return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} – ₱${max.toFixed(2)}`;
+                    })()}
                   </span>
                   {hasSizes && (
                     <span className="text-[10px] text-primary/40 font-semibold mt-0.5">{row.sizes!.length} variants</span>
                   )}
                 </div>
-                {/* Max Yield */}
                 <div className={`flex flex-col items-center justify-center ${COLUMNS[5].className}`}>
                   {hasSizes ? (
                     <div className="flex flex-wrap justify-center gap-1 px-1">
                       {row.sizes!.map((s) => (
                         <span key={s.size_id} className={`text-[10px] font-black px-1.5 py-0.5 rounded-md border ${
-                          s.max_yield <= 5 ? "bg-red-500 text-white border-red-600" : 
-                          s.max_yield <= 15 ? "bg-amber-500 text-white border-amber-600" : 
+                          s.max_yield <= 5 ? "bg-red-500 text-white border-red-600" :
+                          s.max_yield <= 15 ? "bg-amber-500 text-white border-amber-600" :
                           "bg-white/10 text-primary border-primary/20"
                         }`}>
                           {s.label.charAt(0).toUpperCase()}: {s.max_yield}
@@ -212,21 +223,19 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
                     }`}>{row.max_yield}</span>
                   )}
                 </div>
-                {/* Visible */}
                 <div className={`flex items-center ${COLUMNS[6].className}`}>
-                  <div className={`px-2.5 py-0.5 rounded-[40px] flex justify-center items-center ${row.visible ? "bg-accent text-primary" : "bg-transparent border border-primary/40 text-primary"}`}>
+                  <div className={`px-2.5 pb-[3px] pt-[4px] rounded-[40px] flex justify-center items-center ${row.visible ? "bg-accent text-primary" : "bg-transparent border border-primary/40 text-primary"}`}>
                     <span className="text-[10px] font-bold leading-tight">{row.visible ? "Yes" : "No"}</span>
                   </div>
                 </div>
-                {/* Actions */}
                 <div className={`flex relative items-center justify-center ${COLUMNS[7].className}`}>
                   <button onClick={() => setOpenDropdownId((prev) => prev === row.product_id ? null : row.product_id)} className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-accent text-primary" : "text-primary hover:bg-primary/10"}`}>
                     Action <ChevronDown />
                   </button>
                   {isOpen && (
-                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
-                      <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors">Edit Product</button>
-                      <button onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors">Delete Product</button>
+                    <div className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] bg-background border border-primary shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col text-left">
+                      <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-left transition-colors">Edit Product</button>
+                      <button onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors">Delete Product</button>
                     </div>
                   )}
                 </div>
@@ -236,17 +245,15 @@ export default function ProductsTable({ tenantId }: ProductsTableProps) {
         )}
       </div>
 
-      {/* Pagination */}
       <div className="w-full flex justify-end items-center gap-3 mt-6">
         {visibleCount > 5 && <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-primary text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-primary/10 active:scale-95 transition-all">Show Less</button>}
         {filtered.length > visibleCount && <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-accent text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">Load More</button>}
       </div>
 
-      {/* Modals */}
-      {showAdd && <ProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} />}
-      {editTarget && <ProductModal mode="edit" tenantId={tenantId} productId={editTarget.product_id} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />}
+      {showAdd      && <ProductModal mode="add"  tenantId={tenantId} onSave={handleAdd}  onClose={() => setShowAdd(false)} colors={colors} />}
+      {editTarget   && <ProductModal mode="edit" tenantId={tenantId} productId={editTarget.product_id} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} colors={colors} />}
       {deleteTarget && <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />}
-      {showCategories && <ManageCategoriesModal tenantId={tenantId} type="fnb_product" placeholder="e.g. Cold Beverage" onClose={() => { setShowCategories(false); loadProducts(); }} />}
+      {showCategories && <ManageCategoriesModal tenantId={tenantId} type="fnb_product" placeholder="e.g. Cold Beverage" onClose={() => { setShowCategories(false); loadProducts(); }} colors={colors} />}
     </div>
   );
 }

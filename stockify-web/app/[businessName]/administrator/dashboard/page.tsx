@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import NavbarAdmin from "@/components/navbars/navbar-admin";
 import SidebarAdmin from "@/components/navbars/sidebar-admin";
 
@@ -98,45 +99,89 @@ export default function AdminDashboard() {
 
   if (isLoading) return <LoadingScreen />;
 
-  return (
-    <div className="flex min-h-screen" style={{
-      backgroundColor: config?.color_background ?? "#FFFCF0",
-      '--color-primary': config?.color_primary ?? "#385E31",
-      '--color-secondary': config?.color_secondary ?? "#2A4725",
-      '--color-accent': config?.color_accent ?? "#F7B71D",
-      '--color-text': config?.color_text ?? "#3A6131",
-      '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
-    } as React.CSSProperties}>
-      
-      <SidebarAdmin 
-        activeSection={activeSection} 
-        setActiveSection={handleSetSection} 
-        openSettings={() => handleSetSection("admin-settings")} 
+  const SECTIONS: Record<SectionKey, React.ReactNode> = {
+    "dashboard":      dashboardData ? (
+      <DashboardSection
+        data={dashboardData}
+        onManageShop={() => handleSetSection("store-settings")}
+        colors={config || undefined}
       />
-      
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-14 pt-5 pb-12">
-        <NavbarAdmin 
+    ) : <div />,
+    "user-admin":     <UserAdminSection colors={config || undefined} />,
+    "storefront":     <StorefrontSection />,
+    "store-settings": <StoreSettingsSection />,
+    "admin-settings": <div />,
+  };
+
+  return (
+    <div
+      className="flex min-h-screen"
+      style={{
+        backgroundColor:        config?.color_background  ?? "#FFFCF0",
+        "--color-primary":      config?.color_primary      ?? "#385E31",
+        "--color-secondary":    config?.color_secondary    ?? "#2A4725",
+        "--color-accent":       config?.color_accent       ?? "#F7B71D",
+        "--color-text":         config?.color_text         ?? "#3A6131",
+        "--color-sidebar-text": config?.color_sidebar_text ?? "#FFF9D7",
+        "--color-background":   config?.color_background   ?? "#FFFCEB",
+        "--color-navbar-text":  config?.color_navbar_text  ?? "#385E31",
+      } as React.CSSProperties}
+    >
+      {/* Sidebar — slides in from left */}
+      <motion.div
+        initial={{ opacity: 0, x: -32 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+      >
+        <SidebarAdmin
+          activeSection={activeSection}
           setActiveSection={handleSetSection}
-          openProfile={() => setIsProfileOpen(true)}
-          openNotifs={() => setIsNotifsOpen(true)}
+          openSettings={() => handleSetSection("admin-settings")}
+          colors={config || undefined}
         />
-        
-        <main className="p-5">
-          {activeSection === "dashboard" && dashboardData && (
-            <DashboardSection 
-              data={dashboardData}
-              onManageShop={() => handleSetSection("store-settings")} 
-            />
-          )}
-          {activeSection === "user-admin" && <UserAdminSection />}
-          {activeSection === "storefront" && <StorefrontSection />}
-          {activeSection === "store-settings" && <StoreSettingsSection />}
-        </main>
+      </motion.div>
+
+      {/* Main column */}
+      <div className="flex-1 flex flex-col h-full overflow-y-auto px-14 pt-5 pb-12">
+
+        {/* Navbar — drops from top */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: 0.15 }}
+        >
+          <NavbarAdmin
+            setActiveSection={handleSetSection}
+            openProfile={() => setIsProfileOpen(true)}
+            openNotifs={() => setIsNotifsOpen(true)}
+          />
+        </motion.div>
+
+        {/* Content — rises up */}
+        <motion.main
+          className="p-5"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1], delay: 0.25 }}
+        >
+          {/* Section switcher — fades out old, fades in new */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              {SECTIONS[activeSection]}
+            </motion.div>
+          </AnimatePresence>
+        </motion.main>
       </div>
 
-      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} isAdmin={true} />
-      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} role="admin" tenantId={tenantId} />
-      <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} />
+      <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} isAdmin={true} colors={config || undefined} />
+      <NotificationModal isOpen={isNotifsOpen} onClose={() => setIsNotifsOpen(false)} role="admin" tenantId={tenantId} colors={config || undefined} />
+      <AdminSettingsModal isOpen={isSettingsOpen} onClose={handleCloseSettings} colors={config || undefined} />
     </div>
   );
 }

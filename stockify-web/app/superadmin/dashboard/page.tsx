@@ -169,7 +169,6 @@ export default function SuperadminDashboard() {
         {/* ── Navbar ── */}
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          openNotifs={() => setIsNotifsOpen(true)}
         />
 
         {/* ── Header ── */}

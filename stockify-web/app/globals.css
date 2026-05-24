@@ -19,6 +19,7 @@
   --color-secondary: var(--color-secondary);
   --color-accent: var(--color-accent);
   --color-sidebar-text: var(--color-sidebar-text);
+  --color-navbar-text: var(--color-navbar-text);
 }
 
 @media (prefers-color-scheme: dark) {

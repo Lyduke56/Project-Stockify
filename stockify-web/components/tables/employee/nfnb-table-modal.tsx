@@ -14,6 +14,7 @@ import ManageCategoriesModal from "@/components/modals/employee/product-modals/m
 import DeleteItemModal       from "@/components/modals/employee/ingredients-modals/delete-item-modal";
 import RestockModal          from "@/components/modals/employee/product-modals/restock-modal";
 import { Loader2, RefreshCw } from "lucide-react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 // ── SVG helpers ───────────────────────────────────────────────
 
@@ -53,9 +54,11 @@ type DropdownPos = { top: number; right: number };
 
 interface NfbProductsTableProps {
   tenantId: string;
+  onLoadComplete?: () => void;  
+  colors?: StorefrontConfig | null;
 }
 
-export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
+export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: NfbProductsTableProps) {
   const [products,      setProducts]      = useState<NfbProduct[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState<string | null>(null);
@@ -77,11 +80,19 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const loadProducts = useCallback(async () => {
-    try { setLoading(true); setError(null); setProducts(await fetchNfbProducts(tenantId)); }
-    catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [tenantId]);
+ const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setProducts(await fetchNfbProducts(tenantId));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      onLoadComplete?.();  // ← add this
+    }
+  }, [tenantId, onLoadComplete]);
+  
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
@@ -185,6 +196,8 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
     setDeleteTarget(null);
     loadProducts();
   };
+
+  
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -385,7 +398,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
                   <button
                     onClick={(e) => handleActionClick(e, row.product_id)}
                     className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                      isOpen ? "bg-primary text-[#FFFCEB]" : "text-primary hover:bg-primary/10"
+                      isOpen ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)]" : "text-primary hover:bg-primary/10"
                     }`}
                   >
                     Action <ChevronDown />
@@ -407,7 +420,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
           <div
             id="nfb-variant-popover"
             style={{ position: "fixed", top: variantPopPos.top, right: variantPopPos.right, zIndex: 9999 }}
-            className="w-[280px] bg-white border border-primary/20 shadow-2xl rounded-[16px] py-3 overflow-hidden flex flex-col"
+            className="w-[280px] bg-background border border-primary shadow-2xl rounded-[16px] py-3 overflow-hidden flex flex-col text-primary"
           >
             <div className="px-4 pb-2 border-b border-primary/10 mb-2">
               <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{row.name} Variants</h4>
@@ -448,23 +461,23 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
           <div
             id="nfb-action-dropdown"
             style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
-            className="w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left"
+            className="w-[140px] bg-background border border-primary shadow-lg rounded-[4px] py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col text-left"
           >
             <button
               onClick={() => { setEditTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+              className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
             >
               Edit Product
             </button>
             <button
               onClick={() => { setRestockTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+              className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
             >
               Restock
             </button>
             <button
               onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors"
+              className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors"
             >
               Delete Product
             </button>
@@ -488,10 +501,10 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
       {/* Modals */}
       {showAdd && (
-        <NfbProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} />
+        <NfbProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} colors={colors} />
       )}
       {editTarget && (
-        <NfbProductModal mode="edit" tenantId={tenantId} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />
+        <NfbProductModal mode="edit" tenantId={tenantId} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} colors={colors} />
       )}
       {deleteTarget && (
         <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
@@ -503,6 +516,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
           tenantId={tenantId}
           onClose={() => setRestockTarget(null)}
           onSuccess={loadProducts}
+          colors={colors}
         />
       )}
       {showCategories && (
@@ -511,6 +525,7 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
           type="nfb_product"
           placeholder="e.g. Cleaning supplies"
           onClose={() => { setShowCategories(false); loadProducts(); }}
+          colors={colors}
         />
       )}
     </div>

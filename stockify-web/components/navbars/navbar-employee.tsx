@@ -9,13 +9,16 @@ interface NavbarEmployeeProps {
   openProfile: () => void;
   openNotifs: () => void;
   openSettings: () => void;
+  // Expose this so the parent can pass it to the Modal
+  setResetNotificationBadge?: (fn: () => void) => void; 
 }
 
 export default function NavbarEmployee({ 
   setActiveSection,
   openProfile, 
   openNotifs, 
-  openSettings 
+  openSettings,
+  setResetNotificationBadge
 }: NavbarEmployeeProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -23,26 +26,61 @@ export default function NavbarEmployee({
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [hasSeenNotifs, setHasSeenNotifs] = useState<boolean>(false);
 
+  // ── NEW BRAND STATES ────────────────────────────────────────────────────────
+  const [businessName, setBusinessName] = useState<string>("STOCKIFY");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Function to be called by the parent (via Modal's "Clear All")
+  const resetBadge = useCallback(() => {
+    setOperationalAlerts(0);
+    setHasSeenNotifs(true);
+  }, []);
+
+  // Sync the reset function with the parent component if provided
+  // NOTE: Must wrap in arrow fn — React useState setter calls functions directly as updaters
+  useEffect(() => {
+    if (setResetNotificationBadge) {
+      setResetNotificationBadge(() => resetBadge);
+    }
+  }, [setResetNotificationBadge, resetBadge]);
   const calculateOperationalMetrics = useCallback(async (tId: string) => {
     try {
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
-        supabase.from("fnb_inventory_items").select("item_id, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
-        supabase.from("nfb_products").select("product_id, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("nfb_products").select("product_name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
         supabase.from("orders").select("order_id, fulfillment_status").eq("tenant_id", tId).in("fulfillment_status", ["Pending", "Reported"])
       ]);
 
-      const lowFnbCount = fnbResult.data?.filter(
-        (item: { stock: number; alert_limit: number }) => item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit)
-      ).length || 0;
+      let dismissed: string[] = [];
+      try {
+        const stored = localStorage.getItem("stockify_dismissed_alerts");
+        dismissed = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(dismissed)) dismissed = [];
+      } catch {
+        dismissed = [];
+      }
 
-      const lowNfbCount = nfbResult.data?.filter(
-        (item: { quantity: number; reorder_threshold: any }) => 
-          Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold))
-      ).length || 0;
+      const activeLowFnb = fnbResult.data?.filter((item: { item_name: string; stock: number; alert_limit: number }) => {
+        const isLow = item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit);
+        if (!isLow) return false;
+        const alertId = `fnb-stock-${item.item_name}-${item.stock}`;
+        return !dismissed.includes(alertId);
+      }) || [];
 
-      const pendingAndReportedOrdersCount = orderResult.data?.length || 0;
+      const activeLowNfb = nfbResult.data?.filter((item: { product_name: string; quantity: number; reorder_threshold: any }) => {
+        const isLow = Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold));
+        if (!isLow) return false;
+        const alertId = `nfb-stock-${item.product_name}-${item.quantity}`;
+        return !dismissed.includes(alertId);
+      }) || [];
 
-      setOperationalAlerts(lowFnbCount + lowNfbCount + pendingAndReportedOrdersCount);
+      const activeOrders = orderResult.data?.filter((order: { order_id: string; fulfillment_status: string }) => {
+        const prefix = order.fulfillment_status === "Reported" ? "order-reported-" : "order-pending-";
+        const alertId = `${prefix}${order.order_id}`;
+        return !dismissed.includes(alertId);
+      }) || [];
+
+      setOperationalAlerts(activeLowFnb.length + activeLowNfb.length + activeOrders.length);
     } catch (err) {
       console.error("Failed calculating operational notification badge counts:", err);
     }
@@ -60,8 +98,25 @@ export default function NavbarEmployee({
         .single();
 
       if (profile?.tenant_id) {
-        setTenantId(profile.tenant_id);
-        calculateOperationalMetrics(profile.tenant_id);
+        const tid = profile.tenant_id;
+        setTenantId(tid);
+        calculateOperationalMetrics(tid);
+
+        // ── FETCH BRAND INFORMATION FROM THE TENANTS TABLE ───────────────────
+        const { data: tenantBrand } = await supabase
+          .from("tenants")
+          .select("business_name, logo_url")
+          .eq("tenant_id", tid)
+          .single();
+
+        if (tenantBrand) {
+          if (tenantBrand.business_name) {
+            setBusinessName(tenantBrand.business_name.toUpperCase());
+          }
+          if (tenantBrand.logo_url) {
+            setLogoUrl(tenantBrand.logo_url);
+          }
+        }
       }
     };
 
@@ -86,53 +141,95 @@ export default function NavbarEmployee({
         .subscribe();
     });
 
+    // Real-time listener specifically watching the tenants table for changes to branding elements
+    const brandChannel = supabase
+      .channel("realtime-employee-brand")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` },
+        () => {
+          supabase
+            .from("tenants")
+            .select("business_name, logo_url")
+            .eq("tenant_id", tenantId)
+            .single()
+            .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
+              if (data) {
+                if (data.business_name) setBusinessName(data.business_name.toUpperCase());
+                if (data.logo_url) setLogoUrl(data.logo_url);
+              }
+            });
+        }
+      )
+      .subscribe();
+
     return () => {
       channels.forEach((channel) => supabase.removeChannel(channel));
+      supabase.removeChannel(brandChannel);
     };
   }, [tenantId, calculateOperationalMetrics, supabase]);
 
   const handleNotifClick = () => {
-    setHasSeenNotifs(true);
     openNotifs();
   };
 
   return (
     <nav className="relative w-full h-[55px] px-12 bg-[var(--color-accent)] rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[50]">
       
-      {/* Brand Group */}
-      <div 
-        className="flex items-center gap-1.5 cursor-pointer select-none" 
-        onClick={() => setActiveSection("dashboard")}
-      >
-        <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-          <img src="/stockify-logo-1.svg" alt="Stockify Logo" className="h-7 md:h-9 w-auto" />
+      {/* Brand Group: Dynamic Logo + Brand Name */}
+      <div className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setActiveSection("dashboard")}>
+        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full overflow-hidden bg-white/10 p-0.5">
+          <img 
+            src={logoUrl || "/stockify-logo-1.svg"} 
+            alt={`${businessName} Logo`} 
+            className="h-full w-full object-contain" 
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/stockify-logo-1.svg";
+            }}
+          />
         </div>
-        <div className="text-[var(--color-primary)] text-3xl font-bold font-fredoka tracking-tight">
-          STOCKIFY
+        <div className="text-[var(--color-primary)] text-xl md:text-2xl font-bold font-fredoka truncate max-w-[180px] md:max-w-[280px]">
+          {businessName}
         </div>
       </div>
 
-      {/* Toolbar Options Control Rack */}
-      {/* RESPONSIVE UPGRADE: gap-4 on mobile expanding to gap-8 on wider grids */}
-      <div className="flex items-center gap-4 md:gap-8">
-        
-        {/* Home Link */}
-        <button
-          onClick={() => setActiveSection("dashboard")}
-          className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none"
-          title="Home"
-        >
-          <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
+      {/* RIGHT SIDE: Controls */}
+      <div className="flex items-center gap-4 md:gap-8 text-primary">
+        <button onClick={() => setActiveSection("dashboard")} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Home">
+          <div
+            className="w-full h-full bg-current"
+            style={{
+              WebkitMaskImage: "url(/navbar-home.svg)",
+              maskImage: "url(/navbar-home.svg)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+            role="img"
+            aria-label="Home"
+          />
         </button>
 
-        {/* Notifications Icon with Dynamic Operational Counter */}
         <div className="relative flex items-center justify-center">
-          <button
-            onClick={handleNotifClick}
-            className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none"
-            title="Notifications"
-          >
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
+          <button onClick={handleNotifClick} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" title="Notifications">
+            <div
+              className="w-full h-full bg-current"
+              style={{
+                WebkitMaskImage: "url(/navbar-notif.svg)",
+                maskImage: "url(/navbar-notif.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              role="img"
+              aria-label="Notifications"
+            />
           </button>
           
           {operationalAlerts > 0 && !hasSeenNotifs && (
@@ -142,23 +239,25 @@ export default function NavbarEmployee({
           )}
         </div>
 
-        {/* Profile Button - Layout Enhanced with relative block hitting areas */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            openProfile();
-          }}
-          className="w-9 h-9 relative flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer focus:outline-none rounded-full p-0 bg-transparent border-0 group"
-          title="Profile Settings"
-          style={{ WebkitTapHighlightColor: "transparent" }}
-        >
-          <img 
-            src="/navbar-profile-settings.svg" 
-            alt="Profile Settings" 
-            className="w-8 h-8 object-contain rounded-full border border-[#385E31] group-hover:brightness-95 pointer-events-none" 
-          />
+        <button onClick={(e) => { e.preventDefault(); openProfile(); }} className="w-9 h-9 relative flex items-center justify-center hover:scale-110 active:scale-95 transition-all cursor-pointer focus:outline-none rounded-full p-0 bg-transparent border-0 group" title="Profile Settings">
+          <div className="w-8 h-8 rounded-full border border-primary p-0.5 flex items-center justify-center group-hover:brightness-95 pointer-events-none">
+            <div
+              className="w-full h-full bg-current"
+              style={{
+                WebkitMaskImage: "url(/navbar-profile-settings.svg)",
+                maskImage: "url(/navbar-profile-settings.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              role="img"
+              aria-label="Profile Settings"
+            />
+          </div>
         </button>
-
       </div>
     </nav>
   );
