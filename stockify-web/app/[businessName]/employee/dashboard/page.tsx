@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
@@ -35,7 +36,6 @@ export type SidebarData = {
   businessName: string;
 };
 
-
 export default function EmployeeDashboard() {
   const searchParams = useSearchParams();
 
@@ -55,7 +55,6 @@ export default function EmployeeDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Single query to get everything we need from users + tenants
       const { data: userData } = await supabase
         .from("users")
         .select(`
@@ -81,7 +80,6 @@ export default function EmployeeDashboard() {
         businessName: tenant?.business_name ?? "",
       });
 
-      // Fetch everything else in parallel
       const [cfg, dash] = await Promise.all([
         fetchStorefrontConfig(tid),
         fetchDashboardData(tid),
@@ -117,7 +115,6 @@ export default function EmployeeDashboard() {
     if (querySection) setActiveSection(querySection);
   }, [searchParams]);
 
-  // Everything — sidebar, navbar, dashboard — waits here
   if (isLoading) return <LoadingScreen />;
 
   const handleSetSection = (section: SectionKey) => {
@@ -140,49 +137,80 @@ export default function EmployeeDashboard() {
   };
 
   return (
-    <div className="flex min-h-screen" style={{
-      backgroundColor: config?.color_background ?? "#FFFCEB",
-      '--color-primary': config?.color_primary ?? "#385E31",
-      '--color-secondary': config?.color_secondary ?? "#2A4725",
-      '--color-accent': config?.color_accent ?? "#F7B71D",
-      '--color-text': config?.color_text ?? "#3A6131",
-      '--color-sidebar-text': config?.color_sidebar_text ?? "#FFF9D7",
-    } as React.CSSProperties}>
-
-      <SidebarEmployee
-        activeSection={activeSection}
-        setActiveSection={handleSetSection}
-        onOpenSettings={() => console.log("Open settings clicked")}
-        sidebarData={sidebarData!}
-      />
-
-      <div className="flex-1 flex flex-col h-full overflow-y-auto px-0 pb-10 px-15 pt-5">
-        <NavbarEmployee
+    <div
+      className="flex min-h-screen"
+      style={{
+        backgroundColor:        config?.color_background  ?? "#FFFCEB",
+        "--color-primary":      config?.color_primary      ?? "#385E31",
+        "--color-secondary":    config?.color_secondary    ?? "#2A4725",
+        "--color-accent":       config?.color_accent       ?? "#F7B71D",
+        "--color-text":         config?.color_text         ?? "#3A6131",
+        "--color-sidebar-text": config?.color_sidebar_text ?? "#FFF9D7",
+      } as React.CSSProperties}
+    >
+      {/* Sidebar — slides in from left */}
+      <motion.div
+        initial={{ opacity: 0, x: -32 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+      >
+        <SidebarEmployee
+          activeSection={activeSection}
           setActiveSection={handleSetSection}
-          openProfile={handleOpenProfile}
-          openNotifs={handleOpenNotifs}
-          openSettings={handleOpenSettings}
+          onOpenSettings={() => console.log("Open settings clicked")}
+          sidebarData={sidebarData!}
         />
-        <main className="px-5 pt-10">
-          {SECTIONS[activeSection]}
-        </main>
+      </motion.div>
+
+      {/* Main column */}
+      <div className="flex-1 flex flex-col h-full overflow-y-auto pb-10 px-15 pt-5">
+
+        {/* Navbar — drops from top */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1], delay: 0.15 }}
+        >
+          <NavbarEmployee
+            setActiveSection={handleSetSection}
+            openProfile={handleOpenProfile}
+            openNotifs={handleOpenNotifs}
+            openSettings={handleOpenSettings}
+          />
+        </motion.div>
+
+        {/* Content — rises up */}
+        <motion.main
+          className="px-5 pt-10"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1], delay: 0.25 }}
+        >
+          {/* Section switcher — fades out old, fades in new */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeSection}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+            >
+              {SECTIONS[activeSection]}
+            </motion.div>
+          </AnimatePresence>
+        </motion.main>
       </div>
 
-      {/*  WORKING PROFILE MODAL LAYER */}
       <EmployeeProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
       />
-
-      {/*  WORKING NOTIFICATION MODAL LAYER */}
       <NotificationModal
         isOpen={isNotifsOpen}
         onClose={() => setIsNotifsOpen(false)}
         role="employee"
         tenantId={tenantId}
       />
-
-      {/*  WIRED UP UNIFIED SETTINGS MODAL OVERLAY */}
       <EmployeeSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

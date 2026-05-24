@@ -47,9 +47,10 @@ const COLUMNS = [
 
 interface FnbIngredientsTableProps {
   tenantId: string;
+  onLoadComplete?: () => void;
 }
 
-export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTableProps) {
+export default function FnbIngredientsTable({ tenantId, onLoadComplete }: FnbIngredientsTableProps) {
   const [items, setItems] = useState<FnbItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +67,14 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
 
-  const loadItems = useCallback(async () => {
+const loadItems = useCallback(async () => {
     try { setLoading(true); setError(null); setItems(await fetchFnbItems(tenantId)); }
     catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [tenantId]);
+    finally { 
+      setLoading(false);
+      onLoadComplete?.(); // ← add this
+    }
+  }, [tenantId, onLoadComplete]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 

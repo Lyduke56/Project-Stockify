@@ -134,7 +134,6 @@ export default function SubscriptionBilling() {
         {/* Navbar */}
         <NavbarApp
           onHome={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          openNotifs={() => setIsNotifsOpen(true)}
         />
 
         {/* Page Header */}

@@ -17,7 +17,11 @@ import TransactionDetailModal from "../modals/employee/transaction-modal/modal";
 const COLUMNS = ["TRANSACTION ID", "ORDER ID", "DATE & TIME", "CUSTOMER", "PAYMENT", "TOTAL", "ACTION"];
 const ITEMS_PER_LOAD = 15;
 
-export default function TransactionsTable() {
+interface TransactionsTableProps {
+  onLoadComplete?: () => void;
+}
+
+export default function TransactionsTable({ onLoadComplete }: TransactionsTableProps) {
   const [tenantId, setTenantId] = useState("");
   const [transactions, setTxns] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,12 +45,13 @@ export default function TransactionsTable() {
   // Pagination State
   const [visibleRows, setVisibleRows] = useState(ITEMS_PER_LOAD);
 
-  const loadTxns = useCallback(async (tid: string) => {
+ const loadTxns = useCallback(async (tid: string) => {
     const data = await fetchTransactions(tid);
     setTxns(data);
     setLoading(false);
     setRefreshing(false);
-  }, []);
+    onLoadComplete?.(); // ← add this
+  }, [onLoadComplete]);
 
   useEffect(() => {
     const init = async () => {
