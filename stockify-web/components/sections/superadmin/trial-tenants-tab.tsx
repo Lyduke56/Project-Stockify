@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, X, Loader2, FastForward } from "lucide-react";
-import TenantProfileModal from "@/components/modals/superadmin/tenant-profile/tenant-profile-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +14,10 @@ interface TrialTenant {
   business_type:   string;
   trial_ends_at:   string | null;
   trial_days_left: number;
+}
+
+interface TabProps {
+  onReview: (id: string) => void;
 }
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
@@ -179,9 +181,8 @@ function EndTrialModal({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function TrialTenantsTab() {
-  const router = useRouter();
-
+// Corrected component name and passed the prop!
+export default function TrialTenantsTab({ onReview }: TabProps) {
   const [tenants,  setTenants]  = useState<TrialTenant[]>([]);
   const [filtered, setFiltered] = useState<TrialTenant[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -196,7 +197,6 @@ export default function TrialTenantsTab() {
   // Action state
   const [selectedTenant,  setSelectedTenant]  = useState<TrialTenant | null>(null);
   const [showEndTrialModal, setShowEndTrialModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [actionLoading,   setActionLoading]   = useState(false);
   const [actionError,     setActionError]     = useState("");
   const [successMsg,      setSuccessMsg]      = useState("");
@@ -395,10 +395,8 @@ export default function TrialTenantsTab() {
                 {/* Business Name */}
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                   <span
-                    onClick={() => {
-                      setSelectedTenant(row);
-                      setShowProfileModal(true);
-                    }}
+                    // Replaced with onReview
+                    onClick={() => onReview(row.tenant_id)}
                     className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
@@ -456,10 +454,10 @@ export default function TrialTenantsTab() {
                     <div className="absolute top-8 right-[50%] translate-x-1/2 w-[160px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
 
                       <button
+                        // Replaced with onReview
                         onClick={() => {
-                          setSelectedTenant(row);
                           setOpenDropdownId(null);
-                          setShowProfileModal(true);
+                          onReview(row.tenant_id);
                         }}
                         className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                       >
@@ -524,20 +522,6 @@ export default function TrialTenantsTab() {
           />
         )}
       </AnimatePresence>
-
-      <TenantProfileModal
-        isOpen={showProfileModal}
-        tenantId={selectedTenant?.tenant_id ?? null}
-        onClose={() => {
-          setShowProfileModal(false);
-          setSelectedTenant(null);
-        }}
-        onSuccess={(tenantId, action) => {
-          if (action === "suspend" || action === "terminate") {
-            setTenants((prev) => prev.filter((t) => t.tenant_id !== tenantId));
-          }
-        }}
-      />
       
     </>
   );

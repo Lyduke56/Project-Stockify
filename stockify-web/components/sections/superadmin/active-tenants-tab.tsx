@@ -19,6 +19,10 @@ interface ActiveTenant {
   next_billing_date:   string | null;
 }
 
+interface TabProps {
+  onReview: (id: string) => void;
+}
+
 // ── SVG helpers ───────────────────────────────────────────────────────────────
 
 const SearchIcon = () => (
@@ -78,7 +82,7 @@ const SkeletonRow = () => (
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ActiveTenantsTab() {
+export default function ActiveTenantsTab({ onReview }: TabProps) {
   const router = useRouter();
 
   const [tenants,  setTenants]  = useState<ActiveTenant[]>([]);

@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import PendingTenantReviewModal from "@/components/modals/superadmin/PendingTenantReviewModal";
 
+
+interface TabProps {
+  onReview: (id: string) => void;
+}
+
 interface PendingTenant {
   tenant_id: string;
   business_name: string;
@@ -43,7 +48,7 @@ const SkeletonRow = () => (
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function PendingTenantsTab() {
+export default function PendingTenantsTab({ onReview }: TabProps) {
   const [pendingData, setPendingData] = useState<PendingTenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -156,7 +161,7 @@ export default function PendingTenantsTab() {
               >
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                   <span
-                    onClick={() => setReviewingId(row.tenant_id)}
+                    onClick={() => onReview(row.tenant_id)}
                     className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
@@ -187,7 +192,7 @@ export default function PendingTenantsTab() {
 
                 <div className="flex-1 flex justify-center items-center">
                   <button
-                    onClick={() => setReviewingId(row.tenant_id)}
+                    onClick={() => onReview(row.tenant_id)}
                     className="bg-[#F7B71D] text-[#3A6131] px-5 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 hover:text-[#FFFCEB] transition-colors"
                   >
                     Review
