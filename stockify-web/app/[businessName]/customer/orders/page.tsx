@@ -250,13 +250,13 @@ export default function CustomerOrdersPage() {
                               {item.quantity}×
                             </span>
                             <div className="min-w-0">
-                              <p className="font-semibold truncate" style={{ color: c.text }}>{item.item_name}</p>
+                              <p className="font-semibold truncate" style={{ color: c.accent }}>{item.item_name}</p>
                               {item.size_label && (
                                 <p className="text-[10.5px] font-semibold" style={{ color: c.secondary + "80" }}>{item.size_label}</p>
                               )}
                             </div>
                           </div>
-                          <span className="flex-shrink-0 font-bold text-[12.5px]" style={{ color: c.text }}>
+                          <span className="flex-shrink-0 font-bold text-[12.5px]" style={{ color: c.accent }}>
                             ₱{(item.unit_price * item.quantity).toFixed(2)}
                           </span>
                         </div>
@@ -272,7 +272,7 @@ export default function CustomerOrdersPage() {
                     <div className="border-t px-4 py-3 flex items-center justify-between mt-auto" style={{ borderTopColor: c.secondary + "14", backgroundColor: c.secondary + "08" }}>
                       <div>
                         <p className="text-[9.5px] font-black uppercase tracking-widest mb-0.5" style={{ color: c.secondary + "73" }}>Total</p>
-                        <p className="text-[17px] font-black leading-none" style={{ color: c.text }}>
+                        <p className="text-[17px] font-black leading-none" style={{ color: c.accent }}>
                           ₱{order.total_amount.toFixed(2)}
                         </p>
                       </div>
@@ -372,7 +372,7 @@ export default function CustomerOrdersPage() {
                 <div className="flex justify-between items-center rounded-xl border px-5 py-4 shadow-[0_2px_8px_rgba(28,51,25,0.05)]" style={{ backgroundColor: c.bg, borderColor: c.primary + "14" }}>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: c.primary + "73" }}>Fulfillment Status</p>
-                    <p className="font-bold text-[14px]" style={{ color: c.text }}>Current Stage</p>
+                    <p className="font-bold text-[14px]" style={{ color: c.primary }}>Current Stage</p>
                   </div>
                   {(() => {
                     const detailStatus = getStatusConfig(viewOrder.fulfillment_status);
@@ -408,7 +408,7 @@ export default function CustomerOrdersPage() {
                         <Truck size={22} strokeWidth={1.8} />
                       </div>
                       <div>
-                        <p className="font-bold text-[15px]" style={{ color: c.text }}>{viewOrder.deliverer_name}</p>
+                        <p className="font-bold text-[15px]" style={{ color: c.primary }}>{viewOrder.deliverer_name}</p>
                         {viewOrder.delivery_id && (
                           <p className="text-[12px] font-semibold mt-0.5" style={{ color: c.primary + "80" }}>ID: {viewOrder.delivery_id}</p>
                         )}
@@ -420,7 +420,7 @@ export default function CustomerOrdersPage() {
                 {/* Order Summary */}
                 <div className="rounded-xl border overflow-hidden shadow-[0_2px_8px_rgba(28,51,25,0.04)]" style={{ backgroundColor: c.bg, borderColor: c.primary + "14" }}>
                   <div className="px-5 py-3.5 border-b" style={{ backgroundColor: c.primary + "0A", borderColor: c.primary + "14" }}>
-                    <h3 className="font-black text-[13px] uppercase tracking-wider" style={{ color: c.text }}>Order Summary</h3>
+                    <h3 className="font-black text-[13px] uppercase tracking-wider" style={{ color: c.primary }}>Order Summary</h3>
                   </div>
                   <div className="divide-y divide-[#2E5128]/6">
                     {viewOrder.items.map((item, i) => (
@@ -430,13 +430,13 @@ export default function CustomerOrdersPage() {
                             {item.quantity}×
                           </span>
                           <div>
-                            <p className="font-semibold text-[14px]" style={{ color: c.text }}>{item.item_name}</p>
+                            <p className="font-semibold text-[14px]" style={{ color: c.primary }}>{item.item_name}</p>
                             {item.size_label && (
                               <p className="text-[11px] font-semibold mt-0.5" style={{ color: c.primary + "80" }}>Size: {item.size_label}</p>
                             )}
                           </div>
                         </div>
-                        <span className="font-bold text-[13.5px]" style={{ color: c.text }}>
+                        <span className="font-bold text-[13.5px]" style={{ color: c.primary }}>
                           ₱{(item.unit_price * item.quantity).toFixed(2)}
                         </span>
                       </div>
@@ -448,7 +448,7 @@ export default function CustomerOrdersPage() {
                 <div className="grid grid-cols-2 gap-3.5 pb-2">
                   <div className="px-5 py-4 rounded-xl border shadow-[0_2px_8px_rgba(28,51,25,0.04)]" style={{ backgroundColor: c.bg, borderColor: c.primary + "14" }}>
                     <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: c.primary + "73" }}>Payment Method</p>
-                    <p className="font-bold text-[14px] leading-snug" style={{ color: c.text }}>
+                    <p className="font-bold text-[14px] leading-snug" style={{ color: c.primary }}>
                       {viewOrder.payment_method === "Cash-on-Delivery" ? "Cash on Delivery" : viewOrder.payment_method}
                     </p>
                   </div>

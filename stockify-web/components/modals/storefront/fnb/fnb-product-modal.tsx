@@ -6,6 +6,7 @@ import { X, Minus, Plus, Coffee, ShoppingBag, Star, Trash2, Edit2, Check, Messag
 import { FnbProduct, FnbProductSize } from "@/backend/hooks/getStoreFront";
 import { fetchReviews, submitReview, deleteReview, updateReview } from "@/lib/customer/customer-actions";
 import { createClient } from "@/lib/supabase/client";
+import { useCart } from "@/lib/customer/cart-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface FnbProductModalProps {
@@ -348,15 +349,18 @@ function InlineReviews({ productId, tenantId, colors }: { productId: string; ten
 
 export const FnbProductModal = ({ isOpen, onClose, product, tenantId, colors }: FnbProductModalProps) => {
   const C = buildC(colors);
+  const { addToCart } = useCart();
   const [selectedSize, setSelectedSize] = useState<FnbProductSize | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     if (product) {
       setSelectedSize(product.sizes.find((s) => s.is_default) ?? product.sizes[0] ?? null);
       setQuantity(1);
       setImgLoaded(false);
+      setAdded(false);
     }
   }, [product]);
 
@@ -367,6 +371,30 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId, colors }: 
   const currentYield = hasSizes && selectedSize ? selectedSize.max_yield : product.max_yield;
   const totalPrice   = currentPrice * quantity;
   const inStock      = currentYield > 0;
+
+  const handleAdd = () => {
+    if (!inStock) return;
+
+    addToCart({
+      product_id: product.product_id,
+      tenant_id:  "",
+      item_type:  hasSizes ? "fnb_size" : "fnb_single",
+      name:       product.name,
+      price:      currentPrice,
+      qty:        quantity,
+      image:      product.image_url ?? undefined,
+      size_label: hasSizes && selectedSize ? selectedSize.label : null,
+      option_id:  hasSizes && selectedSize ? selectedSize.size_id : null,
+      modifiers:  hasSizes && selectedSize ? [`Size: ${selectedSize.label}`] : [],
+    });
+
+    setAdded(true);
+    setTimeout(() => {
+      setAdded(false);
+      onClose();
+      setQuantity(1);
+    }, 900);
+  };
 
   return (
     <AnimatePresence>
@@ -643,23 +671,32 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId, colors }: 
                   {/* Add to cart */}
                   <motion.button
                     disabled={!inStock}
+                    onClick={handleAdd}
                     whileHover={inStock ? { y: -2, boxShadow: `0 12px 32px ${C.accent}60` } : {}}
                     whileTap={inStock ? { scale: 0.97 } : {}}
                     style={{
                       flex: 1, height: 50, borderRadius: 14, border: "none",
-                      background: inStock
-                        ? `linear-gradient(135deg, ${C.accentSoft} 0%, ${C.accent} 100%)`
-                        : C.surface,
-                      color: inStock ? C.secondary : C.muted,
+                      background: added
+                        ? "#22c55e"
+                        : (inStock
+                          ? `linear-gradient(135deg, ${C.accentSoft} 0%, ${C.accent} 100%)`
+                          : C.surface),
+                      color: added ? "#FFFFFF" : (inStock ? C.secondary : C.muted),
                       fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
                       cursor: inStock ? "pointer" : "not-allowed",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       boxShadow: inStock ? `0 6px 22px ${C.accent}45` : "none",
-                      transition: "box-shadow .2s",
+                      transition: "box-shadow .2s, background .2s",
                     }}
                   >
-                    <ShoppingBag size={18} strokeWidth={2.5} />
-                    {inStock ? `Add to Bag  ·  ₱${totalPrice.toFixed(2)}` : "Sold Out"}
+                    {added ? (
+                      <><Check size={18} strokeWidth={2.5} /> Added!</>
+                    ) : (
+                      <>
+                        <ShoppingBag size={18} strokeWidth={2.5} />
+                        {inStock ? `Add to Bag  ·  ₱${totalPrice.toFixed(2)}` : "Sold Out"}
+                      </>
+                    )}
                   </motion.button>
                 </div>
               </div>
