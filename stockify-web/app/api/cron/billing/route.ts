@@ -52,7 +52,8 @@ export async function GET(req: NextRequest) {
           business_name,
           owner_full_name,
           owner_email,
-          subscription_status
+          subscription_status,
+          is_suspended
         )
       `)
       .order("billing_period", { ascending: false });
@@ -62,6 +63,7 @@ export async function GET(req: NextRequest) {
     let totalPaid = 0;
     let overdueCount = 0;
     let missedCount = 0;
+    let suspendedCount = 0;
 
     // 2. Format the data to match your frontend's `BillingRow` interface
     const rows = (records || []).map((r: any) => {
@@ -72,9 +74,17 @@ export async function GET(req: NextRequest) {
       const tenant = r.tenants || {};
       let displayStatus = r.payment_status;
       
-      // If tenant is suspended, mark the record display as "Missed"
-      if (tenant.subscription_status === "Suspended") {
-        displayStatus = "Missed";
+      // Determine display status:
+      // - "Missed" only when the subscription record itself is tagged "Missed"
+      //   (this happens via the billing cron when grace period expires unpaid)
+      // - "Suspended" when the tenant was manually suspended from Tenant Management
+      //   but the billing record is NOT yet "Missed"
+      if (
+        tenant.subscription_status === "Suspended" &&
+        tenant.is_suspended === true &&
+        r.payment_status !== "Missed"
+      ) {
+        displayStatus = "Suspended";
       }
 
       // Tally up stats while we loop
@@ -87,6 +97,8 @@ export async function GET(req: NextRequest) {
         overdueCount++;
       } else if (displayStatus === "Missed") {
         missedCount++;
+      } else if (displayStatus === "Suspended") {
+        suspendedCount++;
       }
 
       return {

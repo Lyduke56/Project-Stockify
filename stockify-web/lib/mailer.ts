@@ -29,6 +29,8 @@ export async function sendApprovalEmail(email: string, businessName: string, tri
   const trialEndStr = trialEndsAt.toLocaleDateString("en-PH", {
     month: "long", day: "numeric", year: "numeric",
   });
+  const originLink = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const formattedBusinessName = escHtml(businessName.toLowerCase().replace(/\s+/g, ''));
   await sendEmail({
     to: email,
     subject: `🎉 Welcome to Stockify — Your account is approved, ${businessName}!`,
@@ -56,7 +58,8 @@ export async function sendApprovalEmail(email: string, businessName: string, tri
       <div style="color:#666;font-size:12px;">After your trial, a monthly subscription of <strong>₱1,000</strong> will apply.</div>
     </div>
     <p style="color:#555;font-size:14px;line-height:1.7;">Log in to get started. Welcome aboard!</p>
-    <p style="color:#385E31;font-weight:700;font-size:14px;">The Stockify Admin Team</p>
+    <p style="color:#385E31;font-weight:700;font-size:14px;">The business portal login link for Employee, Admin, and Customer : ${originLink}/${formattedBusinessName}/login </p>
+    <p style="color:#385E31;font-weight:700;font-size:14px;">The tenant portal login link for subscription billing : ${originLink}/ </p>
   </div>
   <div class="foot">© ${new Date().getFullYear()} Stockify · Automated account notice.</div>
 </div>
@@ -383,11 +386,10 @@ export async function sendSuspensionWarningEmail(
 
   const deadlineBlock = daysRemaining !== null
     ? `<div style="background:${urgencyColor}15;border-left:4px solid ${urgencyColor};border-radius:4px;padding:14px 18px;margin:20px 0;color:#333;font-size:14px;line-height:1.7;">
-        <strong style="color:${urgencyColor};">${
-          daysRemaining <= 0
-            ? "⚠️ Your suspension period has already expired."
-            : `⏳ You have ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining to resolve this issue.`
-        }</strong><br/>
+        <strong style="color:${urgencyColor};">${daysRemaining <= 0
+      ? "⚠️ Your suspension period has already expired."
+      : `⏳ You have ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining to resolve this issue.`
+    }</strong><br/>
         Failure to resolve the issue by the deadline will result in the <strong>permanent termination</strong> of your account.
       </div>`
     : `<div style="background:#f8f8f8;border-left:4px solid #E5AD24;border-radius:4px;padding:14px 18px;margin:20px 0;color:#555;font-size:13px;">

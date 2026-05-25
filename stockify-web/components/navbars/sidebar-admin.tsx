@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
 import { createClient } from "@/lib/supabase/client";
-import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page"; // Adjusted import trajectory matching your dashboard path
+import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page";
 import LogoutModal from "../modals/logout-modal";
 
 interface NavItemProps {
@@ -25,10 +25,21 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
       }`}
     >
       <div className="w-8 h-8 flex items-center justify-center shrink-0">
-        <img
-          src={`/${iconFileName}.svg`}
-          alt={label}
-          className="w-full h-full object-contain"
+        {/* Replaced <img> with a CSS mask div to inherit text color */}
+        <div
+          className="w-full h-full bg-current"
+          style={{
+            WebkitMaskImage: `url(/${iconFileName}.svg)`,
+            maskImage: `url(/${iconFileName}.svg)`,
+            WebkitMaskSize: "contain",
+            maskSize: "contain",
+            WebkitMaskRepeat: "no-repeat",
+            maskRepeat: "no-repeat",
+            WebkitMaskPosition: "center",
+            maskPosition: "center",
+          }}
+          role="img"
+          aria-label={label}
         />
       </div>
       <div className="text-base whitespace-nowrap">{label}</div>
@@ -39,15 +50,27 @@ function NavItem({ label, iconFileName, isActive, onClick }: NavItemProps) {
 interface SidebarAdminProps {
   activeSection: SectionKey;
   setActiveSection: (section: SectionKey) => void;
-  openSettings: () => void; // 🟢 ADDED: Prop to trigger opening the Settings Modal
+  openSettings: () => void;
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
 }
 
 export default function SidebarAdmin({
   activeSection,
   setActiveSection,
-  openSettings, // 🟢 ADDED
+  openSettings, 
+  colors,
 }: SidebarAdminProps) {
   const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+  const businessName = (params?.businessName as string) || pathname?.split("/")[1];
   const supabase = createClient();
 
   const [shopName, setShopName] = useState<string | null>(null);
@@ -96,13 +119,29 @@ export default function SidebarAdmin({
   ];
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setShowLogoutModal(false);
-    router.push("/");
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      setShowLogoutModal(false);
+      const targetPath = businessName ? `/${businessName}/login` : "/";
+      window.location.href = targetPath;
+    } catch (e) {
+      console.error("Logout error:", e);
+      setShowLogoutModal(false);
+    }
   };
 
+  const sidebarStyles = {
+    "--color-primary": colors?.color_primary || "#385E31",
+    "--color-background": colors?.color_background || "#FFFCEB",
+    "--color-secondary": colors?.color_secondary || "#2A4725",
+    "--color-accent": colors?.color_accent || "#E5AC24",
+    "--color-sidebar-text": colors?.color_sidebar_text || "#FFF9D7",
+  } as React.CSSProperties;
+
   return (
-    <div className="w-64 h-screen pt-12 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
+    <div style={sidebarStyles} className="w-64 h-screen pt-12 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
       {/* Top Navigation */}
       <div className="flex flex-col gap-1">
         {adminNavItems.map((item) => (
@@ -121,22 +160,22 @@ export default function SidebarAdmin({
         <div className="w-48 h-px bg-white/10" />
 
         <div className="w-full flex flex-col gap-1">
-          {/*  CHANGED: Rendered explicitly as an action handler rather than mapping over an array with type mismatch problems */}
+          {/* Settings Tab */}
           <NavItem
-    label="Settings"
-    iconFileName="icon-settings"
-    isActive={activeSection === ("admin-settings" as any)} 
-    onClick={openSettings} 
-  />
+            label="Settings"
+            iconFileName="icon-settings"
+            isActive={activeSection === ("admin-settings" as any)} 
+            onClick={openSettings} 
+          />
 
           {/* Logout */}
           <NavItem
-    label="Logout"
-    iconFileName="icon-logout"
-    isActive={false}
-    onClick={() => setShowLogoutModal(true)}
-  />
-</div>
+            label="Logout"
+            iconFileName="icon-logout"
+            isActive={false}
+            onClick={() => setShowLogoutModal(true)}
+          />
+        </div>
       </div>
 
       {/* Logout Modal */}
@@ -144,6 +183,7 @@ export default function SidebarAdmin({
         isOpen={showLogoutModal}
         onCancel={() => setShowLogoutModal(false)}
         onConfirm={handleLogout}
+        colors={colors}
       />
     </div>
   );

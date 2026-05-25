@@ -1,14 +1,32 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { motion } from "framer-motion";
 import { fetchDashboardData, type DashboardData } from "@/lib/employee/dashboard-stats";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 import StatCard from "@/components/cards/stat-cards";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from "recharts";
 import { Loader2, AlertTriangle, Package, TrendingUp } from "lucide-react";
+
+// ─── Animation Variants ───────────────────────────────────────────────────────
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  show:   { opacity: 1, y: 0 },
+};
+
+const container = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -20,11 +38,18 @@ function formatCurrency(n: number): string {
 
 // ─── Chart Tooltip ────────────────────────────────────────────────────────────
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, colors }: any) => {
   if (active && payload?.length) {
     return (
-      <div className="bg-[#24481F] text-[#FFFCF0] text-xs rounded-lg px-4 py-3 shadow-xl border border-[#4A7842]">
-        <p className="font-bold mb-1 text-[#F5E69E]">Day {label}</p>
+      <div 
+        className="bg-secondary text-background text-xs rounded-lg px-4 py-3 shadow-xl border border-primary"
+        style={{
+          backgroundColor: colors?.color_secondary,
+          color: colors?.color_background,
+          borderColor: colors?.color_primary,
+        }}
+      >
+        <p className="font-bold mb-1 text-accent" style={{ color: colors?.color_accent }}>Day {label}</p>
         <p className="text-[14px]">₱{payload[0].value}K</p>
       </div>
     );
@@ -97,7 +122,7 @@ function LiveAlertsCard({ alerts, loading }: { alerts: DashboardData["alerts"]; 
 
 // ─── Revenue Chart Card ───────────────────────────────────────────────────────
 
-function LiveRevenueCard({ data }: { data: DashboardData }) {
+function LiveRevenueCard({ data, colors }: { data: DashboardData; colors?: StorefrontConfig | null }) {
   const { chartData, chartAvg, projectedTotal, dailyAvg, peakDay, peakAmount, lowDay, lowAmount, monthLabel } = data;
 
   const peakPoint = chartData.reduce((best, p) => (p.revenue > best.revenue ? p : best), chartData[0]);
@@ -105,7 +130,7 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
   const forecastStats = [
     { label: "MONTHLY TOTAL",  value: formatCurrency(projectedTotal), sub: monthLabel },
     { label: "DAILY AVERAGE",  value: formatCurrency(dailyAvg),       sub: "Avg per sales day" },
-    { label: "PEAK DAY",       value: peakDay ?? "—",                  sub: peakAmount > 0 ? formatCurrency(peakAmount) : "No data", subColor: undefined },
+    { label: "PEAK DAY",       value: peakDay ?? "—",                  sub: peakAmount > 0 ? formatCurrency(peakAmount) : "No data" },
     { label: "LOW POINT",      value: lowDay  ?? "—",                  sub: lowAmount  > 0 ? formatCurrency(lowAmount)  : "No data", subColor: "#D32F2F" },
   ];
 
@@ -116,27 +141,25 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
         {monthLabel} Revenue
       </h2>
 
-      {/* Stat pills */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {forecastStats.map((s) => (
           <div key={s.label} className="bg-secondary rounded-xl px-4 py-3.5 flex flex-col justify-between shadow-inner">
-            <span className="text-[10px] font-bold tracking-wider text-[#98C98A] uppercase mb-1">{s.label}</span>
-            <span className="text-[16px] font-extrabold text-[#F5E69E] mb-0.5 truncate">{s.value}</span>
-            <span className="text-[11px] font-semibold" style={{ color: s.subColor ?? "#7EC86B" }}>{s.sub}</span>
+            <span className="text-[10px] font-bold tracking-wider text-sidebar-text/70 uppercase mb-1">{s.label}</span>
+            <span className="text-[16px] font-extrabold text-accent mb-0.5 truncate">{s.value}</span>
+            <span className="text-[11px] font-semibold" style={{ color: s.subColor ?? colors?.color_sidebar_text ?? "#7EC86B" }}>{s.sub}</span>
           </div>
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="bg-[#FEFCE8] rounded-xl p-4 shadow-sm">
+      <div className="bg-background rounded-xl p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between px-2 mb-4 gap-2">
-          <span className="text-[13px] font-extrabold text-[#2D2D2D] tracking-wide">Daily Revenue Trend</span>
-          <div className="flex items-center gap-5 text-[11px] font-bold text-[#555]">
+          <span className="text-[13px] font-extrabold text-primary tracking-wide">Daily Revenue Trend</span>
+          <div className="flex items-center gap-5 text-[11px] font-bold text-primary/70">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-4 h-1 bg-[#385E31] rounded-full" /> REVENUE
+              <span className="inline-block w-4 h-1 rounded-full" style={{ backgroundColor: colors?.color_primary || "#385E31" }} /> REVENUE
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-4 border-t-2 border-dashed border-[#F7B71D]" /> AVG ₱{chartAvg}K
+              <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: colors?.color_accent || "#F7B71D" }} /> AVG ₱{chartAvg}K
             </span>
           </div>
         </div>
@@ -145,18 +168,18 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 25, right: 10, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#385E31" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#385E31" stopOpacity={0} />
+                <linearGradient id="revenueGradEmployee" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={colors?.color_accent || "#F7B71D"} stopOpacity={0.65} />
+                  <stop offset="95%" stopColor={colors?.color_accent || "#F7B71D"} stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="day" tickFormatter={(v) => `D${v}`}
                 tick={{ fontSize: 10, fill: "#888", fontWeight: 600 }} axisLine={false} tickLine={false} interval="preserveStartEnd" dy={10} />
               <YAxis tickFormatter={(v) => `₱${v}k`}
                 tick={{ fontSize: 10, fill: "#888", fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#98C98A", strokeWidth: 1, strokeDasharray: "4 4" }} />
+              <Tooltip content={<CustomTooltip colors={colors} />} cursor={{ stroke: colors?.color_primary || "#385E31", strokeWidth: 1, strokeDasharray: "4 4" }} />
               {chartAvg > 0 && (
-                <ReferenceLine y={chartAvg} stroke="#F7B71D" strokeDasharray="5 4" strokeWidth={2} />
+                <ReferenceLine y={chartAvg} stroke={colors?.color_accent || "#F7B71D"} strokeDasharray="5 4" strokeWidth={2} />
               )}
               {peakPoint && peakPoint.revenue > 0 && (
                 <ReferenceLine x={peakPoint.day} y={peakPoint.revenue} stroke="transparent"
@@ -165,8 +188,8 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
                     const { x, y } = viewBox;
                     return (
                       <g>
-                        <rect x={x - 32} y={y - 28} width={64} height={22} rx={6} fill="#F7B71D" />
-                        <text x={x} y={y - 13} textAnchor="middle" fill="#2D2D2D" fontSize={10} fontWeight="800">
+                        <rect x={x - 32} y={y - 28} width={64} height={22} rx={6} fill={colors?.color_accent || "#F7B71D"} />
+                        <text x={x} y={y - 13} textAnchor="middle" fill={colors?.color_primary || "#385E31"} fontSize={10} fontWeight="800">
                           PEAK ₱{peakPoint.revenue}K
                         </text>
                       </g>
@@ -174,15 +197,20 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
                   }}
                 />
               )}
-              <Area type="monotone" dataKey="revenue" stroke="#385E31" strokeWidth={3} fill="url(#revenueGrad)"
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke={colors?.color_primary || "#385E31"}
+                strokeWidth={2.5}
+                fill="url(#revenueGradEmployee)"
                 dot={(props: any) => {
                   const { cx, cy, payload } = props;
                   if (payload.day === peakPoint?.day) {
-                    return <circle key={`dot-${payload.day}`} cx={cx} cy={cy} r={5} fill="#385E31" stroke="#FEFCE8" strokeWidth={2.5} />;
+                    return <circle key={`dot-${payload.day}`} cx={cx} cy={cy} r={5} fill={colors?.color_accent || "#F7B71D"} stroke={colors?.color_primary || "#385E31"} strokeWidth={2.5} />;
                   }
                   return <g key={`dot-${payload.day}`} />;
                 }}
-                activeDot={{ r: 6, fill: "#F7B71D", stroke: "#385E31", strokeWidth: 3 }}
+                activeDot={{ r: 6, fill: colors?.color_accent || "#F7B71D", stroke: colors?.color_primary || "#385E31", strokeWidth: 3 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -194,10 +222,11 @@ function LiveRevenueCard({ data }: { data: DashboardData }) {
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-export default function DashboardSection() {
-  const [tenantId, setTenantId] = useState("");
-  const [data,     setData]     = useState<DashboardData | null>(null);
-  const [loading,  setLoading]  = useState(true);
+type Props = { initialData?: DashboardData | null; tenantId: string; colors?: StorefrontConfig | null };
+
+export default function DashboardSection({ initialData, tenantId, colors }: Props) {
+  const [data,    setData]    = useState<DashboardData | null>(initialData ?? null);
+  const [loading, setLoading] = useState(!initialData);
 
   const load = useCallback(async (tid: string) => {
     const result = await fetchDashboardData(tid);
@@ -205,40 +234,31 @@ export default function DashboardSection() {
     setLoading(false);
   }, []);
 
-  // 1. Initial Load & Auth
   useEffect(() => {
-    const init = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: u } = await supabase.from("users").select("tenant_id").eq("user_id", user.id).single();
-      if (!u?.tenant_id) return;
-      
-      setTenantId(u.tenant_id);
-      load(u.tenant_id);
-    };
-    init();
-  }, [load]);
+    if (!initialData && tenantId) load(tenantId);
+  }, [initialData, tenantId, load]);
 
-  // 2. Silent Background Auto-Refresh (Polling)
   useEffect(() => {
     if (!tenantId) return;
-
-    // Refresh data every 30 seconds (30000ms)
-    const intervalId = setInterval(() => {
-      load(tenantId);
-    }, 30000);
-
-    return () => clearInterval(intervalId); // Cleanup interval on unmount
+    const intervalId = setInterval(() => load(tenantId), 30000);
+    return () => clearInterval(intervalId);
   }, [tenantId, load]);
 
   const stats = data?.stats;
 
   return (
-    <div className="w-full flex flex-col font-['Inter']">
-
-      {/* Header (Refresh button removed) */}
-      <div className="w-full flex flex-col items-center mt-2 mb-10">
+    <motion.div
+      className="w-full flex flex-col font-['Inter']"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      {/* Header */}
+      <motion.div
+        variants={fadeUp}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+        className="w-full flex flex-col items-center mt-2 mb-10"
+      >
         <div className="w-full flex justify-between items-start">
           <div className="flex-1 flex flex-col items-center">
             <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
@@ -247,43 +267,52 @@ export default function DashboardSection() {
             <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Stat cards - Updated Grid Layout */}
-      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard
-          title="Total Orders"
-          value={loading ? "—" : (stats?.totalOrders ?? 0).toString()}
-          trendText="All orders placed"
-          className="w-full"
-          svgName="employee-icons/orders"
-        />
-        <StatCard
-          title="Top Selling"
-          value={loading ? "—" : (stats?.topProductCount ?? 0).toString()}
-          trendText={loading ? "Loading…" : `${stats?.topProduct ?? "—"}`}
-          className="w-full"
-          svgName="employee-icons/topseller"
-        />
-        <StatCard
-          title="Pending Orders"
-          value={loading ? "—" : (stats?.pendingOrders ?? 0).toString()}
-          trendText="Awaiting processing"
-          className="w-full"
-          svgName="employee-icons/orders"
-        />
-      </div>
+      {/* Stat Cards */}
+      <motion.div
+        className="w-full grid grid-cols-1 md:grid-cols-3 gap-6"
+        variants={container}
+      >
+        {[
+          { title: "Total Orders",    value: stats?.totalOrders ?? 0,      trend: "All orders placed",      svg: "employee-icons/orders"    },
+          { title: "Top Selling",     value: stats?.topProductCount ?? 0,  trend: stats?.topProduct ?? "—", svg: "employee-icons/topseller" },
+          { title: "Pending Orders",  value: stats?.pendingOrders ?? 0,    trend: "Awaiting processing",    svg: "employee-icons/orders"    },
+        ].map((card) => (
+          <motion.div
+            key={card.title}
+            variants={fadeUp}
+            transition={{ duration: 0.45, ease: [0.25, 0.1, 0.25, 1] }}
+          >
+            <StatCard
+              title={card.title}
+              value={loading ? "—" : card.value.toString()}
+              trendText={loading ? "Loading…" : card.trend}
+              className="w-full"
+              svgName={card.svg}
+              primaryColor={colors?.color_primary}
+              backgroundColor={colors?.color_background}
+            />
+          </motion.div>
+        ))}
+      </motion.div>
 
-      {/* Bottom contents */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8">
+      {/* Alerts + Chart */}
+      <motion.div
+        className="w-full grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mt-8"
+        variants={fadeUp}
+        transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+      >
         <LiveAlertsCard alerts={data?.alerts ?? []} loading={loading} />
-        {data ? <LiveRevenueCard data={data} /> : (
+        {data ? (
+          <LiveRevenueCard data={data} colors={colors} />
+        ) : (
           <div className="bg-primary rounded-[20px] p-6 flex items-center justify-center text-white/40 gap-3">
             <Loader2 size={22} className="animate-spin" />
             <span className="font-medium text-[14px]">Loading chart…</span>
           </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

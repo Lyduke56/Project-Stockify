@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { 
+  X, 
+  Loader2, 
+  AlertTriangle, 
+  CheckCircle2, 
+  XCircle, 
+  Unlock, 
+  UserX, 
+  PauseCircle 
+} from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,105 +32,98 @@ const CONFIG: Record<
   ConfirmActionType,
   {
     title:         string;
-    description:   (name: string) => string;
-    warning?:      string;
+    description:   (name: string) => React.ReactNode;
+    warning?:      React.ReactNode;
     inputLabel?:   string;
     inputHint?:    string;
-    accentBar:     string;
     confirmLabel:  string;
+    icon:          React.ElementType;
+    // Theme classes
+    headerClass:   string;
+    headerText:    string;
+    iconClass:     string;
     confirmClass:  string;
-    icon:          React.ReactNode;
+    borderClass:   string;
+    warningClass?: string;
   }
 > = {
 
   suspend: {
-    title:       "Suspend Tenant",
-    description: (name) =>
-      `You're about to temporarily suspend "${name}". Their access will be blocked and they will be emailed immediately.`,
-    inputLabel:  "Suspension Reason",
-    inputHint:   "Shown in the suspension email sent to the tenant owner. Leave blank to use the default.",
-    accentBar:   "bg-[#E5AD24]",
-    confirmLabel:"Yes, Suspend",
-    confirmClass:"bg-[#E5AD24] text-[#385E31] hover:bg-[#D19D1F]",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"
-        fill="none" stroke="#E5AD24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="10" y1="15" x2="10" y2="9" />
-        <line x1="14" y1="15" x2="14" y2="9" />
-      </svg>
+    title:        "Suspend Tenant",
+    description:  (name) => (
+      <>You are about to temporarily suspend <span className="font-bold text-[#3A6131]">{name}</span>. Their access will be blocked and they will be emailed immediately.</>
     ),
+    warning:      <><span className="font-bold">Note:</span> The tenant will have <strong>7 days</strong> to settle their balance before their account is automatically terminated.</>,
+    inputLabel:   "Suspension Reason",
+    inputHint:    "Shown in the suspension email. Leave blank to use default.",
+    confirmLabel: "Yes, Suspend",
+    icon:         PauseCircle,
+    headerClass:  "bg-[#E5AD24]",
+    headerText:   "text-[#3A6131]",
+    iconClass:    "bg-yellow-100 text-[#D19D1F]",
+    confirmClass: "bg-[#E5AD24] text-[#3A6131] hover:bg-[#D19D1F]",
+    borderClass:  "border-[#E5AD24]/30",
+    warningClass: "bg-yellow-50 border-yellow-200 text-yellow-800",
   },
 
   terminate: {
-    title:       "Terminate Tenant",
-    description: (name) =>
-      `You're about to permanently terminate "${name}". This action cannot be undone and the owner will be notified via email.`,
-    warning:
-      "All user accounts, subscription records, and data linked to this tenant will be permanently deleted.",
-    inputLabel:  "Termination Remarks",
-    inputHint:   "Included in the termination email. Leave blank to use the default.",
-    accentBar:   "bg-[#E91F22]",
-    confirmLabel:"Yes, Terminate",
-    confirmClass:"bg-[#E91F22] text-[#FFFCEB] hover:bg-[#C41A1D]",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"
-        fill="none" stroke="#E91F22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="3 6 5 6 21 6" />
-        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-        <path d="M10 11v6" /><path d="M14 11v6" />
-        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-      </svg>
+    title:        "Terminate Tenant",
+    description:  (name) => (
+      <>You are about to permanently terminate <span className="font-bold text-red-600">{name}</span>. This action cannot be undone and the owner will be notified.</>
     ),
+    warning:      <><span className="font-bold">Warning:</span> All user accounts, subscription records, and data linked to this tenant will be permanently deleted.</>,
+    inputLabel:   "Termination Remarks",
+    inputHint:    "Included in the termination email. Leave blank to use default.",
+    confirmLabel: "Yes, Terminate",
+    icon:         UserX,
+    headerClass:  "bg-red-600",
+    headerText:   "text-white",
+    iconClass:    "bg-red-100 text-red-600",
+    confirmClass: "bg-red-600 text-white hover:bg-red-700",
+    borderClass:  "border-red-200",
+    warningClass: "bg-red-50 border-red-100 text-red-600",
   },
 
   restore: {
-    title:       "Restore Tenant",
-    description: (name) =>
-      `You're about to restore "${name}". Their account will be reactivated and access reinstated.`,
-    accentBar:   "bg-[#385E31]",
-    confirmLabel:"Yes, Restore",
-    confirmClass:"bg-[#385E31] text-[#FFFCEB] hover:bg-[#2D4B24]",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"
-        fill="none" stroke="#385E31" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="1 4 1 10 7 10" />
-        <path d="M3.51 15a9 9 0 1 0 .49-3.51" />
-      </svg>
+    title:        "Restore Tenant",
+    description:  (name) => (
+      <>You are about to restore <span className="font-bold text-[#3A6131]">{name}</span>. Their account will be reactivated and access reinstated.</>
     ),
+    confirmLabel: "Yes, Restore",
+    icon:         Unlock,
+    headerClass:  "bg-[#3A6131]",
+    headerText:   "text-[#FFFCEB]",
+    iconClass:    "bg-emerald-100 text-emerald-600",
+    confirmClass: "bg-[#3A6131] text-[#FFFCEB] hover:bg-[#3A6131]/90",
+    borderClass:  "border-[#3A6131]/20",
   },
 
   approve: {
-    title:       "Approve Application",
-    description: (name) =>
-      `You're about to approve the application for "${name}". Their account will be activated immediately.`,
-    accentBar:   "bg-[#385E31]",
-    confirmLabel:"Yes, Approve",
-    confirmClass:"bg-[#385E31] text-[#FFFCEB] hover:bg-[#2D4B24]",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"
-        fill="none" stroke="#385E31" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-        <polyline points="22 4 12 14.01 9 11.01" />
-      </svg>
+    title:        "Approve Application",
+    description:  (name) => (
+      <>You are about to approve the application for <span className="font-bold text-[#3A6131]">{name}</span>. Their account will be activated immediately.</>
     ),
+    confirmLabel: "Yes, Approve",
+    icon:         CheckCircle2,
+    headerClass:  "bg-[#3A6131]",
+    headerText:   "text-[#FFFCEB]",
+    iconClass:    "bg-emerald-100 text-emerald-600",
+    confirmClass: "bg-[#3A6131] text-[#FFFCEB] hover:bg-[#3A6131]/90",
+    borderClass:  "border-[#3A6131]/20",
   },
 
   decline: {
-    title:       "Decline Application",
-    description: (name) =>
-      `You're about to decline the application for "${name}". The applicant will be notified.`,
-    accentBar:   "bg-[#E91F22]",
-    confirmLabel:"Yes, Decline",
-    confirmClass:"bg-[#E91F22] text-[#FFFCEB] hover:bg-[#C41A1D]",
-    icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 24 24"
-        fill="none" stroke="#E91F22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <line x1="15" y1="9" x2="9" y2="15" />
-        <line x1="9" y1="9" x2="15" y2="15" />
-      </svg>
+    title:        "Decline Application",
+    description:  (name) => (
+      <>You are about to decline the application for <span className="font-bold text-red-600">{name}</span>. The applicant will be notified.</>
     ),
+    confirmLabel: "Yes, Decline",
+    icon:         XCircle,
+    headerClass:  "bg-red-600",
+    headerText:   "text-white",
+    iconClass:    "bg-red-100 text-red-600",
+    confirmClass: "bg-red-600 text-white hover:bg-red-700",
+    borderClass:  "border-red-200",
   },
 };
 
@@ -143,141 +146,122 @@ export default function ConfirmActionModal({
   }, [isOpen]);
 
   const hasInput = !!cfg.inputLabel;
+  const IconComponent = cfg.icon;
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-center justify-center"
-        >
+        <div className="fixed inset-0 z-[200] flex items-center justify-center font-['Inter']">
+          
           {/* Backdrop */}
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
             onClick={!isLoading ? onClose : undefined}
           />
 
           {/* Modal card */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 18 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.92, y: 18 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ type: "spring", stiffness: 320, damping: 26 }}
-            className="relative z-10 w-[500px] max-w-[90vw] mx-4 bg-[#FFFCEB] rounded-[14px] shadow-2xl border border-[#385E31]/15"
+            className={`relative z-10 bg-[#FFFCEB] rounded-[24px] shadow-2xl w-[440px] max-w-[95vw] overflow-hidden border ${cfg.borderClass}`}
           >
-            {/* Accent bar */}
-            <div className={`h-[5px] w-full ${cfg.accentBar}`} />
+            {/* Header */}
+            <div className={`${cfg.headerClass} px-6 py-4 flex items-center justify-between`}>
+              <div className={`flex items-center gap-2 ${cfg.headerText}`}>
+                <IconComponent size={18} strokeWidth={2.5} />
+                <h2 className="font-bold text-lg tracking-wide">{cfg.title}</h2>
+              </div>
+              <button
+                onClick={onClose}
+                disabled={isLoading}
+                className={`${cfg.headerText} opacity-70 hover:opacity-100 transition-opacity disabled:opacity-50`}
+              >
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
 
-            <div className="px-7 pt-6 pb-7 flex flex-col items-center gap-5">
-
-              {/* Icon bubble */}
-              <div className="w-[62px] h-[62px] rounded-full bg-[#385E31]/6 border border-[#385E31]/12 flex items-center justify-center shrink-0">
-                {cfg.icon}
+            {/* Body */}
+            <div className="p-6 flex flex-col items-center text-center gap-4">
+              
+              {/* Icon Bubble */}
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-sm ${cfg.iconClass}`}>
+                <IconComponent size={32} />
               </div>
 
-              {/* Title + description */}
-              <div className="text-center flex flex-col gap-2">
-                <h3 className="text-[#385E31] text-[19px] font-extrabold leading-tight">
-                  {cfg.title}
-                </h3>
-                <p className="text-[#385E31]/70 text-[13px] font-medium leading-relaxed">
+              {/* Text */}
+              <div>
+                <p className="text-[#3A6131] font-bold text-lg">Are you sure?</p>
+                <p className="text-gray-500 text-[13.5px] mt-1 leading-relaxed px-2">
                   {cfg.description(tenantName)}
                 </p>
               </div>
 
-              {/* Suspension / termination info box */}
-              {actionType === "suspend" && (
-                <div className="w-full flex items-start gap-2.5 bg-[#FFD980]/30 border border-[#E5AD24]/40 rounded-[8px] px-4 py-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                    fill="none" stroke="#E5AD24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    className="shrink-0 mt-[1px]">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  <p className="text-[#6B5000] text-[12px] font-semibold leading-relaxed">
-                    The tenant will have <strong>7 days</strong> to settle their balance before their
-                    account is automatically terminated.
-                  </p>
-                </div>
-              )}
-
-              {/* Reason / Remarks textarea */}
+              {/* Input Area */}
               {hasInput && (
-                <div className="w-full flex flex-col gap-1.5">
-                  <label className="text-[#385E31] text-[11px] font-bold uppercase tracking-wider opacity-70">
-                    {cfg.inputLabel} <span className="font-medium normal-case opacity-60">(Optional)</span>
+                <div className="w-full text-left mt-2">
+                  <label className="block text-[12px] font-bold text-[#3A6131] mb-1.5 ml-1">
+                    {cfg.inputLabel} <span className="text-gray-400 font-normal">(Optional)</span>
                   </label>
-                  {cfg.inputHint && (
-                    <p className="text-[#385E31]/45 text-[11px] font-medium leading-snug -mt-0.5">
-                      {cfg.inputHint}
-                    </p>
-                  )}
                   <textarea
                     value={inputVal}
                     onChange={(e) => setInputVal(e.target.value)}
-                    placeholder={`Enter details for the owner of ${tenantName}…`}
                     disabled={isLoading}
                     rows={3}
-                    className="w-full bg-white/50 border border-[#385E31]/20 rounded-[10px] px-3 py-2 text-[13px] text-[#385E31] outline-none focus:border-[#385E31]/50 focus:bg-white transition-all resize-none disabled:opacity-50"
+                    placeholder="Enter additional remarks here..."
+                    className="w-full border-[1.5px] border-[#3A6131]/20 rounded-xl px-4 py-3 bg-white text-[#3A6131] text-sm outline-none focus:border-[#F7B71D] focus:ring-2 focus:ring-[#F7B71D]/20 transition-all resize-none placeholder:text-gray-300 disabled:opacity-50"
                   />
+                  {cfg.inputHint && (
+                    <p className="text-[11px] text-[#3A6131]/50 mt-1.5 font-medium px-1 flex items-start gap-1">
+                      {cfg.inputHint}
+                    </p>
+                  )}
                 </div>
               )}
 
-              {/* Warning box (terminate only) */}
+              {/* Warning Box */}
               {cfg.warning && (
-                <div className="w-full flex items-start gap-2.5 bg-[#E91F22]/6 border border-[#E91F22]/20 rounded-[8px] px-4 py-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-                    fill="none" stroke="#E91F22" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    className="shrink-0 mt-[1px]">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <line x1="12" y1="9" x2="12" y2="13" />
-                    <line x1="12" y1="17" x2="12.01" y2="17" />
-                  </svg>
-                  <p className="text-[#E91F22] text-[12px] font-semibold leading-relaxed">
+                <div className={`w-full p-3.5 rounded-xl border text-left mt-1 flex items-start gap-2.5 ${cfg.warningClass}`}>
+                  <AlertTriangle size={16} className="shrink-0 mt-[1px]" />
+                  <p className="text-xs font-medium leading-relaxed">
                     {cfg.warning}
                   </p>
                 </div>
               )}
 
-              {/* Divider */}
-              <div className="w-full h-px bg-[#385E31]/10" />
-
-              {/* Buttons */}
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={onClose}
-                  disabled={isLoading}
-                  className="flex-1 border-2 border-[#385E31] text-[#385E31] font-bold text-[14px] py-[10px] rounded-[40px] hover:bg-[#385E31]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => onConfirm(inputVal.trim() || undefined)}
-                  disabled={isLoading}
-                  className={`flex-1 font-bold text-[14px] py-[10px] rounded-[40px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${cfg.confirmClass}`}
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin" xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                        strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                      </svg>
-                      Processing…
-                    </span>
-                  ) : (
-                    cfg.confirmLabel
-                  )}
-                </button>
-              </div>
-
             </div>
+
+            {/* Footer */}
+            <div className="px-6 pb-6 flex gap-3">
+              <button
+                onClick={onClose}
+                disabled={isLoading}
+                className="flex-1 py-2.5 border-2 border-[#3A6131] text-[#3A6131] font-bold rounded-xl hover:bg-[#3A6131]/5 transition-colors disabled:opacity-50"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => onConfirm(inputVal.trim() || undefined)}
+                disabled={isLoading}
+                className={`flex-1 py-2.5 font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed ${cfg.confirmClass}`}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  cfg.confirmLabel
+                )}
+              </button>
+            </div>
+
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

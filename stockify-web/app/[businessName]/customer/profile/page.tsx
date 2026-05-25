@@ -2,28 +2,27 @@
 
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ArrowLeft,
   User,
   Mail,
   Phone,
   MapPin,
-  Heart,
   Bell,
   LogOut,
   Camera,
   Edit2,
   Check,
-  Package
+  Package,
+  ShieldCheck,
+  ChevronRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CustomerHeader } from "@/components/headers/customer-header";
 import { getStorefrontTenant } from "@/backend/hooks/getStoreFront";
-import { ProductModal } from "@/components/modals/storefront/nfnb/nfnb-product-modal";
-import { ShoppingBag } from "lucide-react";
-import { fetchFavorites } from "@/lib/customer/customer-actions";
 import { fetchStorefrontConfig } from "@/lib/admin/storefront-actions";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 export default function CustomerProfilePage() {
   const params = useParams();
@@ -37,17 +36,12 @@ export default function CustomerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  
-  // New state
   const [orderCount, setOrderCount] = useState(0);
 
   const fetchProfile = async () => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      router.push(`/${businessName}/login`);
-      return;
-    }
+    if (!user) { router.push(`/${businessName}/login`); return; }
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -55,34 +49,21 @@ export default function CustomerProfilePage() {
     const [profileRes, tenantRes, countRes] = await Promise.all([
       supabase.from("users").select("*").eq("user_id", user.id).single(),
       getStorefrontTenant(user.id),
-      supabase
-        .from("orders")
-        .select("*", { count: "exact", head: true })
-        .eq("customer_id", user.id)
-        .gte("created_at", thirtyDaysAgo.toISOString())
+      supabase.from("orders").select("*", { count: "exact", head: true })
+        .eq("customer_id", user.id).gte("created_at", thirtyDaysAgo.toISOString()),
     ]);
 
-    if (!profileRes.error && profileRes.data) {
-      setProfile(profileRes.data);
-    }
+    if (!profileRes.error && profileRes.data) setProfile(profileRes.data);
     if (tenantRes) {
       setTenant(tenantRes);
       const sf = await fetchStorefrontConfig(tenantRes.tenant_id);
       setSfConfig(sf);
     }
-    if (!countRes.error) {
-      setOrderCount(countRes.count ?? 0);
-    }
+    if (!countRes.error) setOrderCount(countRes.count ?? 0);
     setLoading(false);
   };
 
-
-
-
-
-  useEffect(() => {
-    fetchProfile();
-  }, []);
+  useEffect(() => { fetchProfile(); }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -91,212 +72,306 @@ export default function CustomerProfilePage() {
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase
-      .from("users")
-      .update({
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        contact_number: profile.contact_number,
-        address: profile.address
-      })
-      .eq("user_id", profile.user_id);
-
-    if (!error) {
-      setIsEditing(false);
-    }
+    const { error } = await supabase.from("users").update({
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      contact_number: profile.contact_number,
+      address: profile.address,
+    }).eq("user_id", profile.user_id);
+    if (!error) setIsEditing(false);
     setSaving(false);
   };
 
+  const c = {
+    primary:   sfConfig?.color_primary   ?? "#2E5128",
+    secondary: sfConfig?.color_secondary ?? "#2A4725",
+    accent:    sfConfig?.color_accent    ?? "#F7B71D",
+    bg:        sfConfig?.color_background ?? "#FDFAF0",
+    text:      sfConfig?.color_text      ?? "#1C3319",
+  };
+
+  const initials = profile
+    ? `${profile.first_name?.[0] ?? ""}${profile.last_name?.[0] ?? ""}`.toUpperCase()
+    : "?";
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FFFCEB] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[#385E31]/10 border-t-[#F7B71D] rounded-full animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFCEB] font-['Fredoka'] text-[#385E31] flex flex-col">
-      <CustomerHeader 
+    <div className="min-h-screen font-['Inter'] flex flex-col" style={{ backgroundColor: c.bg, color: c.text }}>
+      <style>{`
+        .profile-input { transition: border-color 0.18s, box-shadow 0.18s; }
+        .profile-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-10); outline: none; }
+        .stat-card { transition: transform 0.18s, box-shadow 0.18s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(28,51,25,0.09); }
+      `}</style>
+
+      <CustomerHeader
         businessName={businessName}
         tenantLogo={tenant?.logo_url ?? undefined}
         tenantName={tenant?.business_name}
         showSearch={false}
         showCart={false}
         isNfnb={tenant?.business_type === "non-food-and-beverage"}
-        colors={{
-          primary: sfConfig?.color_primary ?? "#385E31",
-          secondary: sfConfig?.color_secondary ?? "#2A4725",
-          accent: sfConfig?.color_accent ?? "#F7B71D",
-          bg: sfConfig?.color_background ?? "#FFFCEB",
-          text: sfConfig?.color_text ?? "#3A6131",
-        }}
+        colors={c}
       />
 
-      {/* Top Banner */}
-      <div 
-        className="h-48 relative"
-        style={{ backgroundColor: sfConfig?.color_primary ?? "#385E31" }}
-      >
-        <button
-          onClick={() => router.back()}
-          className="absolute top-6 left-6 p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors z-10"
-          style={{ color: sfConfig?.color_accent ?? "#F7B71D" }}
-        >
-          <ArrowLeft size={24} />
-        </button>
-      </div>
+      {/* ── Hero strip ── */}
+      <div className="relative w-full h-44 overflow-hidden" style={{ backgroundColor: c.primary }}>
+        {/* Decorative circles */}
+        <div className="absolute -top-10 -right-10 w-56 h-56 rounded-full opacity-10" style={{ backgroundColor: c.accent }} />
+        <div className="absolute -bottom-16 -left-6 w-44 h-44 rounded-full opacity-8" style={{ backgroundColor: c.accent }} />
 
-      <div className="max-w-3xl w-full mx-auto px-6 -mt-32 pb-20 relative z-10">
-        {/* Profile Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[32px] shadow-xl border border-[#385E31]/5 overflow-hidden"
-        >
-          <div className="p-8">
-            {/* Profile Picture & Basic Info */}
-            <div className="flex flex-col md:flex-row items-center gap-6 mb-10">
-              <div className="relative group">
-                <div className="w-32 h-32 rounded-3xl bg-gradient-to-br from-[#F7B71D] to-[#FFD980] flex items-center justify-center border-4 border-white shadow-lg overflow-hidden">
-                  <User size={64} className="text-[#385E31]/30" />
-                </div>
-                <button className="absolute -bottom-2 -right-2 p-2.5 bg-[#385E31] text-[#F7B71D] rounded-xl shadow-lg hover:scale-110 transition-transform">
-                  <Camera size={18} />
-                </button>
-              </div>
-
-              <div className="text-center md:text-left flex-1">
-                <div className="flex items-center justify-center md:justify-start gap-3 mb-1">
-                  <h1 className="text-3xl font-black">{profile?.display_name}</h1>
-                  <span className="px-3 py-1 bg-[#385E31]/5 text-[#385E31] text-[11px] font-bold uppercase rounded-full border border-[#385E31]/10 tracking-widest">
-                    Customer
-                  </span>
-                </div>
-                <p className="text-[#8C9B85] font-medium flex items-center justify-center md:justify-start gap-2">
-                  <Mail size={16} /> {profile?.email}
-                </p>
-              </div>
-
-              <button
-                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                className={`px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all ${isEditing
-                  ? "bg-[#385E31] text-[#F7B71D] hover:opacity-90"
-                  : "bg-[#F7B71D]/10 text-[#385E31] hover:bg-[#F7B71D]/20"
-                  }`}
-              >
-                {isEditing ? (
-                  saving ? <div className="w-5 h-5 border-2 border-[#F7B71D]/30 border-t-[#F7B71D] rounded-full animate-spin" /> : <><Check size={18} /> Save Profile</>
-                ) : (
-                  <><Edit2 size={18} /> Edit Profile</>
-                )}
-              </button>
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <DetailItem
-                icon={<User size={20} />}
-                label="First Name"
-                value={profile?.first_name}
-                isEditing={isEditing}
-                onChange={(val: string) => setProfile({ ...profile, first_name: val })}
-              />
-              <DetailItem
-                icon={<User size={20} />}
-                label="Last Name"
-                value={profile?.last_name}
-                isEditing={isEditing}
-                onChange={(val: string) => setProfile({ ...profile, last_name: val })}
-              />
-              <DetailItem
-                icon={<Phone size={20} />}
-                label="Contact Number"
-                value={profile?.contact_number}
-                isEditing={isEditing}
-                onChange={(val: string) => setProfile({ ...profile, contact_number: val })}
-              />
-              <DetailItem
-                icon={<MapPin size={20} />}
-                label="Address"
-                value={profile?.address}
-                isEditing={isEditing}
-                onChange={(val: string) => setProfile({ ...profile, address: val })}
-              />
-            </div>
-          </div>
-
-          {/* Quick Actions Footer */}
-          <div className="bg-[#385E31]/5 px-8 py-6 flex flex-wrap gap-4 justify-between border-t border-[#385E31]/5">
-            <div className="flex gap-4">
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 text-red-500 font-bold hover:bg-red-50 px-4 py-2 rounded-xl transition-colors"
-            >
-              <LogOut size={20} /> Sign Out
-            </button>
-          </div>
-        </motion.div>
-
-
-
-        {/* Info Cards */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-[24px] border border-[#385E31]/5 shadow-sm">
-            <h3 className="font-bold mb-2 flex items-center gap-2">
-              <Package size={20} className="text-[#F7B71D]" /> Recent Activity
-            </h3>
-            <p className="text-[#8C9B85] text-sm leading-relaxed">
-              You have placed {orderCount} orders in the last 30 days. Keep exploring our menu to find your favorites!
+        <div className="absolute inset-0 flex items-end px-6 pb-6">
+          <button
+            onClick={() => router.back()}
+            className="absolute top-5 left-5 flex items-center gap-1.5 text-[13px] font-semibold px-3 py-1.5 rounded-lg transition-all"
+            style={{ backgroundColor: "rgba(0,0,0,0.2)", color: c.accent }}
+          >
+            <ArrowLeft size={15} strokeWidth={2.5} />
+            Back
+          </button>
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.15em] mb-1" style={{ color: c.accent + "99" }}>
+              Account
             </p>
-          </div>
-          <div className="bg-white p-6 rounded-[24px] border border-[#385E31]/5 shadow-sm">
-            <h3 className="font-bold mb-2 flex items-center gap-2">
-              <Bell size={20} className="text-[#F7B71D]" /> Security
-            </h3>
-            <p className="text-[#8C9B85] text-sm leading-relaxed">
-              Your account is secured with email authentication. Always keep your password confidential.
-            </p>
+            <h1 className="text-[26px] font-black leading-none text-white">My Profile</h1>
           </div>
         </div>
       </div>
 
+      <div className="w-full max-w-4xl mx-auto px-5 sm:px-6 -mt-12 pb-20 relative z-10 flex flex-col gap-5">
 
+        {/* ── Profile card ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="bg-white rounded-2xl border border-black/5 shadow-[0_4px_24px_rgba(28,51,25,0.08)] overflow-hidden"
+        >
+          {/* Avatar + name row */}
+          <div className="px-6 pt-6 pb-5 flex flex-col sm:flex-row items-start sm:items-center gap-5 border-b border-black/5">
+            {/* Avatar */}
+            <div className="relative flex-shrink-0">
+              <div
+                className="w-20 h-20 rounded-2xl flex items-center justify-center text-[28px] font-black shadow-md"
+                style={{ backgroundColor: c.accent, color: c.primary }}
+              >
+                {initials}
+              </div>
+              <button
+                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg flex items-center justify-center shadow-md transition-transform hover:scale-110"
+                style={{ backgroundColor: c.primary, color: c.accent }}
+              >
+                <Camera size={13} strokeWidth={2.5} />
+              </button>
+            </div>
+
+            {/* Name + email */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-[22px] font-black leading-tight" style={{ color: c.primary }}>
+                  {profile?.display_name || `${profile?.first_name} ${profile?.last_name}`}
+                </h2>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full border"
+                  style={{ backgroundColor: c.primary + "10", color: c.primary, borderColor: c.primary + "20" }}
+                >
+                  Customer
+                </span>
+              </div>
+              <p className="flex items-center gap-1.5 mt-1 text-[13px] font-medium" style={{ color: c.primary + "99" }}>
+                <Mail size={13} strokeWidth={2} />
+                {profile?.email}
+              </p>
+            </div>
+
+            {/* Edit / Save button */}
+            <button
+              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13.5px] font-bold transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              style={
+                isEditing
+                  ? { backgroundColor: c.primary, color: c.accent }
+                  : { backgroundColor: c.accent + "18", color: c.primary }
+              }
+            >
+              {isEditing ? (
+                saving
+                  ? <div className="w-4 h-4 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+                  : <><Check size={15} strokeWidth={2.5} /> Save</>
+              ) : (
+                <><Edit2 size={15} strokeWidth={2.5} /> Edit Profile</>
+              )}
+            </button>
+          </div>
+
+          {/* Form fields */}
+          <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ProfileField
+              icon={User}
+              label="First Name"
+              value={profile?.first_name}
+              isEditing={isEditing}
+              c={c}
+              onChange={(v: string) => setProfile({ ...profile, first_name: v })}
+            />
+            <ProfileField
+              icon={User}
+              label="Last Name"
+              value={profile?.last_name}
+              isEditing={isEditing}
+              c={c}
+              onChange={(v: string) => setProfile({ ...profile, last_name: v })}
+            />
+            <ProfileField
+              icon={Phone}
+              label="Contact Number"
+              value={profile?.contact_number}
+              isEditing={isEditing}
+              c={c}
+              onChange={(v: string) => setProfile({ ...profile, contact_number: v })}
+            />
+            <ProfileField
+              icon={MapPin}
+              label="Delivery Address"
+              value={profile?.address}
+              isEditing={isEditing}
+              c={c}
+              onChange={(v: string) => setProfile({ ...profile, address: v })}
+            />
+          </div>
+        </motion.div>
+
+        {/* ── Stat cards ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        >
+          {/* Orders card */}
+          <div
+            className="stat-card bg-white rounded-2xl border border-black/5 shadow-[0_2px_12px_rgba(28,51,25,0.06)] p-5 flex items-start gap-4 cursor-pointer"
+            onClick={() => router.push(`/${businessName}/customer/orders`)}
+          >
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: c.accent + "20", color: c.accent }}
+            >
+              <Package size={20} strokeWidth={1.8} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: c.text + "55" }}>
+                Recent Orders
+              </p>
+              <p className="text-[22px] font-black leading-none" style={{ color: c.text }}>
+                {orderCount}
+                <span className="text-[13px] font-medium ml-1.5 opacity-50">last 30 days</span>
+              </p>
+              <p className="text-[12px] font-medium mt-1.5" style={{ color: c.text + "55" }}>
+                {orderCount > 0
+                  ? "Keep exploring our menu!"
+                  : "Place your first order today."}
+              </p>
+            </div>
+            <ChevronRight size={16} style={{ color: c.text + "40" }} className="mt-1 flex-shrink-0" />
+          </div>
+
+          {/* Security card */}
+          <div className="stat-card bg-white rounded-2xl border border-black/5 shadow-[0_2px_12px_rgba(28,51,25,0.06)] p-5 flex items-start gap-4">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: c.primary + "12", color: c.primary }}
+            >
+              <ShieldCheck size={20} strokeWidth={1.8} />
+            </div>
+            <div className="flex-1">
+              <p className="text-[11px] font-bold uppercase tracking-widest mb-0.5" style={{ color: c.text + "55" }}>
+                Security
+              </p>
+              <p className="text-[15px] font-bold leading-snug" style={{ color: c.text }}>
+                Account Protected
+              </p>
+              <p className="text-[12px] font-medium mt-1.5 leading-relaxed" style={{ color: c.text + "55" }}>
+                Secured via email authentication. Keep your password confidential.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── Sign out ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18, duration: 0.4 }}
+        >
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-black/5 shadow-[0_2px_12px_rgba(28,51,25,0.04)] hover:bg-red-50 hover:border-red-100 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-red-50 group-hover:bg-red-100 flex items-center justify-center transition-colors">
+                <LogOut size={17} className="text-red-500" strokeWidth={2} />
+              </div>
+              <div className="text-left">
+                <p className="text-[14px] font-bold text-red-500">Sign Out</p>
+                <p className="text-[11.5px] text-red-400/70 font-medium">You'll be redirected to login</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-red-300 group-hover:text-red-400 transition-colors" />
+          </button>
+        </motion.div>
+
+      </div>
     </div>
   );
 }
 
-function DetailItem({ icon, label, value, isEditing, onChange }: any) {
+// ── Field Component ──────────────────────────────────────────────────────────
+function ProfileField({
+  icon: Icon, label, value, isEditing, onChange, c,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  isEditing: boolean;
+  onChange: (v: string) => void;
+  c: { primary: string; accent: string; text: string; bg: string };
+}) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] font-bold text-[#8C9B85] uppercase tracking-wider flex items-center gap-2">
-        {React.cloneElement(icon, { size: 14 })} {label}
+      <label
+        className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest"
+        style={{ color: c.primary + "8C" }}
+      >
+        <Icon size={12} strokeWidth={2.5} />
+        {label}
       </label>
       {isEditing ? (
         <input
           type="text"
-          value={value}
+          value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
-          className="bg-[#FFFCEB] border border-[#385E31]/10 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#F7B71D] transition-all font-medium"
+          className="profile-input px-3.5 py-2.5 rounded-xl border text-[14px] font-medium outline-none transition-all"
+          style={{
+            backgroundColor: c.bg,
+            borderColor: c.primary + "25",
+            color: c.primary,
+            // @ts-ignore
+            "--accent": c.accent,
+            "--accent-10": c.accent + "18",
+          }}
         />
       ) : (
-        <div className="bg-[#FFFCEB] px-4 py-2.5 rounded-xl border border-transparent font-bold">
+        <div
+          className="px-3.5 py-2.5 rounded-xl text-[14px] font-semibold"
+          style={{ backgroundColor: c.primary + "0A", color: value ? c.primary : c.primary + "59" }}
+        >
           {value || "Not set"}
         </div>
       )}
     </div>
-  );
-}
-
-function ActionButton({ icon, label, onClick }: any) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-[#385E31]/10 font-bold text-sm shadow-sm hover:shadow-md transition-all active:scale-95"
-    >
-      <span className="text-[#F7B71D]">{icon}</span>
-      {label}
-    </button>
   );
 }

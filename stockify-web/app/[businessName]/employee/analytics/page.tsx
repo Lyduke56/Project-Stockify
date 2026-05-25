@@ -1,47 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import NavbarEmployee from "@/components/navbars/navbar-employee";
 import SidebarEmployee from "@/components/navbars/sidebar-employee";
 import AnalyticsReports from "@/components/sections/employee/AnalyticsReports";
-import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
+import LoadingScreen from "@/app/loading-screen/loading";
+import type { SectionKey, SidebarData } from "@/app/[businessName]/employee/dashboard/page";
 
 export default function EmployeeAnalytics() {
-  const [activeSection, setActiveSection] = useState<SectionKey>("analytics"); 
+  const [activeSection, setActiveSection] = useState<SectionKey>("analytics");
+  const [sidebarData, setSidebarData] = useState<SidebarData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleOpenProfile = () => console.log("Open Profile Modal");
-  const handleOpenNotifs = () => console.log("Open Notifications Modal");
-  const handleOpenSettings = () => console.log("Open Settings Modal");
+  useEffect(() => {
+    const loadAll = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select(`
+          role,
+          tenant_id,
+          tenants (
+            business_name,
+            business_type
+          )
+        `)
+        .eq("user_id", user.id)
+        .single();
+
+      if (!userData) return;
+
+      const tenant = userData.tenants as any;
+      setSidebarData({
+        role:         userData.role ?? "",
+        businessType: tenant?.business_type ?? "",
+        businessName: tenant?.business_name ?? "",
+      });
+    };
+
+    loadAll().finally(() => setIsLoading(false));
+  }, []);
+
+  if (isLoading) return <LoadingScreen />;
 
   return (
-    // 1. Removed h-screen and overflow-hidden. Changed to min-h-screen.
     <div className="flex min-h-screen w-full bg-[#FFFCEB] font-['Inter']">
-    
-          {/* LEFT SIDE: Fixed Sidebar */}
-          <SidebarEmployee 
-            activeSection={activeSection}
-            onOpenSettings={() => console.log("Open settings clicked")}
+
+      {/* LEFT SIDE: Fixed Sidebar */}
+      <SidebarEmployee
+        activeSection={activeSection}
+        onOpenSettings={() => console.log("Open settings clicked")}
+        setActiveSection={setActiveSection}
+        sidebarData={sidebarData!}
+      />
+
+      {/* RIGHT SIDE: Main Column */}
+      <div className="flex-1 flex flex-col w-full">
+
+        <div className="shrink-0">
+          <NavbarEmployee
             setActiveSection={setActiveSection}
+            openProfile={() => console.log("Open Profile Modal")}
+            openNotifs={() => console.log("Open Notifications Modal")}
+            openSettings={() => console.log("Open Settings Modal")}
           />
-    
-          {/* RIGHT SIDE: Main Column */}
-          {/* 2. Removed h-screen, min-h-0, and overflow-y-auto. It now grows naturally! */}
-          <div className="flex-1 flex flex-col w-full">
-            
-            <div className="shrink-0">
-              <NavbarEmployee 
-                setActiveSection={setActiveSection}
-                openProfile={handleOpenProfile}
-                openNotifs={handleOpenNotifs}
-                openSettings={handleOpenSettings}
-              />
-            </div>
+        </div>
 
-            <div className="px-10 pt-5 pb-12">
-              <AnalyticsReports />
-            </div>
+        <div className="px-10 pt-5 pb-12">
+          <AnalyticsReports />
+        </div>
 
-          </div>
+      </div>
     </div>
   );
 }

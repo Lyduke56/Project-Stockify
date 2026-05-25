@@ -1,234 +1,419 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Star, Trash2, Edit2, Check, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, Trash2, Edit2, Check, MessageSquare } from "lucide-react";
 import { fetchReviews, submitReview, deleteReview, updateReview } from "@/lib/customer/customer-actions";
 import { createClient } from "@/lib/supabase/client";
 
-interface ProductReviewsProps {
-  productId: string;
-  productType: 'fnb' | 'nfb';
-  tenantId: string;
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const T = {
+  primary:     "#385E31",
+  primaryDark: "#254020",
+  primaryFade: "#385E3115",
+  accent:      "#F7B71D",
+  accentDark:  "#D49B15",
+  bg:          "#FCFCFA",
+  surface:     "#FFFFFF",
+  textMain:    "#1A2617",
+  textMuted:   "#6B7280",
+  border:      "#E5E7EB",
+};
+
+const buildC = (colors?: any) => {
+  const primary = colors?.primary ?? T.primary;
+  const secondary = colors?.secondary ?? "#254020";
+  return {
+    primary,
+    secondary,
+    surface:     secondary,
+    accent:      colors?.accent      ?? T.accent,
+    accentSoft:  colors?.accent      ?? T.accent,
+    bg:          colors?.bg          ?? T.bg,
+    bgDim:       colors?.bg          ? colors.bg + "BF" : "#FCFCFA",
+    muted:       colors?.bg          ? colors.bg + "73" : T.textMuted,
+    border:      colors?.accent      ? colors.accent + "33" : T.border,
+    borderHi:    colors?.accent      ? colors.accent + "80" : T.border,
+    textMain:    colors?.bg          ?? "#FFFFFF",
+    textMuted:   colors?.bg          ? colors.bg + "99" : T.textMuted,
+  };
+};
+
+const avatarGradients = [
+  `linear-gradient(135deg, ${T.primary}, #5A8551)`,
+  `linear-gradient(135deg, ${T.accent}, #FFC94D)`,
+  `linear-gradient(135deg, #4A7A41, #6DA363)`,
+  `linear-gradient(135deg, #D49B15, #FAD06C)`,
+];
+const getGradient = (name: string) => avatarGradients[(name.charCodeAt(0) || 0) % avatarGradients.length];
+
+// ── Star component ────────────────────────────────────────────────────────────
+function Stars({
+  rating, size = 14, interactive = false, onChange, colors,
+}: {
+  rating: number; size?: number; interactive?: boolean; onChange?: (r: number) => void;
+  colors?: any;
+}) {
+  const C = buildC(colors);
+  const [hovered, setHovered] = useState(0);
+  const effective = interactive && hovered ? hovered : rating;
+  return (
+    <div style={{ display: "flex", gap: 4 }}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <button
+          key={s} type="button" disabled={!interactive}
+          onClick={() => onChange?.(s)}
+          onMouseEnter={() => interactive && setHovered(s)}
+          onMouseLeave={() => interactive && setHovered(0)}
+          style={{
+            background: "none", border: "none", padding: 0,
+            cursor: interactive ? "pointer" : "default",
+            transform: interactive && hovered >= s ? "scale(1.2)" : "scale(1)",
+            transition: "transform .2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            display: "flex",
+          }}
+        >
+          <Star
+            size={size}
+            fill={s <= effective ? C.accent : "none"}
+            stroke={s <= effective ? C.accent : C.muted}
+            strokeWidth={s <= effective ? 1 : 1.5}
+          />
+        </button>
+      ))}
+    </div>
+  );
 }
 
-export const ProductReviews = ({ productId, productType, tenantId }: ProductReviewsProps) => {
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  
-  // Form state
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Edit state
-  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+// ── Rating summary bar ────────────────────────────────────────────────────────
+function RatingBar({ label, count, max }: { label: string; count: number; max: number }) {
+  const pct = max > 0 ? (count / max) * 100 : 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, width: 12, textAlign: "right" }}>
+        {label}
+      </span>
+      <div style={{
+        flex: 1, height: 8, borderRadius: 99,
+        background: T.border, overflow: "hidden",
+      }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+          style={{
+            height: "100%", background: T.accent, borderRadius: 99,
+          }}
+        />
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 600, color: T.textMuted, width: 16 }}>
+        {count}
+      </span>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    const init = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setUserId(user?.id ?? null);
-      
-      const { data } = await fetchReviews(productId, productType);
-      setReviews(data ?? []);
-      setLoading(false);
-    };
-    init();
-  }, [productId, productType]);
+// ── Props ────────────────────────────────────────────────────────────────────
+interface ProductReviewsProps {
+  productId: string;
+  productType: "fnb" | "nfb";
+  tenantId: string;
+  colors?: any;
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
+export const ProductReviews = ({ productId, productType, tenantId, colors }: ProductReviewsProps) => {
+  const C = buildC(colors);
+  const [reviews, setReviews]           = useState<any[]>([]);
+  const [userId, setUserId]             = useState<string | null>(null);
+  const [loading, setLoading]           = useState(true);
+  const [rating, setRating]             = useState(5);
+  const [comment, setComment]           = useState("");
+  const [submitting, setSubmitting]     = useState(false);
+  const [editingReviewId, setEditingId] = useState<string | null>(null);
+  const [focused, setFocused]           = useState(false);
 
   const loadReviews = async () => {
     const { data } = await fetchReviews(productId, productType);
     setReviews(data ?? []);
   };
 
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id ?? null);
+      await loadReviews();
+      setLoading(false);
+    })();
+  }, [productId, productType]);
+
+  const avg = reviews.length
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  const userHasReviewed = reviews.some((r) => r.user_id === userId);
+  const maxCount = Math.max(1, ...[1,2,3,4,5].map(s => reviews.filter(r => r.rating === s).length));
+
   const handleSubmit = async () => {
     if (!userId) return;
     setSubmitting(true);
-    const { error } = await submitReview({
-      tenantId,
-      productId,
-      productType,
-      rating,
-      comment,
-    });
+    const { error } = await submitReview({ tenantId, productId, productType, rating, comment });
     setSubmitting(false);
-    if (!error) {
-      setComment("");
-      setRating(5);
-      loadReviews();
-    } else {
-      alert(error);
-    }
+    if (!error) { setComment(""); setRating(5); loadReviews(); }
+    else alert(error);
   };
 
   const handleDelete = async (reviewId: string) => {
     if (!confirm("Are you sure you want to delete this review?")) return;
     const { error } = await deleteReview(reviewId);
-    if (!error) {
-      loadReviews();
-    }
+    if (!error) loadReviews();
   };
 
   const handleUpdate = async (reviewId: string) => {
     setSubmitting(true);
     const { error } = await updateReview(reviewId, rating, comment);
     setSubmitting(false);
-    if (!error) {
-      setEditingReviewId(null);
-      setComment("");
-      setRating(5);
-      loadReviews();
-    }
+    if (!error) { setEditingId(null); setComment(""); setRating(5); loadReviews(); }
   };
 
-  const startEdit = (review: any) => {
-    setEditingReviewId(review.review_id);
-    setRating(review.rating);
-    setComment(review.comment);
-  };
+  const startEdit = (review: any) => { setEditingId(review.review_id); setRating(review.rating); setComment(review.comment); };
+  const cancelEdit = () => { setEditingId(null); setComment(""); setRating(5); };
 
-  const cancelEdit = () => {
-    setEditingReviewId(null);
-    setComment("");
-    setRating(5);
-  };
-
-  const userHasReviewed = reviews.some((r) => r.user_id === userId);
-
-  if (loading) {
-    return <div className="text-center text-xs text-[#385E31]/50 py-4">Loading reviews...</div>;
-  }
+  if (loading) return (
+    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 32, marginTop: 16 }}>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "24px 0" }}>
+        {[0, 1, 2].map(i => (
+          <div key={i} style={{
+            width: 8, height: 8, borderRadius: "50%", background: C.accent,
+            animation: `dotBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+          }} />
+        ))}
+      </div>
+      <style>{`@keyframes dotBounce { 0%,100%{transform:translateY(0);opacity:.3} 50%{transform:translateY(-8px);opacity:1} }`}</style>
+    </div>
+  );
 
   return (
-    <div className="border-t border-[#385E31]/10 pt-5 mt-2">
-      <h3 className="text-[#385E31] text-[16px] font-black uppercase mb-3">Customer Reviews</h3>
+    <div style={{
+      borderTop: `1px solid ${C.border}`,
+      paddingTop: 32, marginTop: 16,
+      fontFamily: "inherit",
+    }}>
 
-      {/* Review Form (Only show if logged in and hasn't reviewed yet, or is editing) */}
-      {userId && (!userHasReviewed || editingReviewId) && (
-        <div className="bg-white/60 p-4 rounded-xl border border-[#385E31]/10 mb-4">
-          <p className="text-[12px] font-bold text-[#385E31]/60 mb-2">
-            {editingReviewId ? "Edit your review" : "Leave a review"}
-          </p>
-          
-          {/* Star Rating Input */}
-          <div className="flex gap-1 mb-3">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <button
-                key={s}
-                onClick={() => setRating(s)}
-                className="text-[#F7B71D] hover:scale-110 transition-transform"
-              >
-                <Star size={18} fill={s <= rating ? "#F7B71D" : "none"} />
-              </button>
-            ))}
+      {/* ── Section header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 24 }}>
+        <div>
+          <h3 style={{
+            fontSize: 22, fontWeight: 800, color: C.accent,
+            letterSpacing: "-.01em", lineHeight: 1.2, marginBottom: 12
+          }}>
+            Customer Reviews
+          </h3>
+          {reviews.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <Stars rating={Math.round(avg)} size={18} colors={colors} />
+              <span style={{ fontSize: 18, fontWeight: 800, color: C.textMain }}>
+                {avg.toFixed(1)}
+              </span>
+              <span style={{
+                fontSize: 13, color: C.accent, fontWeight: 600,
+                padding: "4px 12px", borderRadius: 99,
+                background: C.secondary, border: `1px solid ${C.border}`,
+              }}>
+                {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Distribution bars */}
+        {reviews.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
+            {[5, 4, 3, 2, 1].map(s => {
+              const count = reviews.filter(r => r.rating === s).length;
+              const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+              return (
+                <div key={s} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, width: 12, textAlign: "right" }}>
+                    {s}
+                  </span>
+                  <div style={{
+                    flex: 1, height: 8, borderRadius: 99,
+                    background: C.border, overflow: "hidden",
+                  }}>
+                    <div style={{
+                      height: "100%", width: `${pct}%`, background: C.accent, borderRadius: 99,
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, width: 16 }}>
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
           </div>
+        )}
+      </div>
 
-          {/* Comment Input */}
+      {/* ── Review form ── */}
+      {userId && (!userHasReviewed || editingReviewId) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          style={{
+            background: C.secondary,
+            backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07))",
+            border: `1px solid ${focused ? C.accent : C.border}`,
+            borderRadius: 16, padding: "24px", marginBottom: 32,
+            transition: "border-color .2s, box-shadow .2s",
+            boxShadow: focused ? `0 4px 20px rgba(0,0,0,0.06)` : `0 2px 8px rgba(0,0,0,0.02)`,
+          }}
+        >
+          <p style={{
+            fontSize: 11, fontWeight: 800, letterSpacing: ".1em",
+            textTransform: "uppercase", color: C.accent, marginBottom: 16,
+          }}>
+            {editingReviewId ? "Edit your review" : "Share your thoughts"}
+          </p>
+
+          <Stars rating={rating} size={28} interactive onChange={setRating} colors={colors} />
+
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Share your thoughts about this product..."
-            className="w-full border border-[#385E31]/20 rounded-lg px-4 py-2 bg-transparent text-[#385E31] placeholder-[#385E31]/30 outline-none text-sm resize-none h-20 focus:ring-1 focus:ring-[#385E31]/30"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Share your thoughts about this product…"
+            rows={4}
+            style={{
+              width: "100%", marginTop: 16, padding: "16px",
+              background: C.secondary, border: `1px solid ${focused ? C.accent : C.border}`,
+              borderRadius: 12, fontSize: 14, color: C.textMain,
+              resize: "none", outline: "none", lineHeight: 1.6,
+              transition: "border-color .2s", boxSizing: "border-box",
+            }}
           />
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 mt-2">
-            {editingReviewId ? (
-              <>
-                <button
-                  onClick={cancelEdit}
-                  className="px-4 py-1.5 rounded-full text-xs font-bold border border-[#385E31]/20 text-[#385E31] hover:bg-[#385E31]/5"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleUpdate(editingReviewId)}
-                  disabled={submitting}
-                  className="bg-[#385E31] text-[#FFFCEB] px-4 py-1.5 rounded-full text-xs font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1"
-                >
-                  {submitting ? "Updating..." : <><Check size={12} /> Update</>}
-                </button>
-              </>
-            ) : (
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 16 }}>
+            {editingReviewId && (
               <button
-                onClick={handleSubmit}
-                disabled={submitting || rating === 0}
-                className="bg-[#385E31] text-[#FFFCEB] px-5 py-1.5 rounded-full text-xs font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1"
+                onClick={cancelEdit}
+                style={{
+                  padding: "10px 24px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+                  border: `1px solid ${C.border}`, background: "transparent", color: C.textMuted,
+                  cursor: "pointer", transition: "background .2s",
+                }}
               >
-                {submitting ? "Submitting..." : "Submit Review"}
+                Cancel
               </button>
             )}
+            <button
+              onClick={() => editingReviewId ? handleUpdate(editingReviewId) : handleSubmit()}
+              disabled={submitting || rating === 0}
+              style={{
+                padding: "10px 28px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                background: C.accent, color: C.secondary, border: "none",
+                cursor: submitting || rating === 0 ? "not-allowed" : "pointer",
+                opacity: rating === 0 ? .6 : 1, display: "flex", alignItems: "center", gap: 8,
+                transition: "transform .1s, box-shadow .1s",
+              }}
+            >
+              {submitting ? "Saving…" : editingReviewId ? <><Check size={16} /> Update</> : "Submit Review"}
+            </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Reviews List */}
-      <div className="flex flex-col gap-4">
+      {/* ── Reviews list ── */}
+      <AnimatePresence>
         {reviews.length === 0 ? (
-          <div className="text-center py-6 text-[#385E31]/40 text-sm">
-            <p>No reviews yet.</p>
-            {!userHasReviewed && <p className="text-xs">Be the first to review this product!</p>}
+          <div style={{ textAlign: "center", padding: "48px 0", background: C.secondary, border: `1px dashed ${C.border}`, borderRadius: 16 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: "50%", background: C.border,
+              display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
+            }}>
+              <MessageSquare size={28} style={{ color: C.accent }} />
+            </div>
+            <p style={{ fontSize: 16, fontWeight: 800, color: C.textMain, marginBottom: 8 }}>
+              No reviews yet
+            </p>
+            <p style={{ fontSize: 14, color: C.textMuted }}>
+              {!userHasReviewed ? "Be the first to review this product!" : ""}
+            </p>
           </div>
         ) : (
-          reviews.map((r: any) => (
-            <div key={r.review_id} className="border-b border-[#385E31]/5 pb-3 last:border-0">
-              <div className="flex items-center gap-3 mb-2">
-                {/* Avatar */}
-                <div className="w-8 h-8 rounded-full bg-[#F7B71D] flex items-center justify-center text-[#385E31] font-bold text-sm flex-shrink-0">
-                  {r.users?.display_name?.[0]?.toUpperCase() || "U"}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    {/* Nickname */}
-                    <p className="text-[#385E31] font-bold text-sm truncate">
-                      {r.users?.display_name || "User"}
-                    </p>
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-[#385E31]/40">
-                        {new Date(r.created_at).toLocaleDateString()}
-                      </span>
-                      
-                      {/* Edit/Delete Actions for Owner */}
-                      {userId === r.user_id && !editingReviewId && (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => startEdit(r)}
-                            className="text-[#385E31]/60 hover:text-[#385E31] p-1"
-                            title="Edit review"
-                          >
-                            <Edit2 size={10} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(r.review_id)}
-                            className="text-red-400 hover:text-red-500 p-1"
-                            title="Delete review"
-                          >
-                            <Trash2 size={10} />
-                          </button>
-                        </div>
-                      )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {reviews.map((r: any, idx: number) => (
+              <motion.div
+                key={r.review_id}
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+                transition={{ delay: idx * 0.05 }}
+                style={{
+                  background: C.secondary, border: `1px solid ${C.border}`,
+                  borderRadius: 16, padding: "24px",
+                }}
+              >
+                <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Name row */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                      <div>
+                        <p style={{ fontSize: 15, fontWeight: 800, color: C.textMain, marginBottom: 6 }}>
+                          {r.users?.display_name ?? "Anonymous"}
+                        </p>
+                        <Stars rating={r.rating} size={14} colors={colors} />
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        <span style={{
+                          fontSize: 12, color: C.textMuted, fontWeight: 600,
+                          padding: "4px 10px", borderRadius: 99, background: C.secondary, border: `1px solid ${C.border}`,
+                        }}>
+                          {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+
+                        {userId === r.user_id && !editingReviewId && (
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                              onClick={() => startEdit(r)} title="Edit review"
+                              style={{
+                                width: 32, height: 32, borderRadius: 8, border: "none",
+                                background: C.border, color: C.accent,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer", transition: "background .2s",
+                              }}
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(r.review_id)} title="Delete review"
+                              style={{
+                                width: 32, height: 32, borderRadius: 8, border: "none",
+                                background: "#FEE2E2", color: "#DC2626",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer", transition: "background .2s",
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  
-                  {/* Stars */}
-                  <div className="flex gap-0.5 text-[#F7B71D]">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={10} fill={i < r.rating ? "#F7B71D" : "none"} />
-                    ))}
+
+                    {/* Comment */}
+                    <p style={{
+                      fontSize: 15, lineHeight: 1.6, marginTop: 16,
+                      color: r.comment ? C.textMain : C.textMuted,
+                      fontStyle: r.comment ? "normal" : "italic",
+                    }}>
+                      {r.comment || "No comment left."}
+                    </p>
                   </div>
                 </div>
-              </div>
-              
-              <p className="text-[#385E31] text-[13px] leading-snug pl-11">
-                {r.comment || <span className="text-[#385E31]/40 italic">No comment left.</span>}
-              </p>
-            </div>
-          ))
+              </motion.div>
+            ))}
+          </div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 };

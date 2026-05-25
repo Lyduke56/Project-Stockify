@@ -1,29 +1,44 @@
 "use client";
 
+import { useState } from "react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 import AuditLogs from "@/components/tables/audit-logs-table";
+import LoadingScreen from "@/app/loading-screen/loading";
 
-export default function EmployeeAuditLogs() {
+export default function EmployeeAuditLogs({ colors }: { colors?: StorefrontConfig | null }) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+
+  const handleLoadComplete = () => {
+    setIsLoading(false);
+    // Small delay so the DOM renders before the transition kicks in
+    setTimeout(() => setIsVisible(true), 50);
+  };
+
   return (
-    // 1. Changed h-screen to min-h-screen and removed overflow-hidden.
-    // This allows the background to stretch downwards indefinitely.
-    <div className="flex min-h-screen w-full bg-[#FFFCEB] font-['Inter']">
-    
-          {/* RIGHT SIDE: Main Content */}
-          {/* 2. Added flex-1 and padding (px-10 pt-5 pb-12) so it looks clean */}
-          <div className="flex-1 flex flex-col w-full font-['Inter']">
-    
-            {/* Header */}
-            <div className="w-full flex flex-col items-center mt-2 mb-10">
-              <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
-                Audit Logs
-              </h1>
-              <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full"></div>
-            </div>
+    <>
+      {isLoading && <LoadingScreen fullScreen={false} />}
 
-            <AuditLogs />
-            
+      <div
+        className={`flex min-h-screen w-full bg-background font-['Inter'] transition-all duration-700 ease-out ${
+          isLoading
+            ? "hidden"
+            : isVisible
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4"
+        }`}
+      >
+        <div className="flex-1 flex flex-col w-full font-['Inter']">
+          <div className="w-full flex flex-col items-center mt-2 mb-10">
+            <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
+              Audit Logs
+            </h1>
+            <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
 
-    </div>
+          <AuditLogs onLoadComplete={handleLoadComplete} colors={colors} />
+        </div>
+      </div>
+    </>
   );
 }

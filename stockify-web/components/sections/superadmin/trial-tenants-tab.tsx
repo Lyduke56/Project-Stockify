@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import TenantProfileModal from "@/components/modals/superadmin/tenant-profile/tenant-profile-modal";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertTriangle, X, Loader2, FastForward } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,10 @@ interface TrialTenant {
   business_type:   string;
   trial_ends_at:   string | null;
   trial_days_left: number;
+}
+
+interface TabProps {
+  onReview: (id: string) => void;
 }
 
 // ── SVG helpers ───────────────────────────────────────────────────────────────
@@ -36,12 +40,12 @@ const ChevronDown = () => (
 // ── Column headers ────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  "Business Name",
-  "Owner",
-  "Business Type",
-  "Trial Ends",
-  "Days Left",
-  "Actions",
+  "BUSINESS NAME",
+  "OWNER",
+  "BUSINESS TYPE",
+  "TRIAL ENDS",
+  "DAYS LEFT",
+  "ACTIONS",
 ];
 
 // ── Skeleton Loader ───────────────────────────────────────────────────────────
@@ -85,78 +89,100 @@ function EndTrialModal({
   onClose: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-      onClick={(e) => { if (e.target === e.currentTarget && !isLoading) onClose(); }}
-    >
-      <div className="relative bg-[#FFFCEB] rounded-[14px] w-full max-w-[420px] shadow-2xl border border-[#385E31]/20 overflow-hidden">
-        {/* Accent bar */}
-        <div className="h-1.5 w-full bg-[#E5AD24]" />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center font-['Inter']">
+      
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-[#3A6131]/40 backdrop-blur-sm"
+        onClick={!isLoading ? onClose : undefined}
+      />
 
-        <div className="p-7 flex flex-col items-center gap-5">
-          {/* Icon */}
-          <div className="w-16 h-16 rounded-full bg-[#385E31]/5 border border-[#385E31]/10 flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
-              fill="none" stroke="#E5AD24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+      {/* Modal card */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 15 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        className="relative z-10 bg-[#FFFCEB] rounded-[24px] shadow-2xl w-[440px] max-w-[95vw] overflow-hidden border border-[#E5AD24]/30"
+      >
+        {/* Header */}
+        <div className="bg-[#E5AD24] px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[#3A6131]">
+            <FastForward size={18} strokeWidth={2.5} />
+            <h2 className="font-bold text-lg tracking-wide">End Free Trial</h2>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="text-[#3A6131] opacity-70 hover:opacity-100 transition-opacity disabled:opacity-50"
+          >
+            <X size={20} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 flex flex-col items-center text-center gap-4">
+          
+          {/* Icon Bubble */}
+          <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-sm bg-yellow-100 text-[#D19D1F]">
+            <FastForward size={32} />
           </div>
 
           {/* Text */}
-          <div className="text-center flex flex-col gap-2">
-            <h3 className="text-[#385E31] text-[20px] font-extrabold">End Free Trial</h3>
-            <p className="text-[#385E31]/75 text-[13px] font-medium leading-relaxed">
-              You're about to end the free trial for{" "}
-              <strong>{tenant.business_name}</strong> early. Their account will move
-              to <strong>Active</strong> billing immediately and a{" "}
-              <strong>₱1,000 invoice</strong> will be generated for this month.
+          <div>
+            <p className="text-[#3A6131] font-bold text-lg">Are you sure?</p>
+            <p className="text-gray-500 text-[13.5px] mt-1 leading-relaxed px-2">
+              You are about to end the free trial for <span className="font-bold text-[#3A6131]">{tenant.business_name}</span> early. Their account will move to <span className="font-bold text-[#3A6131]">Active</span> billing immediately and a <span className="font-bold text-[#3A6131]">₱1,000 invoice</span> will be generated.
             </p>
           </div>
 
-          {/* Info note */}
-          <div className="w-full bg-[#E5AD24]/10 border border-[#E5AD24]/30 rounded-[8px] px-4 py-3 flex items-start gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="#E5AD24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              className="shrink-0 mt-0.5">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <p className="text-[#385E31]/40 text-[12px] font-semibold leading-relaxed">
-              The tenant will receive an email notification that their trial has ended
-              and billing has started.
+          {/* Warning Box */}
+          <div className="w-full p-3.5 rounded-xl border text-left mt-1 flex items-start gap-2.5 bg-yellow-50 border-yellow-200 text-yellow-800">
+            <AlertTriangle size={16} className="shrink-0 mt-[1px]" />
+            <p className="text-xs font-medium leading-relaxed">
+              <span className="font-bold">Note:</span> The tenant will receive an email notification that their trial has ended and billing has started.
             </p>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-3 w-full mt-1">
-            <button
-              onClick={onClose}
-              disabled={isLoading}
-              className="flex-1 border-2 border-[#385E31] text-[#385E31] font-bold text-[14px] py-2.5 rounded-[40px] hover:bg-[#385E31]/5 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={isLoading}
-              className="flex-1 bg-[#E5AD24] text-[#385E31] font-bold text-[14px] py-2.5 rounded-[40px] hover:bg-[#D19D1F] transition-colors disabled:opacity-60"
-            >
-              {isLoading ? "Processing…" : "Yes, End Trial"}
-            </button>
-          </div>
         </div>
-      </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button
+            onClick={onClose}
+            disabled={isLoading}
+            className="flex-1 py-2.5 border-2 border-[#3A6131] text-[#3A6131] font-bold rounded-xl hover:bg-[#3A6131]/5 transition-colors disabled:opacity-50"
+          >
+            Go Back
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isLoading}
+            className="flex-1 py-2.5 font-bold rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed bg-[#E5AD24] text-[#3A6131] hover:bg-[#D19D1F]"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "End Trial Early"
+            )}
+          </button>
+        </div>
+
+      </motion.div>
     </div>
   );
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function TrialTenantsTab() {
-  const router = useRouter();
-
+// Corrected component name and passed the prop!
+export default function TrialTenantsTab({ onReview }: TabProps) {
   const [tenants,  setTenants]  = useState<TrialTenant[]>([]);
   const [filtered, setFiltered] = useState<TrialTenant[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -171,7 +197,6 @@ export default function TrialTenantsTab() {
   // Action state
   const [selectedTenant,  setSelectedTenant]  = useState<TrialTenant | null>(null);
   const [showEndTrialModal, setShowEndTrialModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
   const [actionLoading,   setActionLoading]   = useState(false);
   const [actionError,     setActionError]     = useState("");
   const [successMsg,      setSuccessMsg]      = useState("");
@@ -370,10 +395,8 @@ export default function TrialTenantsTab() {
                 {/* Business Name */}
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                   <span
-                    onClick={() => {
-                      setSelectedTenant(row);
-                      setShowProfileModal(true);
-                    }}
+                    // Replaced with onReview
+                    onClick={() => onReview(row.tenant_id)}
                     className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
@@ -431,10 +454,10 @@ export default function TrialTenantsTab() {
                     <div className="absolute top-8 right-[50%] translate-x-1/2 w-[160px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] z-10 py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left">
 
                       <button
+                        // Replaced with onReview
                         onClick={() => {
-                          setSelectedTenant(row);
                           setOpenDropdownId(null);
-                          setShowProfileModal(true);
+                          onReview(row.tenant_id);
                         }}
                         className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
                       >
@@ -482,36 +505,23 @@ export default function TrialTenantsTab() {
       </div>
       
 
-      {/* Modals */}
-      {showEndTrialModal && selectedTenant && (
-        <EndTrialModal
-          tenant={selectedTenant}
-          isLoading={actionLoading}
-          onConfirm={handleEndTrial}
-          onClose={() => {
-            if (!actionLoading) {
-              setShowEndTrialModal(false);
-              setSelectedTenant(null);
-              setActionError("");
-            }
-          }}
-        />
-      )}
-
-      <TenantProfileModal
-        isOpen={showProfileModal}
-        tenantId={selectedTenant?.tenant_id ?? null}
-        onClose={() => {
-          setShowProfileModal(false);
-          setSelectedTenant(null);
-        }}
-        onSuccess={(tenantId, action) => {
-          // Optional: handle updates if actions like suspend/terminate exist in the profile modal
-          if (action === "suspend" || action === "terminate") {
-            setTenants((prev) => prev.filter((t) => t.tenant_id !== tenantId));
-          }
-        }}
-      />
+      {/* Modals wrapped in AnimatePresence for smooth exits */}
+      <AnimatePresence>
+        {showEndTrialModal && selectedTenant && (
+          <EndTrialModal
+            tenant={selectedTenant}
+            isLoading={actionLoading}
+            onConfirm={handleEndTrial}
+            onClose={() => {
+              if (!actionLoading) {
+                setShowEndTrialModal(false);
+                setSelectedTenant(null);
+                setActionError("");
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
       
     </>
   );

@@ -8,16 +8,18 @@ import {
 } from "lucide-react";
 import ModalBackdrop from "./modals-backdrop";
 import { updateFnbItem, type FnbItem } from "@/lib/employee/inventory";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 interface RestockIngredientModalProps {
   item:      FnbItem;
   tenantId:  string;
   onClose:   () => void;
   onSuccess: () => void;
+  colors?:   StorefrontConfig | null;
 }
 
 export default function RestockIngredientModal({
-  item, tenantId, onClose, onSuccess,
+  item, tenantId, onClose, onSuccess, colors,
 }: RestockIngredientModalProps) {
   const [addQuantity, setAddQuantity] = useState("");
   const [useBaseUnits, setUseBaseUnits] = useState(false); // false = Purchase Units (Bags), true = Base Units (g/ml)
@@ -52,8 +54,17 @@ export default function RestockIngredientModal({
     }
   };
 
-  const labelStyle = "text-[10px] font-black uppercase tracking-widest text-[#3A6131]/40 mb-2 block";
-  const inputStyle = "w-full bg-white border-2 border-[#3A6131]/10 rounded-2xl px-5 py-4 text-sm text-[#3A6131] font-bold focus:outline-none focus:border-[#F7B71D] transition-all placeholder:text-[#3A6131]/20";
+  const modalStyles = {
+    "--color-primary": colors?.color_primary ?? "#385E31",
+    "--color-secondary": colors?.color_secondary ?? "#2A4725",
+    "--color-accent": colors?.color_accent ?? "#F7B71D",
+    "--color-background": colors?.color_background ?? "#FFFCEB",
+    "--color-text": colors?.color_text ?? "#3A6131",
+    "--color-sidebar-text": colors?.color_sidebar_text ?? "#FFF9D7",
+  } as React.CSSProperties;
+
+  const labelStyle = "text-[10px] font-black uppercase tracking-widest text-primary/40 mb-2 block";
+  const inputStyle = "w-full bg-background border-2 border-primary/10 rounded-2xl px-5 py-4 text-sm text-primary font-bold focus:outline-none focus:border-accent transition-all placeholder:text-primary/20";
 
   return (
     <ModalBackdrop onClose={onClose}>
@@ -62,21 +73,22 @@ export default function RestockIngredientModal({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#FFFCEB] w-full max-w-[450px] rounded-[32px] overflow-hidden shadow-2xl border border-[#385E31]/10"
+        className="bg-background w-full max-w-[450px] rounded-[32px] overflow-hidden shadow-2xl border border-primary/10"
+        style={modalStyles}
       >
         {/* Header */}
-        <div className="bg-[#3A6131] p-8 text-[#FFFCEB] relative overflow-hidden">
+        <div className="bg-primary p-8 text-[var(--color-sidebar-text,#FFF9D7)] relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex justify-between items-start mb-4">
-              <div className="bg-[#F7B71D] p-3 rounded-2xl shadow-lg">
-                <PackagePlus size={24} className="text-[#3A6131]" />
+              <div className="bg-accent p-3 rounded-2xl shadow-lg">
+                <PackagePlus size={24} className="text-primary" />
               </div>
               <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
             <h2 className="text-2xl font-black italic font-raleway">Restock Material</h2>
-            <p className="text-white/60 text-xs font-bold uppercase tracking-widest mt-1">{item.name}</p>
+            <p className="text-[var(--color-sidebar-text,#FFF9D7)]/60 text-xs font-bold uppercase tracking-widest mt-1">{item.name}</p>
           </div>
           {/* Abstract background shape */}
           <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/5 rounded-full blur-3xl" />
@@ -101,13 +113,13 @@ export default function RestockIngredientModal({
                 
                 {/* Current Stock Info */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-2xl border border-[#3A6131]/5 shadow-sm">
+                  <div className="bg-background p-4 rounded-2xl border border-primary/5 shadow-sm">
                     <span className={labelStyle}>Current Inventory</span>
-                    <p className="text-lg font-black text-[#3A6131]">{currentInPurchaseUnits} <span className="text-xs font-bold text-[#3A6131]/40">{item.purchase_unit}s</span></p>
+                    <p className="text-lg font-black text-primary">{currentInPurchaseUnits} <span className="text-xs font-bold text-primary/40">{item.purchase_unit}s</span></p>
                   </div>
-                  <div className="bg-white p-4 rounded-2xl border border-[#3A6131]/5 shadow-sm">
+                  <div className="bg-background p-4 rounded-2xl border border-primary/5 shadow-sm">
                     <span className={labelStyle}>Exact Units</span>
-                    <p className="text-lg font-black text-[#3A6131]">{item.stock} <span className="text-xs font-bold text-[#3A6131]/40">{item.base_unit}</span></p>
+                    <p className="text-lg font-black text-primary">{item.stock} <span className="text-xs font-bold text-primary/40">{item.base_unit}</span></p>
                   </div>
                 </div>
 
@@ -115,16 +127,16 @@ export default function RestockIngredientModal({
                 <div className="space-y-4">
                   <div className="flex justify-between items-end">
                     <span className={labelStyle}>Restock Amount</span>
-                    <div className="flex gap-1 bg-[#3A6131]/5 p-1 rounded-xl mb-2">
+                    <div className="flex gap-1 bg-primary/5 p-1 rounded-xl mb-2">
                       <button 
                         onClick={() => setUseBaseUnits(false)}
-                        className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${!useBaseUnits ? "bg-[#3A6131] text-[#FFFCEB] shadow-md" : "text-[#3A6131]/50 hover:text-[#3A6131]"}`}
+                        className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${!useBaseUnits ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)] shadow-md" : "text-primary/50 hover:text-primary"}`}
                       >
                         {item.purchase_unit}s
                       </button>
                       <button 
                         onClick={() => setUseBaseUnits(true)}
-                        className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${useBaseUnits ? "bg-[#3A6131] text-[#FFFCEB] shadow-md" : "text-[#3A6131]/50 hover:text-[#3A6131]"}`}
+                        className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${useBaseUnits ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)] shadow-md" : "text-primary/50 hover:text-primary"}`}
                       >
                         {item.base_unit}
                       </button>
@@ -141,7 +153,7 @@ export default function RestockIngredientModal({
                       className={inputStyle}
                       autoFocus
                     />
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-[#3A6131]/20">
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 text-primary/20">
                       {useBaseUnits ? <Scale size={20} /> : <FlaskConical size={20} />}
                     </div>
                   </div>
@@ -150,9 +162,9 @@ export default function RestockIngredientModal({
                     <motion.p 
                       initial={{ opacity: 0, x: -10 }} 
                       animate={{ opacity: 1, x: 0 }}
-                      className="text-[11px] font-bold text-[#3A6131]/50 pl-2"
+                      className="text-[11px] font-bold text-primary/50 pl-2"
                     >
-                      New Total: <span className="text-[#3A6131]">
+                      New Total: <span className="text-primary">
                         {useBaseUnits 
                           ? (Number(item.stock) + Number(addQuantity)) 
                           : ((Number(item.stock) + (Number(addQuantity) * conversion)) / conversion).toFixed(2)
@@ -165,14 +177,14 @@ export default function RestockIngredientModal({
                 <div className="pt-4 flex gap-3">
                   <button
                     onClick={onClose}
-                    className="flex-1 bg-white border-2 border-[#3A6131]/10 text-[#3A6131] py-4 rounded-2xl text-sm font-black hover:bg-gray-50 active:scale-95 transition-all"
+                    className="flex-1 bg-background border-2 border-primary/10 text-primary py-4 rounded-2xl text-sm font-black hover:bg-gray-50 active:scale-95 transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleRestock}
                     disabled={saving || !addQuantity || Number(addQuantity) <= 0}
-                    className="flex-[1.5] bg-[#3A6131] text-[#FFFCEB] py-4 rounded-2xl text-sm font-black flex items-center justify-center gap-2 shadow-xl shadow-[#3A6131]/20 hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    className="flex-[1.5] bg-primary text-[var(--color-sidebar-text,#FFF9D7)] py-4 rounded-2xl text-sm font-black flex items-center justify-center gap-2 shadow-xl shadow-primary/20 hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     {saving ? (
                       <Loader2 size={18} className="animate-spin" />

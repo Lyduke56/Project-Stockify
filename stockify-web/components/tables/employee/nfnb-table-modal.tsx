@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   fetchNfbProducts,
   addNfbProduct,
@@ -14,6 +15,7 @@ import ManageCategoriesModal from "@/components/modals/employee/product-modals/m
 import DeleteItemModal       from "@/components/modals/employee/ingredients-modals/delete-item-modal";
 import RestockModal          from "@/components/modals/employee/product-modals/restock-modal";
 import { Loader2, RefreshCw } from "lucide-react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 // ── SVG helpers ───────────────────────────────────────────────
 
@@ -45,17 +47,15 @@ const COLUMNS = [
   { label: "ACTIONS",   className: "flex-[1]   min-w-[80px]  justify-center text-center"  },
 ];
 
-// ── Dropdown position type ────────────────────────────────────
-
-type DropdownPos = { top: number; right: number };
-
 // ── Component ─────────────────────────────────────────────────
 
 interface NfbProductsTableProps {
   tenantId: string;
+  onLoadComplete?: () => void;  
+  colors?: StorefrontConfig | null;
 }
 
-export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
+export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: NfbProductsTableProps) {
   const [products,      setProducts]      = useState<NfbProduct[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [error,         setError]         = useState<string | null>(null);
@@ -70,33 +70,42 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
 
   // ── UI popover states ──────────────────────────────────────────
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPos,    setDropdownPos]    = useState<DropdownPos | null>(null);
-  
+  const [dropdownPos,    setDropdownPos]    = useState<{ top: number; right: number } | null>(null);
   const [variantPopId,   setVariantPopId]   = useState<string | null>(null);
-  const [variantPopPos,  setVariantPopPos]  = useState<DropdownPos | null>(null);
+  const [variantPopPos,  setVariantPopPos]  = useState<{ top: number; right: number } | null>(null);
+  const [mounted,        setMounted]        = useState(false);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
-  const loadProducts = useCallback(async () => {
-    try { setLoading(true); setError(null); setProducts(await fetchNfbProducts(tenantId)); }
-    catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [tenantId]);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+ const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setProducts(await fetchNfbProducts(tenantId));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+      onLoadComplete?.();  // ← add this
+    }
+  }, [tenantId, onLoadComplete]);
+  
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
   // Close popovers on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      
-      const actionDropdown = document.getElementById("nfb-action-dropdown");
-      const variantPop     = document.getElementById("nfb-variant-popover");
-      
+      const target = e.target as HTMLElement;
       if (
-        (tableRef.current && tableRef.current.contains(target)) ||
-        (actionDropdown && actionDropdown.contains(target)) ||
-        (variantPop && variantPop.contains(target))
+        target.closest("#nfb-action-dropdown") ||
+        target.closest("#nfb-variant-popover") ||
+        target.closest("[data-action-btn]") ||
+        target.closest("[data-variant-btn]")
       ) return;
       
       setOpenDropdownId(null);
@@ -108,11 +117,24 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Close popovers on scroll
+  useEffect(() => {
+    const handler = () => {
+      setOpenDropdownId(null);
+      setDropdownPos(null);
+      setVariantPopId(null);
+      setVariantPopPos(null);
+    };
+    window.addEventListener("scroll", handler, true);
+    return () => window.removeEventListener("scroll", handler, true);
+  }, []);
+
   useEffect(() => { setVisibleCount(5); }, [search, filterStatus]);
 
-  // ── Toggle dropdown with fixed screen position ────────────────
+  // ── Toggle popovers inline ─────────────────────────────────────
 
   const handleActionClick = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
+    e.stopPropagation();
     if (openDropdownId === productId) {
       setOpenDropdownId(null);
       setDropdownPos(null);
@@ -120,14 +142,16 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
     }
     const rect = e.currentTarget.getBoundingClientRect();
     setDropdownPos({
-      top:   rect.bottom + 4,
+      top: rect.bottom + 4,
       right: window.innerWidth - rect.right,
     });
     setOpenDropdownId(productId);
-    setVariantPopId(null); // close other popovers
+    setVariantPopId(null);
+    setVariantPopPos(null);
   };
 
   const handleVariantClick = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
+    e.stopPropagation();
     if (variantPopId === productId) {
       setVariantPopId(null);
       setVariantPopPos(null);
@@ -135,11 +159,12 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
     }
     const rect = e.currentTarget.getBoundingClientRect();
     setVariantPopPos({
-      top:   rect.bottom + 4,
+      top: rect.bottom + 4,
       right: window.innerWidth - rect.right,
     });
     setVariantPopId(productId);
-    setOpenDropdownId(null); // close other popovers
+    setOpenDropdownId(null);
+    setDropdownPos(null);
   };
 
   // ── Filtering ─────────────────────────────────────────────────
@@ -185,6 +210,8 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
     setDeleteTarget(null);
     loadProducts();
   };
+
+  
 
   // ── Render ────────────────────────────────────────────────────
 
@@ -340,9 +367,10 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
                 </div>
 
                 {/* Status Column */}
-                <div className={`flex items-center justify-center ${COLUMNS[6].className}`}>
+                <div className={`flex items-center justify-center relative ${COLUMNS[6].className}`}>
                   {hasVariants ? (
                     <button
+                      data-variant-btn
                       onClick={(e) => handleVariantClick(e, row.product_id)}
                       className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all flex items-center gap-1.5 ${
                         variantPopId === row.product_id 
@@ -380,12 +408,13 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
                   </div>
                 </div>
 
-                {/* Actions — button only; dropdown rendered via fixed portal below */}
-                <div className={`flex items-center justify-center ${COLUMNS[8].className}`}>
+                {/* Actions */}
+                <div className={`flex items-center justify-center relative ${COLUMNS[8].className}`}>
                   <button
+                    data-action-btn
                     onClick={(e) => handleActionClick(e, row.product_id)}
                     className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
-                      isOpen ? "bg-primary text-[#FFFCEB]" : "text-primary hover:bg-primary/10"
+                      isOpen ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)]" : "text-primary hover:bg-primary/10"
                     }`}
                   >
                     Action <ChevronDown />
@@ -397,23 +426,73 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
         )}
       </div>
 
-      {/* ── Fixed variant popover ── */}
-      {variantPopId && variantPopPos && (() => {
+      {/* Pagination */}
+      <div className="w-full flex justify-end items-center gap-3 mt-6">
+        {visibleCount > 5 && (
+          <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-primary text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-primary/10 active:scale-95 transition-all">
+            Show Less
+          </button>
+        )}
+        {filtered.length > visibleCount && (
+          <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-accent text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">
+            Load More
+          </button>
+        )}
+      </div>
+
+      {/* Modals */}
+      {showAdd && (
+        <NfbProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} colors={colors} />
+      )}
+      {editTarget && (
+        <NfbProductModal mode="edit" tenantId={tenantId} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} colors={colors} />
+      )}
+      {deleteTarget && (
+        <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
+      )}
+      {restockTarget && (
+        <RestockModal
+          type="nfnb"
+          product={restockTarget}
+          tenantId={tenantId}
+          onClose={() => setRestockTarget(null)}
+          onSuccess={loadProducts}
+          colors={colors}
+        />
+      )}
+      {showCategories && (
+        <ManageCategoriesModal
+          tenantId={tenantId}
+          type="nfb_product"
+          placeholder="e.g. Cleaning supplies"
+          onClose={() => { setShowCategories(false); loadProducts(); }}
+          colors={colors}
+        />
+      )}
+
+      {/* ── Fixed dropdowns - rendered via Portals ── */}
+      {mounted && variantPopId && variantPopPos && (() => {
         const row = products.find((p) => p.product_id === variantPopId);
-        if (!row || !row.variants) return null;
+        if (!row) return null;
         const threshold = row.reorder_threshold ?? 0;
-        
-        return (
+        return createPortal(
           <div
             id="nfb-variant-popover"
-            style={{ position: "fixed", top: variantPopPos.top, right: variantPopPos.right, zIndex: 9999 }}
-            className="w-[280px] bg-white border border-primary/20 shadow-2xl rounded-[16px] py-3 overflow-hidden flex flex-col"
+            style={{
+              position: "fixed",
+              top: variantPopPos.top,
+              right: variantPopPos.right,
+              zIndex: 9999,
+              backgroundColor: colors?.color_background || '#FFFCEB',
+            }}
+            className="w-[280px] border border-primary shadow-2xl rounded-[16px] py-3 flex flex-col text-primary text-left"
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 pb-2 border-b border-primary/10 mb-2">
               <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{row.name} Variants</h4>
             </div>
-            <div className="max-h-[300px] overflow-y-auto px-2 space-y-1">
-              {row.variants.flatMap(vt => vt.options).map((opt, i) => {
+            <div className="max-h-[200px] overflow-y-auto px-2 space-y-1">
+              {row.variants!.flatMap(vt => vt.options).map((opt, i) => {
                 const stock = Number(opt.stock) || 0;
                 const variantThreshold = Number(opt.reorder_threshold) || 0;
                 const isLow = stock <= variantThreshold && variantThreshold > 0;
@@ -434,85 +513,60 @@ export default function NfbProductsTable({ tenantId }: NfbProductsTableProps) {
             </div>
             <div className="mt-2 px-4 pt-2 border-t border-primary/5 flex justify-between items-center bg-primary/5 py-2">
               <span className="text-[10px] font-bold text-primary/40 italic">Threshold: {threshold}</span>
-              <button onClick={() => setVariantPopId(null)} className="text-[10px] font-black text-primary hover:underline">Close</button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setVariantPopId(null);
+                  setVariantPopPos(null);
+                }} 
+                className="text-[10px] font-black text-primary hover:underline"
+              >
+                Close
+              </button>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 
-      {/* ── Fixed action dropdown ── */}
-      {openDropdownId && dropdownPos && (() => {
+      {mounted && openDropdownId && dropdownPos && (() => {
         const row = products.find((p) => p.product_id === openDropdownId);
         if (!row) return null;
-        return (
+        return createPortal(
           <div
             id="nfb-action-dropdown"
-            style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
-            className="w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[4px] py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col text-left"
+            style={{
+              position: "fixed",
+              top: dropdownPos.top,
+              right: dropdownPos.right,
+              zIndex: 9999,
+              backgroundColor: colors?.color_background || '#FFFCEB',
+            }}
+            className="w-[140px] border border-primary shadow-lg rounded-[4px] py-1 flex flex-col text-primary text-[11px] font-semibold text-left"
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => { setEditTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+              className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
             >
               Edit Product
             </button>
             <button
               onClick={() => { setRestockTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-[#E5AD24] text-left transition-colors"
+              className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
             >
               Restock
             </button>
             <button
               onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors"
+              className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors"
             >
               Delete Product
             </button>
-          </div>
+          </div>,
+          document.body
         );
       })()}
-
-      {/* Pagination */}
-      <div className="w-full flex justify-end items-center gap-3 mt-6">
-        {visibleCount > 5 && (
-          <button onClick={() => setVisibleCount(5)} className="bg-transparent border border-primary text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:bg-primary/10 active:scale-95 transition-all">
-            Show Less
-          </button>
-        )}
-        {filtered.length > visibleCount && (
-          <button onClick={() => setVisibleCount((p) => p + 5)} className="bg-accent text-primary text-[13px] font-bold px-8 py-2.5 rounded-[40px] shadow-sm hover:opacity-90 active:scale-95 transition-all">
-            Load More
-          </button>
-        )}
-      </div>
-
-      {/* Modals */}
-      {showAdd && (
-        <NfbProductModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} />
-      )}
-      {editTarget && (
-        <NfbProductModal mode="edit" tenantId={tenantId} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />
-      )}
-      {deleteTarget && (
-        <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
-      )}
-      {restockTarget && (
-        <RestockModal
-          type="nfnb"
-          product={restockTarget}
-          tenantId={tenantId}
-          onClose={() => setRestockTarget(null)}
-          onSuccess={loadProducts}
-        />
-      )}
-      {showCategories && (
-        <ManageCategoriesModal
-          tenantId={tenantId}
-          type="nfb_product"
-          placeholder="e.g. Cleaning supplies"
-          onClose={() => { setShowCategories(false); loadProducts(); }}
-        />
-      )}
     </div>
   );
 }

@@ -1,16 +1,16 @@
-// components/modals/employee/inventories-modal/manage-categories-modal.tsx
-
 import ManageCategoriesBase from "@/components/modals/employee/shared/manage-categories-base";
 import type { CategoryType } from "@/lib/employee/categories";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 interface Props {
   tenantId:     string;
   type:         CategoryType;
   onClose:      () => void;
-  placeholder?: string; // ← new, optional
+  placeholder?: string;
+  colors?:      StorefrontConfig | null;
 }
 
-export default function ManageCategoriesModal({ tenantId, type, onClose, placeholder = "e.g. New Category" }: Props) {
+export default function ManageCategoriesModal({ tenantId, type, onClose, placeholder = "e.g. New Category", colors }: Props) {
   return (
     <ManageCategoriesBase
       tenantId={tenantId}
@@ -19,6 +19,7 @@ export default function ManageCategoriesModal({ tenantId, type, onClose, placeho
       contextLabel="Products"
       placeholder={placeholder}
       onClose={onClose}
+      colors={colors}
     />
   );
 }

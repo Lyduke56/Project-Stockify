@@ -19,6 +19,10 @@ interface ActiveTenant {
   next_billing_date:   string | null;
 }
 
+interface TabProps {
+  onReview: (id: string) => void;
+}
+
 // ── SVG helpers ───────────────────────────────────────────────────────────────
 
 const SearchIcon = () => (
@@ -50,12 +54,12 @@ const getPillStyles = (status: string) => {
 // ── Column headers ────────────────────────────────────────────────────────────
 
 const COLUMNS = [
-  "Business Name",
-  "Owner",
-  "Business Type",
-  "Due Date",
-  "Subscription Status",
-  "Actions",
+  "BUSINESS NAME",
+  "OWNER",
+  "BUSINESS TYPE",
+  "DUE DATE",
+  "SUBSCRIPTION STATUS",
+  "ACTIONS",
 ];
 
 // ── Skeleton Loader ───────────────────────────────────────────────────────────
@@ -78,7 +82,7 @@ const SkeletonRow = () => (
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function ActiveTenantsTab() {
+export default function ActiveTenantsTab({ onReview }: TabProps) {
   const router = useRouter();
 
   const [tenants,  setTenants]  = useState<ActiveTenant[]>([]);
@@ -368,7 +372,7 @@ export default function ActiveTenantsTab() {
 
                 {/* Subscription pill */}
                 <div className="flex-1 flex justify-center items-center">
-                  <div className={`w-[75px] py-[3px] rounded-[40px] flex justify-center items-center ${pill.bg}`}>
+                  <div className={`w-[75px] py-[5px] rounded-[40px] flex justify-center items-center ${pill.bg}`}>
                     <span className={`${pill.text} text-[10px] font-bold leading-3`}>
                       {row.subscription_status}
                     </span>

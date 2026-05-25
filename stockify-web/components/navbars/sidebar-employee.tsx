@@ -1,69 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getBusinessNameByUserId } from "@/backend/hooks/getTenantBName";
-import { getUserData } from "@/backend/hooks/getUserRole";
+import { useState } from "react";
+import { useRouter, useParams, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getCurrentUserContext } from "@/lib/employee/inventory";
-import type { SectionKey } from "@/app/[businessName]/employee/dashboard/page";
+import type { SectionKey, SidebarData } from "@/app/[businessName]/employee/dashboard/page";
+import LogoutModal from "../modals/logout-modal";
 
 interface SidebarEmployeeProps {
   activeSection:    SectionKey;
   setActiveSection: (section: SectionKey) => void;
-  onOpenSettings:   () => void; // Added property prop hook callback to target settings modal overlay
+  onOpenSettings:   () => void;
+  sidebarData?:     SidebarData;
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
 }
 
-export default function SidebarEmployee({ activeSection, setActiveSection, onOpenSettings }: SidebarEmployeeProps) {
-  const router   = useRouter();
+export default function SidebarEmployee({ 
+  activeSection, 
+  setActiveSection, 
+  onOpenSettings, 
+  sidebarData = { role: "Employee", businessType: "", businessName: "" },
+  colors,
+}: SidebarEmployeeProps) {
+  const router = useRouter();
+  const params = useParams();
+  const pathname = usePathname();
+  const businessNameSlug = (params?.businessName as string) || pathname?.split("/")[1];
   const supabase = createClient();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  const [role,         setRole]         = useState<string | null>(null);
-  const [businessType, setBusinessType] = useState<string | null>(null);
-  const [businessName, setBusinessName] = useState<string | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { role = "", businessType = "", businessName = "" } = sidebarData ?? {};
 
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          window.location.replace("/");
-          return;
-        }
-
-        const [userRole, ctx, bName] = await Promise.all([
-          getUserData(user.id),
-          getCurrentUserContext(),
-          getBusinessNameByUserId(user.id),
-        ]);
-        
-        setRole(userRole);
-        
-        if (ctx && ctx.businessType) {
-          setBusinessType(ctx.businessType.toString());
-        }
-        
-        if (bName) {
-          if (typeof bName === "object" && bName !== null) {
-            const resolvedName = (bName as any).business_name || (bName as any).businessName || "";
-            setBusinessName(resolvedName);
-          } else {
-            setBusinessName(bName);
-          }
-        }
-      } catch (err) {
-        console.error("Sidebar init error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, [supabase.auth]);
-
-  const cleanType = businessType?.toLowerCase().trim() || "";
-  const isFnb = cleanType === "food & beverage";
+  const cleanType  = businessType?.toLowerCase().trim() || "";
+  const isFnb      = cleanType === "food & beverage";
   const isEmployee = role?.toLowerCase() === "employee";
 
   const allNavItems = [
@@ -71,7 +46,7 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
     { label: "Products",        iconFileName: "icon-inventory",    section: "products"     },
     { label: "Stock Inventory", iconFileName: "icon-ingredients",  section: "ingredients"  },
     { label: "Orders",          iconFileName: "icon-orders",       section: "orders"       },
-    { label: "Audit Logs",      iconFileName: "icon-audit-logs",   section: "audit-logs"  },
+    { label: "Audit Logs",      iconFileName: "icon-audit-logs",   section: "audit-logs"   },
     { label: "Transactions",    iconFileName: "icon-transactions", section: "transactions" },
   ];
 
@@ -82,24 +57,29 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
   });
 
   const handleLogout = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
     try {
       await supabase.auth.signOut();
       localStorage.clear();
       sessionStorage.clear();
-      const fallbackTarget = businessName ? encodeURIComponent(businessName.trim()) : "";
-      window.location.href = fallbackTarget ? `http://localhost:3000/${fallbackTarget}/login` : "http://localhost:3000/";
+      setShowLogoutModal(false);
+      const targetPath = businessNameSlug ? `/${businessNameSlug}/login` : "/";
+      window.location.href = targetPath;
     } catch (error) {
       console.error("Logout execution error:", error);
-      setIsLoggingOut(false);
+      setShowLogoutModal(false);
     }
   };
 
-  if (loading || role === null) return null;
+  const sidebarStyles = {
+    "--color-primary": colors?.color_primary || "#385E31",
+    "--color-background": colors?.color_background || "#FFFCEB",
+    "--color-secondary": colors?.color_secondary || "#2A4725",
+    "--color-accent": colors?.color_accent || "#E5AC24",
+    "--color-sidebar-text": colors?.color_sidebar_text || "#FFF9D7",
+  } as React.CSSProperties;
 
   return (
-    <div className="w-64 h-screen pt-6 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
+    <div style={sidebarStyles} className="w-64 h-screen pt-6 pb-8 bg-primary shadow-lg flex flex-col justify-between sticky top-0 overflow-y-auto">
 
       <div className="flex flex-col gap-1">
         {navItems.map((item) => (
@@ -113,10 +93,20 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
             }`}
           >
             <div className="w-8 h-8 flex items-center justify-center shrink-0">
-              <img 
-                src={`/${item.iconFileName}.svg`} 
-                className="w-full h-full object-contain"
-                style={activeSection === item.section ? { filter: "brightness(0) saturate(100%) invert(32%) sepia(16%) saturate(1553%) hue-rotate(69deg) brightness(97%) contrast(85%)" } : {}}
+              <div
+                className="w-full h-full bg-current"
+                style={{
+                  WebkitMaskImage: `url(/${item.iconFileName}.svg)`,
+                  maskImage: `url(/${item.iconFileName}.svg)`,
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskPosition: "center",
+                  maskPosition: "center",
+                }}
+                role="img"
+                aria-label={item.label}
               />
             </div>
             <div className="text-base whitespace-nowrap">{item.label}</div>
@@ -126,28 +116,66 @@ export default function SidebarEmployee({ activeSection, setActiveSection, onOpe
 
       <div className="flex flex-col items-center gap-4 mt-10">
         <div className="w-48 h-px bg-white/10" />
-      <div className="w-full flex flex-col gap-1">
-          
-          {/* FIXED HANDLER: No longer calls setActiveSection or updates dynamic params route */}
-          
-          {/*<div
-            onClick={() => setActiveSection("store-settings")}
-            className={`w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer ${activeSection === "store-settings" ? "bg-accent text-primary" : "text-sidebar-text"}`}
-          >
-            <img src="/icon-settings.svg" className="w-8 h-8" />
-            <span className="text-base">Settings</span>
-          </div>*/}
-
+        <div className="w-full flex flex-col gap-1">
+          {/* Settings Tab */}
           <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary"
+            onClick={onOpenSettings}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary font-semibold"
           >
-            <img src="/icon-logout.svg" className={`w-8 h-8 ${isLoggingOut ? "animate-pulse" : ""}`} />
-            <span className="text-base">{isLoggingOut ? "Logging out..." : "Logout"}</span>
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <div
+                className="w-full h-full bg-current"
+                style={{
+                  WebkitMaskImage: "url(/icon-settings.svg)",
+                  maskImage: "url(/icon-settings.svg)",
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskPosition: "center",
+                  maskPosition: "center",
+                }}
+                role="img"
+                aria-label="Settings"
+              />
+            </div>
+            <span className="text-base">Settings</span>
+          </button>
+
+          {/* Logout Button */}
+          <button
+            onClick={() => setShowLogoutModal(true)}
+            className="w-full h-14 pl-6 pr-4 flex items-center gap-4 cursor-pointer text-sidebar-text hover:bg-secondary font-semibold"
+          >
+            <div className="w-8 h-8 flex items-center justify-center shrink-0">
+              <div
+                className="w-full h-full bg-current"
+                style={{
+                  WebkitMaskImage: "url(/icon-logout.svg)",
+                  maskImage: "url(/icon-logout.svg)",
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskPosition: "center",
+                  maskPosition: "center",
+                }}
+                role="img"
+                aria-label="Logout"
+              />
+            </div>
+            <span className="text-base">Logout</span>
           </button>
         </div>
       </div>
+
+      {/* Logout Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onCancel={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
+        colors={colors}
+      />
     </div>
   );
 }

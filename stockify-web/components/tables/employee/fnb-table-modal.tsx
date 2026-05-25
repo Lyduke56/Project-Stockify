@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom"; // <-- Added createPortal
 import {
   fetchFnbItems,
   addFnbItem,
@@ -13,6 +14,7 @@ import ManageMaterialCategoriesModal from "@/components/modals/employee/ingredie
 import DeleteItemModal from "@/components/modals/employee/ingredients-modals/delete-item-modal";
 import RestockIngredientModal from "@/components/modals/employee/ingredients-modals/restock-ingredient-modal";
 import { Loader2, RefreshCw } from "lucide-react";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 // ── SVG helpers ───────────────────────────────────────────────
 
@@ -47,9 +49,11 @@ const COLUMNS = [
 
 interface FnbIngredientsTableProps {
   tenantId: string;
+  onLoadComplete?: () => void;
+  colors?: StorefrontConfig | null;
 }
 
-export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTableProps) {
+export default function FnbIngredientsTable({ tenantId, onLoadComplete, colors }: FnbIngredientsTableProps) {
   const [items, setItems] = useState<FnbItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +70,21 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; right: number } | null>(null);
 
+  // <-- Mounted state for Next.js SSR / Portal safety
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const loadItems = useCallback(async () => {
     try { setLoading(true); setError(null); setItems(await fetchFnbItems(tenantId)); }
     catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [tenantId]);
+    finally { 
+      setLoading(false);
+      onLoadComplete?.();
+    }
+  }, [tenantId, onLoadComplete]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
 
@@ -285,7 +299,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
                   <button
                     data-action-btn
                     onClick={(e) => handleActionClick(e, row.item_id)}
-                    className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-primary text-[#FFFCEB]" : "text-primary hover:bg-primary/10"
+                    className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${isOpen ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)]" : "text-primary hover:bg-primary/10"
                       }`}
                   >
                     Action <ChevronDown />
@@ -297,8 +311,8 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
         )}
       </div>
 
-      {/* ── Fixed dropdown — renders OUTSIDE the overflow container ── */}
-      {openRow && dropdownPos && (
+      {/* ── Fixed dropdown — renders OUTSIDE the overflow container via PORTAL ── */}
+      {openRow && dropdownPos && mounted && createPortal(
         <div
           data-dropdown-menu
           style={{
@@ -306,8 +320,9 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
             top: dropdownPos.top,
             right: dropdownPos.right,
             zIndex: 9999,
+            backgroundColor: colors?.color_background || '#FFFCEB',
           }}
-          className="w-[140px] bg-[#FFFCEB] border border-[#385E31] shadow-lg rounded-[6px] py-1 overflow-hidden text-[#385E31] text-[11px] font-semibold flex flex-col"
+          className="w-[140px] border border-primary shadow-lg rounded-[6px] py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col"
         >
           <button
             onClick={() => {
@@ -315,7 +330,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
               setOpenDropdownId(null);
               setDropdownPos(null);
             }}
-            className="px-3 py-2 hover:bg-[#E5AD24] text-left transition-colors"
+            className="px-3 py-2 hover:bg-accent text-left transition-colors"
           >
             Edit Item
           </button>
@@ -325,7 +340,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
               setOpenDropdownId(null);
               setDropdownPos(null);
             }}
-            className="px-3 py-2 hover:bg-[#E5AD24] text-left transition-colors"
+            className="px-3 py-2 hover:bg-accent text-left transition-colors"
           >
             Restock
           </button>
@@ -335,11 +350,12 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
               setOpenDropdownId(null);
               setDropdownPos(null);
             }}
-            className="px-3 py-2 hover:bg-[#E5AD24] text-[#E91F22] hover:text-[#385E31] text-left transition-colors"
+            className="px-3 py-2 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors"
           >
             Delete Item
           </button>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Pagination */}
@@ -358,16 +374,16 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
 
       {/* Modals */}
       {showAdd && (
-        <FnbItemModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} />
+        <FnbItemModal mode="add" tenantId={tenantId} onSave={handleAdd} onClose={() => setShowAdd(false)} colors={colors} />
       )}
       {editTarget && (
-        <FnbItemModal mode="edit" tenantId={tenantId} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} />
+        <FnbItemModal mode="edit" tenantId={tenantId} initial={editTarget} onSave={handleEdit} onClose={() => setEditTarget(null)} colors={colors} />
       )}
       {deleteTarget && (
         <DeleteItemModal itemName={deleteTarget.name} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} />
       )}
       {showCategories && (
-        <ManageMaterialCategoriesModal tenantId={tenantId} type="fnb_ingredient" placeholder="e.g. Powder" onClose={() => { setShowCategories(false); loadItems(); }} />
+        <ManageMaterialCategoriesModal tenantId={tenantId} type="fnb_ingredient" placeholder="e.g. Powder" onClose={() => { setShowCategories(false); loadItems(); }} colors={colors} />
       )}
       {restockTarget && (
         <RestockIngredientModal 
@@ -375,6 +391,7 @@ export default function FnbIngredientsTable({ tenantId }: FnbIngredientsTablePro
           tenantId={tenantId} 
           onClose={() => setRestockTarget(null)} 
           onSuccess={loadItems} 
+          colors={colors}
         />
       )}
     </div>
