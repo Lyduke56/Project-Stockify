@@ -644,6 +644,7 @@ export default function FnbStorefront() {
         onClose={() => setIsCheckoutOpen(false)}
         tenantId={tenant?.tenant_id ?? ""}
         onSuccess={() => {}}
+        colors={c}
       />
     </div>
   );
