@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   businessName: string;
+  sfConfig?: any;
 }
 
 export default function RegistrationForm({ businessName }: Props) {
@@ -60,9 +61,11 @@ export default function RegistrationForm({ businessName }: Props) {
     // Verify tenant exists before creating auth user
     const { data: tenant, error: tenantErr } = await supabase
       .from("tenants")
-      .select("tenant_id, is_active, subscription_status")
-      .ilike("business_name", businessName.replace(/-/g, " "))
-      .maybeSingle();
+      .select("tenant_id, business_name, is_active, subscription_status");
+
+    const tenant = allTenants?.find((t: any) => 
+      t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+    );
 
     if (tenantErr || !tenant) {
       setLoading(false);
@@ -79,7 +82,7 @@ export default function RegistrationForm({ businessName }: Props) {
     // Sign up — email confirmation will redirect to complete-profile
     const redirectTo = `${window.location.origin}/${businessName}/customer/complete-profile`;
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -96,6 +99,12 @@ export default function RegistrationForm({ businessName }: Props) {
       } else {
         setError(signUpError.message);
       }
+      return;
+    }
+
+    // If email confirmation is disabled in Supabase, session is returned immediately
+    if (data?.session) {
+      router.push(`/${businessName}/customer/complete-profile`);
       return;
     }
 
