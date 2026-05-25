@@ -531,7 +531,7 @@ export default function FnbStorefront() {
           style={{ backgroundColor: c.bg + "F2" }}
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 className="text-[24px] font-bold" style={{ color: c.text }}>
+            <h2 className="text-[24px] font-bold" style={{ color: c.primary }}>
               Our Menu
             </h2>
           </div>
@@ -546,7 +546,7 @@ export default function FnbStorefront() {
                   className="relative z-10"
                   style={{
                     color:
-                      activeCategory === cat ? c.text : c.text + "99",
+                      activeCategory === cat ? c.primary : c.primary + "99",
                   }}
                 >
                   {cat}

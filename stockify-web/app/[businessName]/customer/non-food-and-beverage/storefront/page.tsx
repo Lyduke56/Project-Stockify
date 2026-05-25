@@ -416,13 +416,13 @@ export default function NfnbStorefront() {
         {/* Filters */}
         <div className="flex flex-col gap-4 sticky top-[72px] sm:top-[80px] z-30 backdrop-blur-md pt-4 -mx-4 px-4 sm:mx-0 sm:px-0" style={{ backgroundColor: c.bg + "F2" }}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <h2 className="text-[24px] font-bold" style={{ color: c.text }}>Collections</h2>
+            <h2 className="text-[24px] font-bold" style={{ color: c.primary }}>Collections</h2>
           </div>
           <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-hide">
             {categoryTabs.map((cat) => (
               <button key={cat} onClick={() => setActiveCategory(cat)}
                 className="relative whitespace-nowrap px-6 py-2.5 rounded-full text-[14px] font-bold transition-colors z-10">
-                <span className="relative z-10" style={{ color: activeCategory === cat ? c.text : c.text + "99" }}>{cat}</span>
+                <span className="relative z-10" style={{ color: activeCategory === cat ? c.primary : c.primary + "99" }}>{cat}</span>
                 {activeCategory === cat && (
                   <motion.div layoutId="activeCategoryBg"
                     className="absolute inset-0 rounded-full z-0 shadow-sm"

@@ -51,12 +51,12 @@ export const NfnbProductCard = ({
   onToggleFavorite,
   colors
 }: NfnbProductCardProps) => {
-  const c = colors || {
-    primary: "#385E31",
-    secondary: "#2A4725",
-    accent: "#F7B71D",
-    bg: "#FFFCEB",
-    text: "#3A6131"
+  const c = {
+    primary:   colors?.primary   || "#385E31",
+    secondary: colors?.secondary || "#2A4725",
+    accent:    colors?.accent    || "#F7B71D",
+    textLight: colors?.bg        || "#FFFCEB",
+    bg:        colors?.bg        || "#FFFCEB",
   };
 
   const hasVariants = product.variants.length > 0;
@@ -91,17 +91,17 @@ export const NfnbProductCard = ({
         },
       }}
       onClick={() => onOpenModal(product)}
-      className="border rounded-[10px] p-5 flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-      style={{ backgroundColor: c.bg, borderColor: c.primary + "33" }}
+      className="border rounded-[28px] p-4 flex flex-col shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+      style={{ backgroundColor: c.secondary, borderColor: c.primary }}
     >
       {/* Image / Fallback */}
-      <div className="w-full aspect-square flex items-center justify-center mb-4 rounded-[8px] group-hover:scale-105 transition-transform duration-300 relative overflow-hidden"
+      <div className="w-full aspect-square flex items-center justify-center mb-4 rounded-[20px] group-hover:scale-105 transition-transform duration-300 relative overflow-hidden"
         style={{ background: `linear-gradient(to bottom, ${c.primary}0D, transparent)` }}>
         {product.image_url ? (
           <img
             src={product.image_url.split('?')[0]}
             alt={product.name}
-            className="w-full h-full object-cover rounded-[8px]"
+            className="w-full h-full object-cover rounded-[20px]"
             onError={(e) => {
               (e.target as HTMLImageElement).style.display = 'none';
               (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('style');
@@ -110,9 +110,10 @@ export const NfnbProductCard = ({
         ) : null}
         <Package size={72} style={product.image_url ? { display: 'none' } : { color: c.primary + "33" }} />
         {!inStock && (
-          <div className="absolute inset-0 bg-white/60 rounded-[8px] flex items-center justify-center">
-            <span className="text-red-500 font-bold text-[11px] bg-red-50 border border-red-100 px-2.5 py-1 rounded-full">
-              Out of Stock
+          <div className="absolute inset-0 bg-black/60 rounded-[20px] flex items-center justify-center">
+            <span className="text-[11px] font-black px-4 py-2 rounded-full tracking-widest uppercase shadow-md"
+              style={{ backgroundColor: c.accent, color: c.secondary }}>
+              Sold Out
             </span>
           </div>
         )}
@@ -125,21 +126,21 @@ export const NfnbProductCard = ({
       </div>
 
       <div className="flex flex-col flex-1">
-        <h3 className="text-[16px] font-extrabold mb-1 line-clamp-1" style={{ color: c.text }}>
+        <h3 className="text-[16px] font-extrabold mb-1 line-clamp-1" style={{ color: c.textLight }}>
           {product.name}
         </h3>
-        <p className="text-[12px] font-medium leading-relaxed mb-4 flex-1 line-clamp-2" style={{ color: c.text, opacity: 0.7 }}>
+        <p className="text-[12px] font-medium leading-relaxed mb-4 flex-1 line-clamp-2" style={{ color: c.textLight, opacity: 0.7 }}>
           {product.description ?? "No description available."}
         </p>
 
         <div className="flex justify-between items-end mb-5">
           <div
             className={`flex items-center gap-1.5 px-2 py-1 rounded-[4px] text-[11px] font-bold border ${!inStock ? "bg-red-50 border-red-100 text-red-400" : ""}`}
-            style={inStock ? { backgroundColor: c.bg, borderColor: c.primary + "1A", color: c.primary } : {}}
+            style={inStock ? { backgroundColor: c.secondary, borderColor: c.primary + "4D", color: c.textLight + "A0" } : {}}
           >
             {availabilityLabel}
           </div>
-          <div className="text-[18px] font-black tracking-tight" style={{ color: c.primary }}>
+          <div className="text-[18px] font-black tracking-tight" style={{ color: c.accent }}>
             {displayPrice}
           </div>
         </div>
@@ -149,14 +150,14 @@ export const NfnbProductCard = ({
             disabled={!inStock}
             onClick={(e) => { e.stopPropagation(); onOpenModal(product); }}
             className="flex-1 flex justify-center items-center gap-2 py-2.5 rounded-[8px] font-bold text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ backgroundColor: c.primary, color: c.bg }}
+            style={{ backgroundColor: c.accent, color: c.secondary }}
           >
             <Plus size={16} /> {hasVariants ? "Choose Variant" : "Add to Cart"}
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(product.product_id); }}
             className={`w-11 h-11 border rounded-[8px] flex items-center justify-center transition-colors ${isFavorite ? "bg-red-50 text-red-500 border-red-200" : "hover:brightness-95"}`}
-            style={!isFavorite ? { color: c.primary, borderColor: c.primary + "4D" } : {}}
+            style={!isFavorite ? { color: c.textLight, borderColor: c.primary + "4D" } : {}}
           >
             <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
           </button>
