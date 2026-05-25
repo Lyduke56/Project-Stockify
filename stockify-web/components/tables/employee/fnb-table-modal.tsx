@@ -320,8 +320,9 @@ export default function FnbIngredientsTable({ tenantId, onLoadComplete, colors }
             top: dropdownPos.top,
             right: dropdownPos.right,
             zIndex: 9999,
+            backgroundColor: colors?.color_background || '#FFFCEB',
           }}
-          className="w-[140px] bg-background border border-primary shadow-lg rounded-[6px] py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col"
+          className="w-[140px] border border-primary shadow-lg rounded-[6px] py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col"
         >
           <button
             onClick={() => {
