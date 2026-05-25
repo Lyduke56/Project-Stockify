@@ -342,16 +342,22 @@ export default function BusinessLoginPage() {
         className="relative z-20 w-full max-w-[440px] min-h-screen md:min-h-0 bg-white/95 backdrop-blur-xl md:rounded-[32px] flex flex-col justify-center shadow-[0_20px_50px_rgba(0,0,0,0.2)] md:border border-white/40 overflow-hidden"
       >
         {/* Top shimmer line */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#F7B71D]/80 to-transparent opacity-80" />
+        <div className="absolute top-0 left-0 right-0 h-[2px] opacity-80" style={{ background: `linear-gradient(to right, transparent, ${sfConfig?.color_accent ?? '#F7B71D'}cc, transparent)` }} />
 
         <div className="px-8 py-12 md:px-10">
           <motion.div variants={itemVariants} className="mb-8">
-            <div className="inline-flex items-center gap-2.5 bg-[#385E31]/10 border border-[#385E31]/10 rounded-full px-4 py-1.5 mb-6">
+            <div
+              className="inline-flex items-center gap-2.5 rounded-full px-4 py-1.5 mb-6 border"
+              style={{
+                backgroundColor: `${sfConfig?.color_primary ?? '#385E31'}1a`,
+                borderColor: `${sfConfig?.color_primary ?? '#385E31'}1a`,
+              }}
+            >
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#F7B71D] opacity-75 duration-1000"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#F7B71D]"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 duration-1000" style={{ backgroundColor: sfConfig?.color_accent ?? '#F7B71D' }}></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5" style={{ backgroundColor: sfConfig?.color_accent ?? '#F7B71D' }}></span>
               </span>
-              <span className="font-['Fredoka'] text-[12px] text-[#385E31] font-bold tracking-widest uppercase">
+              <span className="font-['Fredoka'] text-[12px] font-bold tracking-widest uppercase" style={{ color: sfConfig?.color_primary ?? '#385E31' }}>
                 {businessName?.replace(/-/g, " ") ?? "Store"}
               </span>
             </div>
@@ -406,7 +412,10 @@ export default function BusinessLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white focus:border-[#385E31] focus:ring-4 focus:ring-[#385E31]/10 transition-all duration-300"
+                className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+                style={{ ['--tw-ring-color' as any]: `${sfConfig?.color_primary ?? '#385E31'}1a` }}
+                onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+                onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
               />
             </motion.div>
 
@@ -418,7 +427,10 @@ export default function BusinessLoginPage() {
                 <button
                   type="button"
                   onClick={() => router.push("/auth/forgot-password")}
-                  className="font-['Fredoka'] text-[13px] text-[#385E31] hover:text-[#2A4725] font-medium transition-colors duration-300"
+                  className="font-['Fredoka'] text-[13px] font-medium transition-colors duration-300"
+                  style={{ color: sfConfig?.color_primary ?? '#385E31' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = sfConfig?.color_secondary ?? '#2A4725')}
+                  onMouseLeave={e => (e.currentTarget.style.color = sfConfig?.color_primary ?? '#385E31')}
                 >
                   Forgot?
                 </button>
@@ -430,7 +442,9 @@ export default function BusinessLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white focus:border-[#385E31] focus:ring-4 focus:ring-[#385E31]/10 transition-all duration-300"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+                  onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
                 />
                 <button
                   type="button"
@@ -484,7 +498,14 @@ export default function BusinessLoginPage() {
                 whileHover={{ scale: loading ? 1 : 1.015 }}
                 whileTap={{ scale: loading ? 1 : 0.98 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="relative w-full bg-[#385E31] text-[#FFFCEB] font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl hover:bg-[#2A4725] shadow-[0_8px_20px_rgba(56,94,49,0.3)] disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-300 overflow-hidden"
+                className="relative w-full font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-300 overflow-hidden"
+                style={{
+                  backgroundColor: sfConfig?.color_primary ?? '#385E31',
+                  color: sfConfig?.color_sidebar_text ?? '#FFFCEB',
+                  boxShadow: `0 8px 20px ${sfConfig?.color_primary ?? '#385E31'}4d`,
+                }}
+                onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_secondary ?? '#2A4725'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_primary ?? '#385E31'; }}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -521,7 +542,8 @@ export default function BusinessLoginPage() {
             <button
               type="button"
               onClick={() => router.push(`/${businessName}/customer/registration`)}
-              className="text-[#385E31] font-bold hover:text-[#F7B71D] transition-colors duration-300"
+              className="font-bold hover:opacity-70 transition-colors duration-300"
+              style={{ color: sfConfig?.color_primary ?? '#385E31' }}
             >
               Register here
             </button>

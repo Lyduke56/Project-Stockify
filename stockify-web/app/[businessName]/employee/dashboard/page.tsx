@@ -48,6 +48,7 @@ export default function EmployeeDashboard() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifsOpen, setIsNotifsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [resetBadgeFn, setResetBadgeFn] = useState<(() => void) | null>(null);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -127,12 +128,12 @@ export default function EmployeeDashboard() {
   const handleOpenSettings = () => setIsSettingsOpen(true);
 
   const SECTIONS: Record<SectionKey, React.ReactNode> = {
-    "dashboard":    <DashboardSection initialData={dashboardData} tenantId={tenantId!} />,
-    "audit-logs":   <AuditLogsSection />,
-    "products":     <ProductsSection />,
-    "ingredients":  <IngredientsSection />,
-    "orders":       <OrdersSection />,
-    "transactions": <TransactionsSection />,
+    "dashboard":    <DashboardSection initialData={dashboardData} tenantId={tenantId!} colors={config || undefined} />,
+    "audit-logs":   <AuditLogsSection colors={config || undefined} />,
+    "products":     <ProductsSection colors={config || undefined} />,
+    "ingredients":  <IngredientsSection colors={config || undefined} />,
+    "orders":       <OrdersSection colors={config || undefined} />,
+    "transactions": <TransactionsSection colors={config || undefined} />,
     "analytics":    <div />,
   };
 
@@ -151,6 +152,7 @@ export default function EmployeeDashboard() {
         setActiveSection={handleSetSection}
         onOpenSettings={handleOpenSettings}
         sidebarData={sidebarData!}
+        colors={config || undefined}
       />
 
       {/* Main column */}
@@ -167,6 +169,7 @@ export default function EmployeeDashboard() {
             openProfile={handleOpenProfile}
             openNotifs={handleOpenNotifs}
             openSettings={handleOpenSettings}
+            setResetNotificationBadge={setResetBadgeFn}
           />
         </motion.div>
 
@@ -196,16 +199,20 @@ export default function EmployeeDashboard() {
       <EmployeeProfileModal
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
+        colors={config || undefined}
       />
       <NotificationModal
         isOpen={isNotifsOpen}
         onClose={() => setIsNotifsOpen(false)}
         role="employee"
         tenantId={tenantId}
+        colors={config || undefined}
+        onClear={resetBadgeFn || undefined}
       />
       <EmployeeSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
+        colors={config || undefined}
       />
     </div>
   );

@@ -8,6 +8,14 @@ import { createClient } from "@/lib/supabase/client";
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
 }
 
 type Tab = "security";
@@ -62,7 +70,7 @@ const LoaderIcon = () => (
 
 
 // --- Main Modal Component ---
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+export default function SettingsModal({ isOpen, onClose, colors }: SettingsModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -147,11 +155,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   ];
 
   // ── Styles matched to FnbItemModal ──
-  const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
-  const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
+  const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 mb-2 block";
+  const inputStyle = "w-full bg-background border-[1.5px] border-primary rounded-2xl px-4 py-3 text-sm text-primary font-medium focus:outline-none hover:border-accent focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-gray-300";
+
+  const modalStyles = {
+    "--color-primary": colors?.color_primary || "#385E31",
+    "--color-background": colors?.color_background || "#FFFCEB",
+    "--color-secondary": colors?.color_secondary || "#2A4725",
+    "--color-accent": colors?.color_accent || "#E5AC24",
+    "--color-sidebar-text": colors?.color_sidebar_text || "#FFF9D7",
+  } as React.CSSProperties;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+    <div style={modalStyles} className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -165,17 +181,17 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-['Inter'] relative z-10"
+        className="w-full max-w-[920px] bg-background rounded-[32px] overflow-hidden border-[1.5px] border-accent/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-['Inter'] relative z-10"
       >
         {/* LEFT SIDEBAR */}
-        <div className="w-full md:w-[320px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
-          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="w-full md:w-[320px] bg-primary p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
           <div className="relative z-10">
-            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
-            <h2 className="text-[#FFFCEB] text-3xl font-black leading-tight mb-2 tracking-wide uppercase">
+            <div className="bg-accent w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-sidebar-text text-3xl font-black leading-tight mb-2 tracking-wide uppercase">
               Settings
             </h2>
-            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-12">
+            <p className="text-sidebar-text/60 text-xs font-medium leading-relaxed mb-12">
               Manage your account security, passwords, and notification preferences here.
             </p>
             <nav className="flex flex-col gap-8">
@@ -187,15 +203,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                       activeTab === t.key
-                        ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20"
-                        : "bg-white/10 text-white"
+                        ? "bg-accent text-primary shadow-lg shadow-accent/20"
+                        : "bg-sidebar-text/10 text-sidebar-text"
                     }`}
                   >
                     <t.Icon />
                   </div>
                   <span
                     className={`text-sm font-bold tracking-wide ${
-                      activeTab === t.key ? "text-[#FFFCEB]" : "text-white"
+                      activeTab === t.key ? "text-sidebar-text" : "text-sidebar-text/80"
                     }`}
                   >
                     {t.label}
@@ -210,7 +226,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <div
                   key={t.key}
                   className={`h-1.5 rounded-full transition-all duration-500 ${
-                    activeTab === t.key ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"
+                    activeTab === t.key ? "w-8 bg-accent" : "w-2 bg-sidebar-text/20"
                   }`}
                 />
               ))}
@@ -219,9 +235,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* RIGHT CONTENT */}
-        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm">
+        <div className="flex-1 flex flex-col relative bg-background/50 backdrop-blur-sm">
 
-          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#3A6131]/25">
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary/25">
             {/* Feedback Banners */}
             {passError && (
               <div className="mb-6 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold">
@@ -229,7 +245,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             )}
             {passSaved && (
-              <div className="mb-6 px-4 py-3 bg-[#3A6131]/10 border border-[#3A6131]/20 rounded-2xl text-[#3A6131] text-xs font-semibold">
+              <div className="mb-6 px-4 py-3 bg-primary/10 border border-primary/20 rounded-2xl text-primary text-xs font-semibold">
                 ✓ Successfully updated {activeTab === "security" ? "password" : "preferences"}.
               </div>
             )}
@@ -245,10 +261,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   className="space-y-6"
                 >
                   <div className="mb-8">
-                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 italic font-['Raleway']">
+                    <h3 className="text-2xl font-black text-primary mt-2 italic font-['Raleway']">
                       Security & Password
                     </h3>
-                    <p className="text-[12px] text-[#3A6131]/60 font-medium leading-relaxed mt-2">
+                    <p className="text-[12px] text-primary/60 font-medium leading-relaxed mt-2">
                       For your security, choose a strong password with at least 8 characters, including
                       uppercase letters, numbers, and symbols.
                     </p>
@@ -268,7 +284,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <button
                           type="button"
                           onClick={() => setShowCurrent(!showCurrent)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3A6131]/40 hover:text-[#3A6131] transition-colors"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 hover:text-primary transition-colors"
                         >
                           <EyeIcon show={showCurrent} />
                         </button>
@@ -288,7 +304,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <button
                           type="button"
                           onClick={() => setShowNew(!showNew)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3A6131]/40 hover:text-[#3A6131] transition-colors"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 hover:text-primary transition-colors"
                         >
                           <EyeIcon show={showNew} />
                         </button>
@@ -308,7 +324,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <button
                           type="button"
                           onClick={() => setShowConfirm(!showConfirm)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#3A6131]/40 hover:text-[#3A6131] transition-colors"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-primary/40 hover:text-primary transition-colors"
                         >
                           <EyeIcon show={showConfirm} />
                         </button>
@@ -320,27 +336,27 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   {newPass.length > 0 && (
                     <div className="flex flex-col gap-2 mt-2">
                       <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider">
-                        <span className="text-[#3A6131]/50">Password strength</span>
+                        <span className="text-primary/50">Password strength</span>
                         <span
                           className={
                             newPass.length < 6
                               ? "text-red-500"
                               : newPass.length < 10
-                              ? "text-[#F7B71D]"
-                              : "text-[#3A6131]"
+                              ? "text-accent"
+                              : "text-primary"
                           }
                         >
                           {newPass.length < 6 ? "Weak" : newPass.length < 10 ? "Fair" : "Strong"}
                         </span>
                       </div>
-                      <div className="w-full h-1.5 bg-[#3A6131]/10 rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 bg-primary/10 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
                             newPass.length < 6
                               ? "bg-red-500 w-1/4"
                               : newPass.length < 10
-                              ? "bg-[#F7B71D] w-1/2"
-                              : "bg-[#3A6131] w-full"
+                              ? "bg-accent w-1/2"
+                              : "bg-primary w-full"
                           }`}
                         />
                       </div>
@@ -352,11 +368,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-end items-center z-20 shrink-0">
+          <div className="px-8 py-5 border-t border-primary/10 bg-background/80 flex justify-end items-center z-20 shrink-0">
             <button
               onClick={handlePasswordSave}
               disabled={saving}
-              className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bg-primary text-background px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

@@ -206,13 +206,27 @@ export default function NavbarAdmin({
       </div>
 
       {/* RIGHT SIDE: Navigation Icons */}
-      <div className="flex items-center gap-4 md:gap-8">
+      <div className="flex items-center gap-4 md:gap-8 text-primary">
         <button
           onClick={() => setActiveSection("dashboard")} 
           className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
           title="Home"
         >
-          <img src="/navbar-home.svg" alt="Home" className="w-full h-full object-contain" />
+          <div
+            className="w-full h-full bg-current"
+            style={{
+              WebkitMaskImage: "url(/navbar-home.svg)",
+              maskImage: "url(/navbar-home.svg)",
+              WebkitMaskSize: "contain",
+              maskSize: "contain",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+            }}
+            role="img"
+            aria-label="Home"
+          />
         </button>
 
         {/* Notifications Icon */}
@@ -225,7 +239,21 @@ export default function NavbarAdmin({
             className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
             title="Notifications"
           >
-            <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
+            <div
+              className="w-full h-full bg-current"
+              style={{
+                WebkitMaskImage: "url(/navbar-notif.svg)",
+                maskImage: "url(/navbar-notif.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              role="img"
+              aria-label="Notifications"
+            />
           </button>
           
           {notifCount > 0 && (
@@ -241,7 +269,25 @@ export default function NavbarAdmin({
           className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
           title="Profile Settings"
         >
-          <img src="/navbar-profile-settings.svg" alt="Profile Settings" className="w-full h-full object-contain rounded-full border border-[#385E31]" />
+          <div
+            className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-primary p-0.5 flex items-center justify-center"
+          >
+            <div
+              className="w-full h-full bg-current"
+              style={{
+                WebkitMaskImage: "url(/navbar-profile-settings.svg)",
+                maskImage: "url(/navbar-profile-settings.svg)",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+              }}
+              role="img"
+              aria-label="Profile Settings"
+            />
+          </div>
         </button>
       </div>
     </nav>

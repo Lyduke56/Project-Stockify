@@ -20,6 +20,7 @@ import { useCart } from "@/lib/customer/cart-context";
 import { createClient } from "@/lib/supabase/client";
 import { confirmOrderReceipt, reportOrderUnreceived } from "@/lib/employee/order-actions";
 import { AlertCircle, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { getStorefrontTenant } from "@/backend/hooks/getStoreFront";
 
 interface Notification {
   id: string;
@@ -64,16 +65,41 @@ export function CustomerHeader({
   const supabase = createClient();
   const { cartCount } = useCart();
 
-  // Determine the current business category path (fnb or nfnb)
-  const isNfnb = propIsNfnb !== undefined ? propIsNfnb : pathname.includes("non-food-and-beverage");
-  const categoryPath = isNfnb ? "non-food-and-beverage" : "food-and-beverage";
-
+  const [tenant, setTenant] = useState<any>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [reportingOrder, setReportingOrder] = useState<{ id: string, order_id: string } | null>(null);
+
+  // Load tenant info to determine business_type for accurate storefront routing
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const tenantData = await getStorefrontTenant(user.id);
+        if (tenantData) {
+          setTenant(tenantData);
+        }
+      } catch (err) {
+        console.error("Failed to load tenant in header:", err);
+      }
+    };
+    loadTenant();
+  }, []);
+
+  // Determine the current business category path (fnb or nfnb)
+  const isNfnb = (() => {
+    if (tenant?.business_type) {
+      const typeLower = tenant.business_type.toLowerCase();
+      return typeLower.includes("non-food") || typeLower.includes("nfnb");
+    }
+    if (propIsNfnb !== undefined) return propIsNfnb;
+    return pathname.includes("non-food-and-beverage");
+  })();
+  const categoryPath = isNfnb ? "non-food-and-beverage" : "food-and-beverage";
 
   const c = colors || {
     primary: "#385E31",
@@ -321,12 +347,13 @@ export function CustomerHeader({
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-80 bg-[#FFFCEB] border border-[#385E31]/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                    className="absolute right-0 mt-3 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden border"
+                    style={{ backgroundColor: c.bg, borderColor: c.primary + "1A" }}
                   >
-                    <div className="p-4 border-b border-[#385E31]/5 flex justify-between items-center">
-                      <h3 className="font-bold text-[#385E31]">Notifications</h3>
+                    <div className="p-4 flex justify-between items-center" style={{ borderBottom: `1px solid ${c.primary}0D` }}>
+                      <h3 className="font-bold" style={{ color: c.primary }}>Notifications</h3>
                       {unreadCount > 0 && (
-                        <span className="text-[10px] font-black bg-[#F7B71D]/20 text-[#385E31] px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full" style={{ backgroundColor: c.accent + "33", color: c.primary }}>
                           {unreadCount} NEW
                         </span>
                       )}
@@ -336,46 +363,53 @@ export function CustomerHeader({
                         notifications.map((n: Notification) => (
                           <div
                             key={n.id}
-                            className={`p-4 border-b border-[#385E31]/5 hover:bg-[#F7B71D]/5 transition-colors relative ${!n.is_read ? 'bg-[#F7B71D]/5' : ''}`}
+                            className="p-4 transition-colors relative cursor-pointer"
+                            style={{
+                              borderBottom: `1px solid ${c.primary}0D`,
+                              backgroundColor: !n.is_read ? c.accent + "0D" : "transparent",
+                            }}
                           >
-                            {!n.is_read && <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#F7B71D] rounded-full" />}
-                            <div onClick={() => { markAsRead(n.id); setShowNotifications(false); router.push(`/${businessName}/customer/orders${n.order_id ? `?view_order=${n.order_id}` : ''}`); }} className="cursor-pointer">
-                              <p className="text-[14px] font-bold text-[#385E31] mb-1">{n.title}</p>
-                              <p className="text-[12px] text-[#385E31]/70 line-clamp-2">{n.message}</p>
+                            {!n.is_read && <div className="absolute left-1 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full" style={{ backgroundColor: c.accent }} />}
+                            <div onClick={() => { markAsRead(n.id); setShowNotifications(false); router.push(`/${businessName}/customer/orders${n.order_id ? `?view_order=${n.order_id}` : ''}`); }}>
+                              <p className="text-[14px] font-bold mb-1" style={{ color: c.primary }}>{n.title}</p>
+                              <p className="text-[12px] line-clamp-2" style={{ color: c.primary + "B3" }}>{n.message}</p>
                             </div>
 
                             {(n.notification_type === 'ORDER_DISPATCHED' || n.notification_type === 'DELIVERY_IN_PROGRESS') && n.order_id && (
                               <div className="flex gap-2 mt-3">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleConfirmReceived(n.id, n.order_id!); }}
-                                  className="flex-1 bg-[#385E31] text-[#F7B71D] py-2 rounded-lg text-[11px] font-black hover:opacity-90 transition-opacity"
+                                  className="flex-1 py-2 rounded-lg text-[11px] font-black hover:opacity-90 transition-opacity"
+                                  style={{ backgroundColor: c.primary, color: c.accent }}
                                 >
                                   I HAVE RECEIVED IT
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setReportingOrder({ id: n.id, order_id: n.order_id! }); setShowNotifications(false); }}
-                                  className="flex-1 border border-[#385E31]/20 text-[#385E31] py-2 rounded-lg text-[11px] font-bold hover:bg-[#385E31]/5 transition-colors"
+                                  className="flex-1 py-2 rounded-lg text-[11px] font-bold transition-colors"
+                                  style={{ border: `1px solid ${c.primary}33`, color: c.primary }}
                                 >
                                   REPORT ISSUE
                                 </button>
                               </div>
                             )}
 
-                            <p className="text-[10px] text-[#8C9B85] mt-2 font-medium">
+                            <p className="text-[10px] mt-2 font-medium" style={{ color: c.primary + "80" }}>
                               {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
                         ))
                       ) : (
                         <div className="p-8 text-center flex flex-col items-center gap-2">
-                          <Bell size={32} className="text-[#385E31]/10" />
-                          <p className="text-[13px] text-[#8C9B85] font-medium">All caught up!</p>
+                          <Bell size={32} style={{ color: c.primary + "1A" }} />
+                          <p className="text-[13px] font-medium" style={{ color: c.primary + "80" }}>All caught up!</p>
                         </div>
                       )}
                     </div>
                     <button
                       onClick={() => { setShowNotifications(false); router.push(`/${businessName}/customer/orders`); }}
-                      className="w-full p-3 text-center text-[12px] font-bold text-[#385E31] bg-[#F7B71D]/10 hover:bg-[#F7B71D]/20 transition-colors"
+                      className="w-full p-3 text-center text-[12px] font-bold transition-colors hover:opacity-80"
+                      style={{ color: c.primary, backgroundColor: c.accent + "1A" }}
                     >
                       View All Orders
                     </button>
@@ -424,20 +458,23 @@ export function CustomerHeader({
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-56 bg-[#FFFCEB] border border-[#385E31]/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                    className="absolute right-0 mt-3 w-56 rounded-2xl shadow-2xl z-50 overflow-hidden border"
+                    style={{ backgroundColor: c.bg, borderColor: c.primary + "1A" }}
                   >
                     <div className="p-2">
                       <MenuButton
                         icon={<User size={16} />}
                         label="My Profile"
                         onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/profile`); }}
+                        c={c}
                       />
                       <MenuButton
                         icon={<Package size={16} />}
                         label="Order History"
                         onClick={() => { setShowUserMenu(false); router.push(`/${businessName}/customer/orders`); }}
+                        c={c}
                       />
-                      <div className="h-px bg-[#385E31]/5 my-2" />
+                      <div className="h-px my-2" style={{ backgroundColor: c.primary + "0D" }} />
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors"
@@ -457,26 +494,38 @@ export function CustomerHeader({
         isOpen={!!reportingOrder}
         onClose={() => setReportingOrder(null)}
         onConfirm={(reason) => reportingOrder && handleReportUnreceived(reportingOrder.id, reportingOrder.order_id, reason)}
+        colors={c}
       />
     </header>
   );
 }
 
-function MenuButton({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) {
+function MenuButton({ icon, label, onClick, c }: { icon: React.ReactNode, label: string, onClick: () => void, c?: { primary: string; accent: string; bg: string } }) {
+  const primary = c?.primary ?? "#385E31";
+  const accent  = c?.accent  ?? "#F7B71D";
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] font-bold text-[#385E31] hover:bg-[#F7B71D]/10 rounded-xl transition-colors"
+      className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] font-bold rounded-xl transition-colors"
+      style={{ color: primary }}
+      onMouseEnter={e => (e.currentTarget.style.backgroundColor = accent + "1A")}
+      onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
     >
-      <span className="text-[#F7B71D]">{icon}</span>
+      <span style={{ color: accent }}>{icon}</span>
       {label}
     </button>
   );
 }
 
-function ReportIssueModal({ isOpen, onClose, onConfirm }: { isOpen: boolean, onClose: () => void, onConfirm: (reason: string) => void }) {
+function ReportIssueModal({ isOpen, onClose, onConfirm, colors }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (reason: string) => void;
+  colors?: { primary: string; accent: string; bg: string };
+}) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const cl = colors ?? { primary: "#385E31", accent: "#F7B71D", bg: "#FFFCEB" };
 
   const handleSubmit = async () => {
     if (!reason.trim()) return;
@@ -501,24 +550,26 @@ function ReportIssueModal({ isOpen, onClose, onConfirm }: { isOpen: boolean, onC
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="fixed inset-0 flex items-center justify-center p-4 z-[201] pointer-events-none"
           >
-            <div className="bg-[#FFFCEB] w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl pointer-events-auto p-6 flex flex-col gap-5">
+            <div className="w-full max-w-md rounded-[28px] overflow-hidden shadow-2xl pointer-events-auto p-6 flex flex-col gap-5" style={{ backgroundColor: cl.bg }}>
               <div className="flex items-center gap-3 text-red-600">
                 <AlertTriangle size={24} />
                 <h3 className="text-xl font-black">Report Unreceived Order</h3>
               </div>
-              <p className="text-[14px] text-[#3A6131]/70 leading-relaxed">
+              <p className="text-[14px] leading-relaxed" style={{ color: cl.primary + "B3" }}>
                 Please describe the issue. Our team will investigate why your order hasn't arrived and get back to you shortly.
               </p>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Ex: The status says delivered but I haven't received anything at my door..."
-                className="w-full h-32 bg-white border border-[#3A6131]/10 rounded-2xl p-4 text-[14px] text-[#3A6131] outline-none focus:border-red-500 transition-colors resize-none"
+                className="w-full h-32 rounded-2xl p-4 text-[14px] outline-none focus:border-red-500 transition-colors resize-none"
+                style={{ backgroundColor: cl.bg, color: cl.primary, border: `1px solid ${cl.primary}1A` }}
               />
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-[14px] text-[#3A6131]/60 hover:bg-[#3A6131]/5 transition-colors"
+                  className="flex-1 py-3.5 rounded-2xl font-bold text-[14px] hover:opacity-70 transition-opacity"
+                  style={{ color: cl.primary + "99" }}
                 >
                   Cancel
                 </button>

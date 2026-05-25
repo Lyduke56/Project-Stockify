@@ -20,6 +20,25 @@ const T = {
   border:      "#E5E7EB",
 };
 
+const buildC = (colors?: any) => {
+  const primary = colors?.primary ?? T.primary;
+  const secondary = colors?.secondary ?? "#254020";
+  return {
+    primary,
+    secondary,
+    surface:     secondary,
+    accent:      colors?.accent      ?? T.accent,
+    accentSoft:  colors?.accent      ?? T.accent,
+    bg:          colors?.bg          ?? T.bg,
+    bgDim:       colors?.bg          ? colors.bg + "BF" : "#FCFCFA",
+    muted:       colors?.bg          ? colors.bg + "73" : T.textMuted,
+    border:      colors?.accent      ? colors.accent + "33" : T.border,
+    borderHi:    colors?.accent      ? colors.accent + "80" : T.border,
+    textMain:    colors?.bg          ?? "#FFFFFF",
+    textMuted:   colors?.bg          ? colors.bg + "99" : T.textMuted,
+  };
+};
+
 const avatarGradients = [
   `linear-gradient(135deg, ${T.primary}, #5A8551)`,
   `linear-gradient(135deg, ${T.accent}, #FFC94D)`,
@@ -30,10 +49,12 @@ const getGradient = (name: string) => avatarGradients[(name.charCodeAt(0) || 0) 
 
 // ── Star component ────────────────────────────────────────────────────────────
 function Stars({
-  rating, size = 14, interactive = false, onChange,
+  rating, size = 14, interactive = false, onChange, colors,
 }: {
   rating: number; size?: number; interactive?: boolean; onChange?: (r: number) => void;
+  colors?: any;
 }) {
+  const C = buildC(colors);
   const [hovered, setHovered] = useState(0);
   const effective = interactive && hovered ? hovered : rating;
   return (
@@ -54,8 +75,8 @@ function Stars({
         >
           <Star
             size={size}
-            fill={s <= effective ? T.accent : "none"}
-            stroke={s <= effective ? T.accent : "#D1D5DB"}
+            fill={s <= effective ? C.accent : "none"}
+            stroke={s <= effective ? C.accent : C.muted}
             strokeWidth={s <= effective ? 1 : 1.5}
           />
         </button>
@@ -97,10 +118,12 @@ interface ProductReviewsProps {
   productId: string;
   productType: "fnb" | "nfb";
   tenantId: string;
+  colors?: any;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
-export const ProductReviews = ({ productId, productType, tenantId }: ProductReviewsProps) => {
+export const ProductReviews = ({ productId, productType, tenantId, colors }: ProductReviewsProps) => {
+  const C = buildC(colors);
   const [reviews, setReviews]           = useState<any[]>([]);
   const [userId, setUserId]             = useState<string | null>(null);
   const [loading, setLoading]           = useState(true);
@@ -156,11 +179,11 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
   const cancelEdit = () => { setEditingId(null); setComment(""); setRating(5); };
 
   if (loading) return (
-    <div style={{ borderTop: `1px solid ${T.border}`, paddingTop: 32, marginTop: 16 }}>
+    <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 32, marginTop: 16 }}>
       <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "24px 0" }}>
         {[0, 1, 2].map(i => (
           <div key={i} style={{
-            width: 8, height: 8, borderRadius: "50%", background: T.primary,
+            width: 8, height: 8, borderRadius: "50%", background: C.accent,
             animation: `dotBounce 1.2s ease-in-out ${i * 0.2}s infinite`,
           }} />
         ))}
@@ -171,7 +194,7 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
 
   return (
     <div style={{
-      borderTop: `1px solid ${T.border}`,
+      borderTop: `1px solid ${C.border}`,
       paddingTop: 32, marginTop: 16,
       fontFamily: "inherit",
     }}>
@@ -180,21 +203,21 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, flexWrap: "wrap", gap: 24 }}>
         <div>
           <h3 style={{
-            fontSize: 22, fontWeight: 800, color: T.textMain,
+            fontSize: 22, fontWeight: 800, color: C.accent,
             letterSpacing: "-.01em", lineHeight: 1.2, marginBottom: 12
           }}>
             Customer Reviews
           </h3>
           {reviews.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <Stars rating={Math.round(avg)} size={18} />
-              <span style={{ fontSize: 18, fontWeight: 800, color: T.textMain }}>
+              <Stars rating={Math.round(avg)} size={18} colors={colors} />
+              <span style={{ fontSize: 18, fontWeight: 800, color: C.textMain }}>
                 {avg.toFixed(1)}
               </span>
               <span style={{
-                fontSize: 13, color: T.textMuted, fontWeight: 600,
+                fontSize: 13, color: C.accent, fontWeight: 600,
                 padding: "4px 12px", borderRadius: 99,
-                background: T.surface, border: `1px solid ${T.border}`,
+                background: C.secondary, border: `1px solid ${C.border}`,
               }}>
                 {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
               </span>
@@ -205,12 +228,28 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
         {/* Distribution bars */}
         {reviews.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 160 }}>
-            {[5, 4, 3, 2, 1].map(s => (
-              <RatingBar
-                key={s} label={String(s)}
-                count={reviews.filter(r => r.rating === s).length} max={maxCount}
-              />
-            ))}
+            {[5, 4, 3, 2, 1].map(s => {
+              const count = reviews.filter(r => r.rating === s).length;
+              const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+              return (
+                <div key={s} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.textMuted, width: 12, textAlign: "right" }}>
+                    {s}
+                  </span>
+                  <div style={{
+                    flex: 1, height: 8, borderRadius: 99,
+                    background: C.border, overflow: "hidden",
+                  }}>
+                    <div style={{
+                      height: "100%", width: `${pct}%`, background: C.accent, borderRadius: 99,
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.textMuted, width: 16 }}>
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -220,8 +259,9 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            background: T.surface,
-            border: `1px solid ${focused ? T.primary : T.border}`,
+            background: C.secondary,
+            backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07))",
+            border: `1px solid ${focused ? C.accent : C.border}`,
             borderRadius: 16, padding: "24px", marginBottom: 32,
             transition: "border-color .2s, box-shadow .2s",
             boxShadow: focused ? `0 4px 20px rgba(0,0,0,0.06)` : `0 2px 8px rgba(0,0,0,0.02)`,
@@ -229,12 +269,12 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
         >
           <p style={{
             fontSize: 11, fontWeight: 800, letterSpacing: ".1em",
-            textTransform: "uppercase", color: T.primary, marginBottom: 16,
+            textTransform: "uppercase", color: C.accent, marginBottom: 16,
           }}>
-            {editingReviewId ? "Edit your review" : "Leave a review"}
+            {editingReviewId ? "Edit your review" : "Share your thoughts"}
           </p>
 
-          <Stars rating={rating} size={28} interactive onChange={setRating} />
+          <Stars rating={rating} size={28} interactive onChange={setRating} colors={colors} />
 
           <textarea
             value={comment}
@@ -245,8 +285,8 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
             rows={4}
             style={{
               width: "100%", marginTop: 16, padding: "16px",
-              background: T.bg, border: `1px solid ${focused ? T.primary : T.border}`,
-              borderRadius: 12, fontSize: 14, color: T.textMain,
+              background: C.secondary, border: `1px solid ${focused ? C.accent : C.border}`,
+              borderRadius: 12, fontSize: 14, color: C.textMain,
               resize: "none", outline: "none", lineHeight: 1.6,
               transition: "border-color .2s", boxSizing: "border-box",
             }}
@@ -258,11 +298,9 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
                 onClick={cancelEdit}
                 style={{
                   padding: "10px 24px", borderRadius: 12, fontSize: 14, fontWeight: 600,
-                  border: `1px solid ${T.border}`, background: "transparent", color: T.textMuted,
+                  border: `1px solid ${C.border}`, background: "transparent", color: C.textMuted,
                   cursor: "pointer", transition: "background .2s",
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = T.bg}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
               >
                 Cancel
               </button>
@@ -272,14 +310,11 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
               disabled={submitting || rating === 0}
               style={{
                 padding: "10px 28px", borderRadius: 12, fontSize: 14, fontWeight: 700,
-                background: T.primary, color: "#FFF", border: "none",
+                background: C.accent, color: C.secondary, border: "none",
                 cursor: submitting || rating === 0 ? "not-allowed" : "pointer",
                 opacity: rating === 0 ? .6 : 1, display: "flex", alignItems: "center", gap: 8,
-                boxShadow: `0 3px 0 ${T.primaryDark}`, transition: "transform .1s, box-shadow .1s",
+                transition: "transform .1s, box-shadow .1s",
               }}
-              onMouseDown={e => { if (!(submitting || rating === 0)) { e.currentTarget.style.transform = "translateY(3px)"; e.currentTarget.style.boxShadow = "none"; } }}
-              onMouseUp={e => { if (!(submitting || rating === 0)) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 3px 0 ${T.primaryDark}`; } }}
-              onMouseLeave={e => { if (!(submitting || rating === 0)) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = `0 3px 0 ${T.primaryDark}`; } }}
             >
               {submitting ? "Saving…" : editingReviewId ? <><Check size={16} /> Update</> : "Submit Review"}
             </button>
@@ -290,17 +325,17 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
       {/* ── Reviews list ── */}
       <AnimatePresence>
         {reviews.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "48px 0", background: T.surface, border: `1px dashed ${T.border}`, borderRadius: 16 }}>
+          <div style={{ textAlign: "center", padding: "48px 0", background: C.secondary, border: `1px dashed ${C.border}`, borderRadius: 16 }}>
             <div style={{
-              width: 64, height: 64, borderRadius: "50%", background: T.primaryFade,
+              width: 64, height: 64, borderRadius: "50%", background: C.border,
               display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
             }}>
-              <MessageSquare size={28} style={{ color: T.primary }} />
+              <MessageSquare size={28} style={{ color: C.accent }} />
             </div>
-            <p style={{ fontSize: 16, fontWeight: 800, color: T.textMain, marginBottom: 8 }}>
+            <p style={{ fontSize: 16, fontWeight: 800, color: C.textMain, marginBottom: 8 }}>
               No reviews yet
             </p>
-            <p style={{ fontSize: 14, color: T.textMuted }}>
+            <p style={{ fontSize: 14, color: C.textMuted }}>
               {!userHasReviewed ? "Be the first to review this product!" : ""}
             </p>
           </div>
@@ -312,35 +347,25 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                 transition={{ delay: idx * 0.05 }}
                 style={{
-                  background: T.surface, border: `1px solid ${T.border}`,
+                  background: C.secondary, border: `1px solid ${C.border}`,
                   borderRadius: 16, padding: "24px",
                 }}
               >
                 <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-                  {/* Avatar */}
-                  <div style={{
-                    width: 48, height: 48, borderRadius: "50%", flexShrink: 0,
-                    background: getGradient(r.users?.display_name ?? "U"), color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, fontSize: 18, boxShadow: `0 4px 12px rgba(0,0,0,.08)`,
-                  }}>
-                    {r.users?.display_name?.[0]?.toUpperCase() ?? "U"}
-                  </div>
-
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Name row */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                       <div>
-                        <p style={{ fontSize: 15, fontWeight: 800, color: T.textMain, marginBottom: 6 }}>
+                        <p style={{ fontSize: 15, fontWeight: 800, color: C.textMain, marginBottom: 6 }}>
                           {r.users?.display_name ?? "Anonymous"}
                         </p>
-                        <Stars rating={r.rating} size={14} />
+                        <Stars rating={r.rating} size={14} colors={colors} />
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         <span style={{
-                          fontSize: 12, color: T.textMuted, fontWeight: 600,
-                          padding: "4px 10px", borderRadius: 99, background: T.bg, border: `1px solid ${T.border}`,
+                          fontSize: 12, color: C.textMuted, fontWeight: 600,
+                          padding: "4px 10px", borderRadius: 99, background: C.secondary, border: `1px solid ${C.border}`,
                         }}>
                           {new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         </span>
@@ -351,12 +376,10 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
                               onClick={() => startEdit(r)} title="Edit review"
                               style={{
                                 width: 32, height: 32, borderRadius: 8, border: "none",
-                                background: T.primaryFade, color: T.primary,
+                                background: C.border, color: C.accent,
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 cursor: "pointer", transition: "background .2s",
                               }}
-                              onMouseEnter={e => e.currentTarget.style.background = `${T.primary}30`}
-                              onMouseLeave={e => e.currentTarget.style.background = T.primaryFade}
                             >
                               <Edit2 size={14} />
                             </button>
@@ -368,8 +391,6 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 cursor: "pointer", transition: "background .2s",
                               }}
-                              onMouseEnter={e => e.currentTarget.style.background = "#FECACA"}
-                              onMouseLeave={e => e.currentTarget.style.background = "#FEE2E2"}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -381,7 +402,7 @@ export const ProductReviews = ({ productId, productType, tenantId }: ProductRevi
                     {/* Comment */}
                     <p style={{
                       fontSize: 15, lineHeight: 1.6, marginTop: 16,
-                      color: r.comment ? T.textMain : T.textMuted,
+                      color: r.comment ? C.textMain : C.textMuted,
                       fontStyle: r.comment ? "normal" : "italic",
                     }}>
                       {r.comment || "No comment left."}

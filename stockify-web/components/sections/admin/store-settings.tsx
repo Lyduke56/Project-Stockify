@@ -111,13 +111,8 @@ export default function StoreSettingsSection() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="flex flex-col w-full min-h-screen bg-[#FFFCEB] font-['Inter'] pt-5 pb-12"
-      style={{
-        '--color-primary': '#385E31',
-        '--color-secondary': '#2A4725',
-        '--color-accent': '#E5AC24',
-        '--color-background': '#FFFCEB',
-      } as React.CSSProperties}
+      className="flex flex-col w-full min-h-screen font-['Inter'] pt-5 pb-12"
+      style={{ backgroundColor: "var(--color-background)" }}
     >
       {/* PAGE HEADER */}
       <motion.header variants={itemVariants} className="w-full flex flex-col items-center mb-8 gap-2 px-4">
@@ -142,7 +137,7 @@ export default function StoreSettingsSection() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
           
           {/* COLUMN 1: BUSINESS INFORMATION */}
-          <motion.div variants={itemVariants} className="flex flex-col gap-6 p-7 w-full bg-white rounded-[20px] border border-primary/15 shadow-sm relative overflow-hidden">
+          <motion.div variants={itemVariants} className="flex flex-col gap-6 p-7 w-full bg-background rounded-[20px] border border-primary shadow-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-primary/20" />
             
             <div className="flex items-center gap-3 mb-2">
@@ -167,7 +162,7 @@ export default function StoreSettingsSection() {
                     value={settings?.[item.key as keyof TenantSettings] as string || ""}
                     onChange={(e) => setSettings(prev => prev ? { ...prev, [item.key]: e.target.value } : null)}
                     placeholder={item.placeholder}
-                    className="w-full border border-primary/20 hover:border-primary/40 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-3 bg-[#FFFCEB]/50 focus:bg-white text-primary placeholder-primary/30 outline-none font-medium text-sm transition-all"
+                    className="w-full border border-primary hover:border-primary focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-xl px-4 py-3 bg-background focus:bg-background text-primary placeholder-primary/30 outline-none font-medium text-sm transition-all"
                   />
                 </div>
               ))}
@@ -175,7 +170,7 @@ export default function StoreSettingsSection() {
           </motion.div>
 
           {/* COLUMN 2: PAYMENT METHODS */}
-          <motion.div variants={itemVariants} className="flex flex-col gap-5 p-7 w-full bg-white rounded-[20px] border border-primary/15 shadow-sm relative overflow-hidden h-full">
+          <motion.div variants={itemVariants} className="flex flex-col gap-5 p-7 w-full bg-background rounded-[20px] border border-primary shadow-sm relative overflow-hidden h-full">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-accent/40" />
             
             <div className="flex items-center gap-3 mb-1">
@@ -218,7 +213,7 @@ export default function StoreSettingsSection() {
         </div>
 
         {/* BOTTOM ROW: GCASH QR CODE (Full Width, Horizontal Layout) */}
-        <motion.div variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 p-7 w-full bg-white rounded-[20px] border border-primary/15 shadow-sm relative overflow-hidden">
+        <motion.div variants={itemVariants} className="flex flex-col md:flex-row items-center justify-between gap-8 p-7 w-full bg-background rounded-[20px] border border-primary shadow-md relative overflow-hidden">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500/40 hidden md:block" />
           <div className="absolute top-0 left-0 w-full h-1.5 bg-blue-500/40 block md:hidden" />
           
@@ -236,13 +231,13 @@ export default function StoreSettingsSection() {
           </div>
 
           {/* Right Upload Side */}
-          <div className="flex flex-col items-center justify-center gap-3 bg-[#FFFCEB]/30 rounded-xl border border-primary/5 p-4 w-full md:w-auto shrink-0">
+          <div className="flex flex-col items-center justify-center gap-3 bg-background rounded-xl border border-primary p-4 w-full md:w-auto shrink-0">
             {settings?.gcash_qr_url ? (
               <div className="relative group w-40 h-40">
                 <img 
                   src={settings.gcash_qr_url} 
                   alt="GCash QR Code" 
-                  className="w-full h-full object-contain rounded-xl border-2 border-primary/10 p-2 bg-white shadow-sm transition-transform group-hover:scale-[1.02]" 
+                  className="w-full h-full object-contain rounded-xl border-2 border-primary p-2 bg-background shadow-sm transition-transform group-hover:scale-[1.02]" 
                 />
                 <button 
                   onClick={() => setSettings(prev => prev ? { ...prev, gcash_qr_url: null } : null)}
@@ -255,7 +250,7 @@ export default function StoreSettingsSection() {
             ) : (
               <div 
                 onClick={() => qrInputRef.current?.click()}
-                className="w-40 h-40 bg-white border-2 border-dashed border-primary/20 hover:border-primary/50 hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all group"
+                className="w-40 h-40 bg-background border-2 border-dashed border-primary hover:border-accent hover:bg-primary/5 rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all group"
               >
                 <div className="p-3 bg-primary/5 rounded-full group-hover:scale-110 transition-transform">
                   <Upload size={24} className="text-primary/60" />
@@ -275,7 +270,7 @@ export default function StoreSettingsSection() {
             {settings?.gcash_qr_url && (
               <button
                 onClick={() => qrInputRef.current?.click()}
-                className="mt-1 px-5 py-2 rounded-full border-2 border-primary/10 text-primary font-bold text-[12px] hover:bg-primary hover:text-[#FFFCEB] hover:border-primary transition-all shadow-sm"
+                className="mt-1 px-5 py-2 rounded-full border-2 border-primary/10 text-primary font-bold text-[12px] hover:bg-primary hover:text-[var(--color-background)] hover:border-primary transition-all shadow-sm"
               >
                 Replace Image
               </button>

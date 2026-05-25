@@ -6,13 +6,15 @@ import FnbIngredientsTable from "@/components/tables/employee/fnb-table-modal";
 import LoadingScreen from "@/app/loading-screen/loading";
 import { AlertCircle } from "lucide-react";
 
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
+
 type UserContext = {
   userId:       string;
   tenantId:     string;
   businessType: BusinessType;
 };
 
-export default function IngredientsSection() {
+export default function IngredientsSection({ colors }: { colors?: StorefrontConfig | null }) {
   const [ctx, setCtx] = useState<UserContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
@@ -59,14 +61,14 @@ export default function IngredientsSection() {
         }`}
       >
         <div className="w-full flex flex-col items-center mt-2 mb-10">
-          <h1 className="text-[#385E31] text-[30px] font-extrabold tracking-wide uppercase">
+          <h1 className="text-primary text-[30px] font-extrabold tracking-wide uppercase">
             Stock Inventory
           </h1>
-          <div className="w-[900px] max-w-full h-1.5 bg-[#F7B71D] mt-1 rounded-full" />
+          <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           {ctx && (
             <div className="mt-3">
               <span className={`text-[11px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest ${
-                isFnb ? "bg-[#385E31]/10 text-[#385E31]" : "bg-[#F7B71D]/20 text-[#7a5c00]"
+                isFnb ? "bg-primary/10 text-primary" : "bg-accent/20 text-primary"
               }`}>
                 {ctx.businessType}
               </span>
@@ -90,9 +92,10 @@ export default function IngredientsSection() {
               <FnbIngredientsTable
                 tenantId={ctx.tenantId}
                 onLoadComplete={handleLoadComplete}
+                colors={colors}
               />
             ) : (
-              <div className="flex flex-col items-center justify-center py-24 text-[#385E31]/40 gap-3">
+              <div className="flex flex-col items-center justify-center py-24 text-primary/40 gap-3">
                 <div className="p-4 bg-gray-50 rounded-full">
                   <AlertCircle size={40} />
                 </div>

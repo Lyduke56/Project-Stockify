@@ -19,6 +19,7 @@ import {
   type Order,
   type OrderItem,
 } from "@/lib/employee/order-actions";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 // ─── Cancel Order Modal ─────────────
 function CancelOrderModal({
@@ -26,11 +27,13 @@ function CancelOrderModal({
   onConfirm,
   onClose,
   busy,
+  colors,
 }: {
   order: Order;
   onConfirm: (reason: string) => void;
   onClose: () => void;
   busy: boolean;
+  colors?: StorefrontConfig | null;
 }) {
   const [reason, setReason] = useState("");
   
@@ -41,6 +44,13 @@ function CancelOrderModal({
   }, []);
 
   if (!mounted) return null;
+
+  const cancelStyles = {
+    "--color-primary": colors?.color_primary ?? "#3A6131",
+    "--color-background": colors?.color_background ?? "#FFFCEB",
+    "--color-accent": colors?.color_accent ?? "#F7B71D",
+    "--color-sidebar-text": colors?.color_sidebar_text ?? "#FFF9D7",
+  } as React.CSSProperties;
 
   // <-- PORTAL THE CANCEL MODAL
   return createPortal(
@@ -58,7 +68,7 @@ function CancelOrderModal({
         exit={{ opacity: 0, scale: 0.94, y: 24 }}
         className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-none font-inter"
       >
-        <div className="bg-[#FFFCEB] rounded-[24px] w-full max-w-[460px] shadow-2xl pointer-events-auto overflow-hidden border-[1.5px] border-red-500/20">
+        <div style={cancelStyles} className="bg-background rounded-[24px] w-full max-w-[460px] shadow-2xl pointer-events-auto overflow-hidden border-[1.5px] border-red-500/20">
           <div className="bg-red-500 px-6 py-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
@@ -85,7 +95,7 @@ function CancelOrderModal({
             </div>
 
             <div>
-              <label className="text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block">
+              <label className="text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 mb-2 block">
                 Reason for Cancellation <span className="text-red-400">*</span>
               </label>
               <textarea
@@ -93,12 +103,12 @@ function CancelOrderModal({
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Describe why this order is being cancelled..."
                 rows={4}
-                className="w-full rounded-xl border-[1.5px] border-[#3A6131]/10 focus:border-red-400 bg-white px-4 py-3 text-[13px] text-[#3A6131] resize-none outline-none transition-colors"
+                className="w-full rounded-xl border-[1.5px] border-primary/10 focus:border-red-400 bg-background px-4 py-3 text-[13px] text-primary resize-none outline-none transition-colors"
               />
             </div>
 
             <div className="flex gap-3 pt-1">
-              <button onClick={onClose} disabled={busy} className="flex-1 py-3 rounded-xl border-[1.5px] border-[#3A6131]/10 text-[#3A6131]/60 font-bold text-[13px] hover:bg-[#3A6131]/5 transition-colors">
+              <button onClick={onClose} disabled={busy} className="flex-1 py-3 rounded-xl border-[1.5px] border-primary/10 text-primary/60 font-bold text-[13px] hover:bg-primary/5 transition-colors">
                 Go Back
               </button>
               <button onClick={() => onConfirm(reason)} disabled={busy || !reason.trim()} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-black text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-opacity">
@@ -119,9 +129,10 @@ interface ViewOrderModalProps {
   order: Order | null;
   onClose: () => void;
   onStatusChange: () => void;
+  colors?: StorefrontConfig | null;
 }
 
-export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewOrderModalProps) {
+export default function ViewOrderModal({ order, onClose, onStatusChange, colors }: ViewOrderModalProps) {
   const [step, setStep] = useState(1);
   const [items, setItems] = useState<OrderItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +179,14 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
   }, [order]);
 
   if (!order || !mounted) return null; // Added mounted check
+
+  const modalStyles = {
+    "--color-primary": colors?.color_primary ?? "#3A6131",
+    "--color-background": colors?.color_background ?? "#FFFCEB",
+    "--color-secondary": colors?.color_secondary ?? "#2A4725",
+    "--color-accent": colors?.color_accent ?? "#F7B71D",
+    "--color-sidebar-text": colors?.color_sidebar_text ?? "#FFF9D7",
+  } as React.CSSProperties;
 
   // ─── Action Handlers ───
   const act = async (fn: () => Promise<{ error: string | null }>, successMsg: string) => {
@@ -232,24 +251,24 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
     Cancelled: "bg-red-100 text-red-700",
   };
 
-  const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
-  const cardStyle = "bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm";
+  const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 mb-2 block";
+  const cardStyle = "bg-background border-[1.5px] border-primary/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm";
 
   // <-- PORTAL THE MAIN MODAL
   return createPortal(
-    <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <div style={modalStyles} className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <motion.div 
         initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
-        className="w-full max-w-[920px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-inter relative"
+        className="w-full max-w-[920px] bg-background rounded-[32px] overflow-hidden border-[1.5px] border-accent/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[650px] font-inter relative"
       >
         {/* ── LEFT SIDEBAR ── */}
-        <div className="w-full md:w-[320px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
-          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl" />
+        <div className="w-full md:w-[320px] bg-primary p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full blur-3xl" />
           
           <div className="relative z-10">
-            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
-            <h2 className="text-[#FFFCEB] font-raleway text-3xl font-black leading-tight mb-2">Order Details</h2>
-            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-12 uppercase tracking-wider font-mono">
+            <div className="bg-accent w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-sidebar-text font-raleway text-3xl font-black leading-tight mb-2">Order Details</h2>
+            <p className="text-sidebar-text/60 text-xs font-medium leading-relaxed mb-12 uppercase tracking-wider font-mono">
               ID: {order.order_id.slice(0, 8)}
             </p>
 
@@ -263,10 +282,10 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                   key={s.id} onClick={() => setStep(s.id)}
                   className={`flex items-center gap-4 transition-all duration-300 w-full text-left ${step === s.id ? "translate-x-2" : "opacity-40 hover:opacity-80"}`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20" : "bg-white/10 text-white"}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-accent text-primary shadow-lg shadow-accent/20" : "bg-white/10 text-white"}`}>
                     <s.icon size={18} strokeWidth={2.5} />
                   </div>
-                  <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[#FFFCEB]" : "text-white"}`}>
+                  <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-sidebar-text" : "text-white"}`}>
                     {s.label}
                   </span>
                 </button>
@@ -277,41 +296,41 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
           <div className="mt-auto relative z-10">
             <div className="flex gap-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"}`} />
+                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-8 bg-accent" : "w-2 bg-white/20"}`} />
               ))}
             </div>
           </div>
         </div>
 
         {/* ── RIGHT CONTENT ── */}
-        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm overflow-hidden">
-          <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-[#FFFCEB] border border-[#3A6131]/10 flex items-center justify-center text-[#3A6131] hover:bg-[#3A6131] hover:text-[#FFFCEB] transition-all z-20 shadow-sm">
+        <div className="flex-1 flex flex-col relative bg-background/50 backdrop-blur-sm overflow-hidden">
+          <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-background border border-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-sidebar-text transition-all z-20 shadow-sm">
             <X size={20} strokeWidth={2.5} />
           </button>
 
-          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#3A6131]/25">
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/15 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-primary/25">
             <AnimatePresence mode="wait">
               
               {/* ── STEP 1: SUMMARY ── */}
               {step === 1 && (
                 <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                   <div className="mb-8">
-                    <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 01</span>
-                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Order Summary</h3>
+                    <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 01</span>
+                    <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Order Summary</h3>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className={cardStyle}>
-                      <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]">
+                      <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
                         <Clock size={18} />
                       </div>
                       <div>
                         <p className={labelStyle + " !mb-0.5"}>Date & Time</p>
-                        <p className="text-[#3A6131] font-bold text-sm">{formatDate(order.created_at)}</p>
+                        <p className="text-primary font-bold text-sm">{formatDate(order.created_at)}</p>
                       </div>
                     </div>
                     <div className={cardStyle}>
-                      <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]">
+                      <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
                         <Package size={18} />
                       </div>
                       <div>
@@ -323,32 +342,32 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-[#3A6131]/10 shadow-sm overflow-hidden mt-6">
-                    <div className="bg-[#3A6131]/5 px-5 py-3 border-b border-[#3A6131]/10">
-                      <h3 className="text-xs font-black text-[#385E31] uppercase tracking-wider">Ordered Items</h3>
+                  <div className="bg-background rounded-2xl border border-primary/10 shadow-sm overflow-hidden mt-6">
+                    <div className="bg-primary/5 px-5 py-3 border-b border-primary/10">
+                      <h3 className="text-xs font-black text-primary uppercase tracking-wider">Ordered Items</h3>
                     </div>
                     <div className="p-0">
                       <table className="w-full text-sm">
-                        <thead className="bg-white text-[#3A6131]/50 text-[10px] uppercase tracking-wider">
+                        <thead className="bg-background text-primary/50 text-[10px] uppercase tracking-wider">
                           <tr>
-                            <th className="px-5 py-3 font-black text-left border-b border-[#3A6131]/5">Item</th>
-                            <th className="px-5 py-3 font-black text-center border-b border-[#3A6131]/5">Qty</th>
-                            <th className="px-5 py-3 font-black text-right border-b border-[#3A6131]/5">Price</th>
-                            <th className="px-5 py-3 font-black text-right border-b border-[#3A6131]/5">Subtotal</th>
+                            <th className="px-5 py-3 font-black text-left border-b border-primary/5">Item</th>
+                            <th className="px-5 py-3 font-black text-center border-b border-primary/5">Qty</th>
+                            <th className="px-5 py-3 font-black text-right border-b border-primary/5">Price</th>
+                            <th className="px-5 py-3 font-black text-right border-b border-primary/5">Subtotal</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#3A6131]/5">
+                        <tbody className="divide-y divide-primary/5">
                           {loading ? (
-                            <tr><td colSpan={4} className="px-5 py-8 text-center text-[#3A6131]/50"><Loader2 className="animate-spin inline mr-2" size={16}/>Loading items...</td></tr>
+                            <tr><td colSpan={4} className="px-5 py-8 text-center text-primary/50"><Loader2 className="animate-spin inline mr-2" size={16}/>Loading items...</td></tr>
                           ) : items.map((item, idx) => (
-                            <tr key={idx} className="hover:bg-[#FFFCEB]/30 transition-colors">
-                              <td className="px-5 py-4 font-bold text-[#3A6131]">
+                            <tr key={idx} className="hover:bg-primary/[0.02] transition-colors">
+                              <td className="px-5 py-4 font-bold text-primary">
                                 {item.item_name}
-                                {item.size_label && <span className="block text-[10px] text-[#3A6131]/60 uppercase mt-0.5">{item.size_label}</span>}
+                                {item.size_label && <span className="block text-[10px] text-primary/60 uppercase mt-0.5">{item.size_label}</span>}
                               </td>
-                              <td className="px-5 py-4 text-center font-bold text-[#3A6131]/60">x{item.quantity}</td>
-                              <td className="px-5 py-4 text-right font-semibold text-[#3A6131]/60">₱{item.unit_price.toFixed(2)}</td>
-                              <td className="px-5 py-4 text-right font-black text-[#385E31]">₱{(item.quantity * item.unit_price).toFixed(2)}</td>
+                              <td className="px-5 py-4 text-center font-bold text-primary/60">x{item.quantity}</td>
+                              <td className="px-5 py-4 text-right font-semibold text-primary/60">₱{item.unit_price.toFixed(2)}</td>
+                              <td className="px-5 py-4 text-right font-black text-primary">₱{(item.quantity * item.unit_price).toFixed(2)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -357,18 +376,18 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                   </div>
 
                   <div className="grid grid-cols-2 gap-6 mt-6">
-                    <div className="bg-[#3A6131]/5 p-6 rounded-[24px] border border-[#3A6131]/10 flex flex-col justify-center">
+                    <div className="bg-primary/5 p-6 rounded-[24px] border border-primary/10 flex flex-col justify-center">
                       <label className={labelStyle}>Payment Method</label>
                       <div className="flex items-center gap-3">
-                        <CreditCard size={20} className="text-[#3A6131]" />
-                        <span className="text-lg font-black text-[#3A6131]">
+                        <CreditCard size={20} className="text-primary" />
+                        <span className="text-lg font-black text-primary">
                           {order.payment_method === "Cash-on-Delivery" ? "Cash on Delivery" : order.payment_method}
                         </span>
                       </div>
                     </div>
-                    <div className="bg-[#F7B71D] p-6 rounded-[24px] shadow-lg shadow-[#F7B71D]/20 flex flex-col justify-center items-end text-right">
-                      <label className={`${labelStyle} text-[#385E31]/60 !mb-1`}>Total Amount</label>
-                      <div className="flex items-center text-3xl font-black text-[#385E31]">
+                    <div className="bg-accent p-6 rounded-[24px] shadow-lg shadow-accent/20 flex flex-col justify-center items-end text-right">
+                      <label className={`${labelStyle} text-primary/60 !mb-1`}>Total Amount</label>
+                      <div className="flex items-center text-3xl font-black text-primary">
                         <span className="mr-1 opacity-50">₱</span>
                         {order.total_amount?.toFixed(2) || "0.00"}
                       </div>
@@ -376,9 +395,9 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                   </div>
 
                   {order.payment_method === "QR Code" && order.proof_of_payment_url && (
-                    <div className="mt-6 bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl p-4">
+                    <div className="mt-6 bg-background border-[1.5px] border-primary/10 rounded-2xl p-4">
                       <label className={labelStyle}>Customer GCash Proof</label>
-                      <div className="relative aspect-video bg-[#3A6131]/5 rounded-xl border border-[#3A6131]/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-[#F7B71D] transition-all"
+                      <div className="relative aspect-video bg-primary/5 rounded-xl border border-primary/10 overflow-hidden cursor-pointer hover:ring-2 hover:ring-accent transition-all"
                         onClick={() => { logOrderView(order.order_id, tenantId, "PAYMENT"); window.open(order.proof_of_payment_url!, "_blank"); }}>
                         <img src={order.proof_of_payment_url} alt="GCash Proof" className="w-full h-full object-contain" />
                       </div>
@@ -391,19 +410,19 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                   <div className="mb-8">
-                    <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 02</span>
-                    <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Customer Information</h3>
+                    <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 02</span>
+                    <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Customer Information</h3>
                   </div>
 
                   {!customerProfile ? (
-                    <div className="flex items-center gap-3 text-[#3A6131]/50"><Loader2 className="animate-spin" /> Fetching Profile...</div>
+                    <div className="flex items-center gap-3 text-primary/50"><Loader2 className="animate-spin" /> Fetching Profile...</div>
                   ) : (
                     <div className="space-y-4">
                       <div>
                         <label className={labelStyle}>Customer Name</label>
                         <div className={cardStyle}>
-                          <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]"><User size={18} /></div>
-                          <p className="text-[#3A6131] font-bold text-sm">{order.customer_name}</p>
+                          <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary"><User size={18} /></div>
+                          <p className="text-primary font-bold text-sm">{order.customer_name}</p>
                         </div>
                       </div>
 
@@ -411,15 +430,15 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                         <div>
                           <label className={labelStyle}>Phone Number</label>
                           <div className={cardStyle}>
-                            <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]"><Phone size={18} /></div>
-                            <p className="text-[#3A6131] font-bold text-sm">{customerProfile.contact_number || "N/A"}</p>
+                            <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary"><Phone size={18} /></div>
+                            <p className="text-primary font-bold text-sm">{customerProfile.contact_number || "N/A"}</p>
                           </div>
                         </div>
                         <div>
                           <label className={labelStyle}>Email Address</label>
                           <div className={cardStyle}>
-                            <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]"><Mail size={18} /></div>
-                            <p className="text-[#3A6131] font-bold text-sm truncate">{customerProfile.email || "N/A"}</p>
+                            <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary"><Mail size={18} /></div>
+                            <p className="text-primary font-bold text-sm truncate">{customerProfile.email || "N/A"}</p>
                           </div>
                         </div>
                       </div>
@@ -427,9 +446,9 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                       {customerProfile.address && (
                         <div className="pt-4">
                           <label className={labelStyle}>Delivery Address</label>
-                          <div className={`${cardStyle} items-start border-[#F7B71D]/40 bg-[#F7B71D]/5`}>
-                            <div className="w-10 h-10 rounded-xl bg-[#F7B71D]/20 flex items-center justify-center text-[#7a5800] shrink-0 mt-1"><MapPin size={18} /></div>
-                            <p className="text-[#3A6131] font-bold text-sm leading-relaxed mt-2.5">{customerProfile.address}</p>
+                          <div className={`${cardStyle} items-start border-accent/40 bg-accent/5`}>
+                            <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center text-primary shrink-0 mt-1"><MapPin size={18} /></div>
+                            <p className="text-primary font-bold text-sm leading-relaxed mt-2.5">{customerProfile.address}</p>
                           </div>
                         </div>
                       )}
@@ -443,8 +462,8 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
                   <div className="mb-6 flex justify-between items-start">
                     <div>
-                      <span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 03</span>
-                      <h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Fulfillment Details</h3>
+                      <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 03</span>
+                      <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Fulfillment Details</h3>
                     </div>
                     {feedback && (
                       <div className={`px-4 py-2 rounded-xl text-[12px] font-bold flex items-center gap-2 ${feedback.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -455,15 +474,15 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
 
                   {/* 1. Pending State */}
                   {order.fulfillment_status === "Pending" && (
-                    <div className="bg-[#F7B71D]/10 border border-[#F7B71D]/30 rounded-2xl p-6">
+                    <div className="bg-accent/10 border border-accent/30 rounded-2xl p-6">
                       <div className="flex items-center gap-2 mb-2">
-                         <Clock size={18} className="text-[#7a5800]" />
+                         <Clock size={18} className="text-primary" />
                          <label className={labelStyle + " !mb-0"}>Action Required</label>
                       </div>
-                      <p className="text-sm text-[#7a5800]/80 mb-5 leading-relaxed">
+                      <p className="text-sm text-primary/80 mb-5 leading-relaxed">
                         This order is currently pending review. Please verify the customer's details and payment method, then mark it as processing to begin preparation.
                       </p>
-                      <button onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing"), "Moved to Processing!")} disabled={busy} className="w-full bg-[#3A6131] text-[#FFFCEB] py-4 rounded-xl font-black text-sm hover:opacity-90 transition-opacity flex justify-center gap-2">
+                      <button onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing"), "Moved to Processing!")} disabled={busy} className="w-full bg-primary text-sidebar-text py-4 rounded-xl font-black text-sm hover:opacity-90 transition-opacity flex justify-center gap-2">
                         {busy ? <Loader2 className="animate-spin" /> : <Clock />} Mark as Processing
                       </button>
                     </div>
@@ -471,12 +490,12 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
 
                   {/* 2. Processing State */}
                   {order.fulfillment_status === "Processing" && (
-                    <div className="bg-blue-50/50 border-[1.5px] border-blue-100 rounded-2xl p-6 shadow-sm">
+                    <div className="bg-background border-[1.5px] border-primary/20 rounded-2xl p-6 shadow-sm">
                       <div className="flex items-center gap-2 mb-1">
-                         <Package size={18} className="text-blue-600" />
-                         <label className="text-[11px] font-black uppercase tracking-[0.12em] text-blue-800/60 block">Preparation Phase</label>
+                         <Package size={18} className="text-primary" />
+                         <label className="text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 block">Preparation Phase</label>
                       </div>
-                      <p className="text-sm text-blue-800/80 mb-6 leading-relaxed">
+                      <p className="text-sm text-primary/70 mb-6 leading-relaxed">
                         This order is currently being prepared. Once packed and ready, assign a deliverer and input their details below to dispatch the items.
                       </p>
 
@@ -484,14 +503,14 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className={labelStyle}>Deliverer Name</label>
-                            <input type="text" placeholder="e.g. Lalamove Rider" value={deliveryInfo.deliverer_name} onChange={(e) => setDeliveryInfo({ ...deliveryInfo, deliverer_name: e.target.value })} className="w-full border-[1.5px] border-[#3A6131]/10 rounded-xl px-4 py-3 text-sm text-[#3A6131] outline-none focus:border-[#F7B71D]" />
+                            <input type="text" placeholder="e.g. Lalamove Rider" value={deliveryInfo.deliverer_name} onChange={(e) => setDeliveryInfo({ ...deliveryInfo, deliverer_name: e.target.value })} className="w-full border-[1.5px] border-primary/10 rounded-xl px-4 py-3 text-sm text-primary bg-background outline-none focus:border-accent" />
                           </div>
                           <div>
                             <label className={labelStyle}>Reference ID (Opt)</label>
-                            <input type="text" placeholder="e.g. TRK-001" value={deliveryInfo.delivery_id} onChange={(e) => setDeliveryInfo({ ...deliveryInfo, delivery_id: e.target.value })} className="w-full border-[1.5px] border-[#3A6131]/10 rounded-xl px-4 py-3 text-sm text-[#3A6131] outline-none focus:border-[#F7B71D]" />
+                            <input type="text" placeholder="e.g. TRK-001" value={deliveryInfo.delivery_id} onChange={(e) => setDeliveryInfo({ ...deliveryInfo, delivery_id: e.target.value })} className="w-full border-[1.5px] border-primary/10 rounded-xl px-4 py-3 text-sm text-primary bg-background outline-none focus:border-accent" />
                           </div>
                         </div>
-                        <button onClick={handleDispatch} disabled={busy} className="w-full bg-[#F7B71D] text-[#385E31] py-4 rounded-xl font-black text-sm hover:opacity-90 shadow-md shadow-[#F7B71D]/20 flex justify-center gap-2">
+                        <button onClick={handleDispatch} disabled={busy} className="w-full bg-accent text-primary py-4 rounded-xl font-black text-sm hover:opacity-90 shadow-md shadow-accent/20 flex justify-center gap-2">
                           {busy ? <Loader2 className="animate-spin" /> : <Truck />} Dispatch Order
                         </button>
                       </div>
@@ -501,28 +520,28 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                   {/* 3. Dispatched State */}
                   {order.fulfillment_status === "Dispatched" && (
                     <div className="space-y-6">
-                      <div className="bg-purple-50/50 border-[1.5px] border-purple-100 rounded-2xl p-6">
+                      <div className="bg-background border-[1.5px] border-primary/20 rounded-2xl p-6">
                         <div className="flex items-center gap-2 mb-2">
-                           <Truck size={18} className="text-purple-600" />
-                           <label className="text-[11px] font-black uppercase tracking-[0.12em] text-purple-800/60 block">Out for Delivery</label>
+                           <Truck size={18} className="text-primary" />
+                           <label className="text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 block">Out for Delivery</label>
                         </div>
-                        <p className="text-sm text-purple-800/80 mb-4 leading-relaxed">
+                        <p className="text-sm text-primary/70 mb-4 leading-relaxed">
                           This order is currently in transit. Please coordinate with the rider and await proof of delivery to finalize this transaction.
                         </p>
-                        <div className="bg-white rounded-xl border border-purple-100 p-4">
-                          <p className="text-[11px] font-black uppercase tracking-wider text-purple-800/40 mb-1">Active Deliverer</p>
-                          <p className="text-purple-900 font-bold text-sm">{order.deliverer_name} {order.delivery_id && <span className="opacity-60 font-mono">({order.delivery_id})</span>}</p>
+                        <div className="bg-primary/5 rounded-xl border border-primary/10 p-4">
+                          <p className="text-[11px] font-black uppercase tracking-wider text-primary/40 mb-1">Active Deliverer</p>
+                          <p className="text-primary font-bold text-sm">{order.deliverer_name} {order.delivery_id && <span className="opacity-60 font-mono">({order.delivery_id})</span>}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Delivery Proof */}
-                        <div className="bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl p-5">
+                        <div className="bg-background border-[1.5px] border-primary/10 rounded-2xl p-5">
                           <label className={labelStyle}>1. Proof of Delivery</label>
                           {!order.delivery_proof_url ? (
                             <div className="space-y-3">
-                              <input type="file" accept="image/*" onChange={(e) => setDeliveryFile(e.target.files?.[0] || null)} className="w-full text-xs file:bg-[#3A6131] file:text-[#FFFCEB] file:border-0 file:rounded-xl file:px-4 file:py-2 file:font-bold file:mr-3 cursor-pointer hover:file:opacity-90 transition-opacity" />
-                              <button onClick={handleDeliveryProof} disabled={busy || !deliveryFile} className="w-full bg-[#3A6131]/10 text-[#3A6131] py-2.5 rounded-xl font-bold text-xs hover:bg-[#3A6131]/20 flex justify-center gap-2 disabled:opacity-50">
+                              <input type="file" accept="image/*" onChange={(e) => setDeliveryFile(e.target.files?.[0] || null)} className="w-full text-xs file:bg-primary file:text-sidebar-text file:border-0 file:rounded-xl file:px-4 file:py-2 file:font-bold file:mr-3 cursor-pointer hover:file:opacity-90 transition-opacity" />
+                              <button onClick={handleDeliveryProof} disabled={busy || !deliveryFile} className="w-full bg-primary/10 text-primary py-2.5 rounded-xl font-bold text-xs hover:bg-primary/20 flex justify-center gap-2 disabled:opacity-50">
                                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Delivery Proof
                               </button>
                             </div>
@@ -536,12 +555,12 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
 
                         {/* Payment Proof (COD) */}
                         {order.payment_method === "Cash-on-Delivery" && (
-                          <div className="bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl p-5">
+                          <div className="bg-background border-[1.5px] border-primary/10 rounded-2xl p-5">
                             <label className={labelStyle}>2. Payment Proof (Cash)</label>
                             {!order.proof_of_payment_url ? (
                               <div className="space-y-3">
-                                <input type="file" accept="image/*" onChange={(e) => setPaymentFile(e.target.files?.[0] || null)} className="w-full text-xs file:bg-[#F7B71D] file:text-[#385E31] file:border-0 file:rounded-xl file:px-4 file:py-2 file:font-bold file:mr-3 cursor-pointer hover:file:opacity-90 transition-opacity" />
-                                <button onClick={handlePaymentProof} disabled={busy || !paymentFile} className="w-full bg-[#F7B71D]/20 text-[#7a5800] py-2.5 rounded-xl font-bold text-xs hover:bg-[#F7B71D]/40 flex justify-center gap-2 disabled:opacity-50">
+                                <input type="file" accept="image/*" onChange={(e) => setPaymentFile(e.target.files?.[0] || null)} className="w-full text-xs file:bg-accent file:text-primary file:border-0 file:rounded-xl file:px-4 file:py-2 file:font-bold file:mr-3 cursor-pointer hover:file:opacity-90 transition-opacity" />
+                                <button onClick={handlePaymentProof} disabled={busy || !paymentFile} className="w-full bg-accent/20 text-primary py-2.5 rounded-xl font-bold text-xs hover:bg-accent/40 flex justify-center gap-2 disabled:opacity-50">
                                   {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />} Upload Payment Proof
                                 </button>
                               </div>
@@ -556,7 +575,7 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                       </div>
 
                       {order.customer_confirmed_received && order.delivery_proof_url && (
-                        <button onClick={() => act(() => processAndCompleteOrder(order.order_id), "Transaction completed!")} disabled={busy || (order.payment_method === "Cash-on-Delivery" && !order.proof_of_payment_url)} className="w-full bg-[#3A6131] text-[#FFFCEB] py-4 rounded-xl font-black text-sm hover:opacity-90 flex justify-center gap-2 shadow-lg disabled:opacity-50">
+                        <button onClick={() => act(() => processAndCompleteOrder(order.order_id), "Transaction completed!")} disabled={busy || (order.payment_method === "Cash-on-Delivery" && !order.proof_of_payment_url)} className="w-full bg-primary text-sidebar-text py-4 rounded-xl font-black text-sm hover:opacity-90 flex justify-center gap-2 shadow-lg disabled:opacity-50">
                           {busy ? <Loader2 className="animate-spin" /> : <CheckCircle2 />} Complete Transaction
                         </button>
                       )}
@@ -594,10 +613,10 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
                         </div>
                       )}
 
-                      <textarea placeholder="Resolution remarks..." value={resolutionRemarks} onChange={(e) => setResolutionRemarks(e.target.value)} className="w-full bg-white border border-orange-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-orange-400 min-h-[80px] resize-none" />
+                      <textarea placeholder="Resolution remarks..." value={resolutionRemarks} onChange={(e) => setResolutionRemarks(e.target.value)} className="w-full bg-background border border-orange-200 rounded-xl px-4 py-3 text-sm text-primary outline-none focus:border-orange-400 min-h-[80px] resize-none" />
                       
                       <div className="grid grid-cols-2 gap-3 pt-2">
-                        <button onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing", { deliverer_name: null, delivery_id: null, delivery_proof_url: null, cancel_reason: resolutionRemarks }), "Re-dispatched.")} disabled={busy || !resolutionRemarks.trim()} className="bg-white text-orange-700 py-3 border-[1.5px] border-orange-200 hover:bg-orange-100 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
+                        <button onClick={() => act(() => updateFulfillmentStatus(order.order_id, "Processing", { deliverer_name: null, delivery_id: null, delivery_proof_url: null, cancel_reason: resolutionRemarks }), "Re-dispatched.")} disabled={busy || !resolutionRemarks.trim()} className="bg-background text-orange-700 py-3 border-[1.5px] border-orange-200 hover:bg-orange-100 rounded-xl font-bold text-[13px] flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
                           <RefreshCw size={16} /> Re-Dispatch
                         </button>
                         <button onClick={() => act(() => processAndCompleteOrder(order.order_id, resolutionRemarks), "Force completed.")} disabled={busy || !resolutionRemarks.trim()} className="bg-orange-600 text-white py-3 rounded-xl font-bold text-[13px] hover:opacity-90 flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 transition-opacity">
@@ -629,14 +648,14 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
 
                   {/* Cancel Fallback Button (Not visible in Received or Cancelled states) */}
                   {order.fulfillment_status !== "Received" && order.fulfillment_status !== "Cancelled" && (
-                     <div className="pt-6 border-t border-[#3A6131]/10">
+                     <div className="pt-6 border-t border-primary/10">
                         <button 
                           onClick={() => setShowCancel(true)} 
-                          className="w-full py-4 text-[13px] font-bold text-red-600 bg-red-50/50 hover:bg-red-100 border border-red-100 hover:border-red-200 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                          className="w-full py-4 text-[13px] font-bold text-red-600 bg-white hover:bg-red-50 border border-red-100 hover:border-red-200 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
                         >
                           <Ban size={16} /> Terminate Order
                         </button>
-                        <p className="text-center text-[10px] text-[#3A6131]/40 mt-3 font-medium uppercase tracking-wider">
+                        <p className="text-center text-[10px] text-primary/40 mt-3 font-medium uppercase tracking-wider">
                           Warning: Cancelling is permanent and cannot be undone.
                         </p>
                      </div>
@@ -648,17 +667,17 @@ export default function ViewOrderModal({ order, onClose, onStatusChange }: ViewO
           </div>
 
           {/* ── FOOTER NAVIGATION ── */}
-          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-between items-center z-10 shrink-0">
-            <button onClick={() => step > 1 ? setStep(step - 1) : onClose()} className="text-[#3A6131]/50 text-sm font-bold hover:text-[#3A6131] transition-colors">
+          <div className="px-8 py-5 border-t border-primary/10 bg-background/80 flex justify-between items-center z-10 shrink-0">
+            <button onClick={() => step > 1 ? setStep(step - 1) : onClose()} className="text-primary/50 text-sm font-bold hover:text-primary transition-colors">
               {step === 1 ? "Close" : step === 2 ? "Back to Summary" : "Back to Customer"}
             </button>
-            <button onClick={() => step < 3 ? setStep(step + 1) : onClose()} className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <button onClick={() => step < 3 ? setStep(step + 1) : onClose()} className="bg-primary text-sidebar-text px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
               {step === 1 ? "View Customer" : step === 2 ? "Manage Fulfillment" : "Done"} <ChevronRight size={16} />
             </button>
           </div>
 
           {/* ── CANCEL MODAL MOUNT ── */}
-          {showCancel && <CancelOrderModal order={order} onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} />}
+          {showCancel && <CancelOrderModal order={order} onConfirm={handleCancel} onClose={() => setShowCancel(false)} busy={busy} colors={colors} />}
         </div>
       </motion.div>
     </div>,

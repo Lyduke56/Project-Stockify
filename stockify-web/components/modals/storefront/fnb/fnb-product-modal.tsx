@@ -6,6 +6,7 @@ import { X, Minus, Plus, Coffee, ShoppingBag, Star, Trash2, Edit2, Check, Messag
 import { FnbProduct, FnbProductSize } from "@/backend/hooks/getStoreFront";
 import { fetchReviews, submitReview, deleteReview, updateReview } from "@/lib/customer/customer-actions";
 import { createClient } from "@/lib/supabase/client";
+import { useCart } from "@/lib/customer/cart-context";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface FnbProductModalProps {
@@ -13,6 +14,13 @@ interface FnbProductModalProps {
   onClose: () => void;
   product: FnbProduct | null;
   tenantId: string;
+  colors?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    bg: string;
+    text: string;
+  };
 }
 
 interface Review {
@@ -39,6 +47,20 @@ const T = {
   shadow:     "rgba(10, 18, 9, 0.55)",
 };
 
+const buildC = (colors?: FnbProductModalProps["colors"]) => ({
+  primary:   colors?.primary   ?? T.primary,
+  secondary: colors?.secondary ?? T.secondary,
+  surface:   colors?.secondary ?? T.surface,
+  accent:    colors?.accent    ?? T.accent,
+  accentSoft: colors?.accent   ?? T.accentSoft,
+  bg:        colors?.bg        ?? T.bg,
+  bgDim:     colors?.bg        ? colors.bg + "BF" : T.bgDim,
+  muted:     colors?.bg        ? colors.bg + "73" : T.muted,
+  border:    colors?.accent    ? colors.accent + "33" : T.border,
+  borderHi:  colors?.accent    ? colors.accent + "8C" : T.borderHi,
+  shadow:    T.shadow,
+});
+
 // ── Noise SVG (subtle grain texture) ─────────────────────────────────────────
 const NoiseBg = () => (
   <svg
@@ -54,9 +76,11 @@ const NoiseBg = () => (
 );
 
 // ── Stars ─────────────────────────────────────────────────────────────────────
-function Stars({ rating, size = 14, interactive = false, onChange }: {
+function Stars({ rating, size = 14, interactive = false, onChange, colors }: {
   rating: number; size?: number; interactive?: boolean; onChange?: (r: number) => void;
+  colors?: FnbProductModalProps["colors"];
 }) {
+  const C = buildC(colors);
   const [hovered, setHovered] = useState(0);
   const effective = interactive && hovered ? hovered : rating;
   return (
@@ -75,8 +99,8 @@ function Stars({ rating, size = 14, interactive = false, onChange }: {
           }}
         >
           <Star size={size}
-            fill={s <= effective ? T.accent : "none"}
-            stroke={s <= effective ? T.accent : T.muted}
+            fill={s <= effective ? C.accent : "none"}
+            stroke={s <= effective ? C.accent : C.muted}
             strokeWidth={s <= effective ? 1 : 1.5}
           />
         </button>
@@ -86,7 +110,8 @@ function Stars({ rating, size = 14, interactive = false, onChange }: {
 }
 
 // ── Reviews ───────────────────────────────────────────────────────────────────
-function InlineReviews({ productId, tenantId }: { productId: string; tenantId: string }) {
+function InlineReviews({ productId, tenantId, colors }: { productId: string; tenantId: string; colors?: FnbProductModalProps["colors"] }) {
+  const C = buildC(colors);
   const [reviews, setReviews]       = useState<Review[]>([]);
   const [userId, setUserId]         = useState<string | null>(null);
   const [loading, setLoading]       = useState(true);
@@ -139,7 +164,7 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
       <div style={{ display: "inline-flex", gap: 6 }}>
         {[0,1,2].map(i => (
           <div key={i} style={{
-            width: 6, height: 6, borderRadius: "50%", background: T.accent,
+            width: 6, height: 6, borderRadius: "50%", background: C.accent,
             animation: "pulse 1.2s ease-in-out infinite",
             animationDelay: `${i * 0.2}s`,
           }} />
@@ -154,14 +179,14 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
       {/* Section header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20 }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: T.accent, marginBottom: 6 }}>
+          <p style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: C.accent, marginBottom: 6 }}>
             Customer Reviews
           </p>
           {reviews.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Stars rating={Math.round(avg)} size={15} />
-              <span style={{ fontSize: 20, fontWeight: 900, color: T.bg, lineHeight: 1 }}>{avg.toFixed(1)}</span>
-              <span style={{ fontSize: 12, color: T.muted }}>/ {reviews.length} review{reviews.length !== 1 ? "s" : ""}</span>
+              <Stars rating={Math.round(avg)} size={15} colors={colors} />
+              <span style={{ fontSize: 20, fontWeight: 900, color: C.bg, lineHeight: 1 }}>{avg.toFixed(1)}</span>
+              <span style={{ fontSize: 12, color: C.muted }}>/ {reviews.length} review{reviews.length !== 1 ? "s" : ""}</span>
             </div>
           )}
         </div>
@@ -174,10 +199,10 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
               const h = Math.round((cnt / maxCount) * 32);
               return (
                 <div key={s} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-                  <div style={{ width: 7, height: 32, background: T.surface, borderRadius: 99, overflow: "hidden", display: "flex", alignItems: "flex-end" }}>
-                    <div style={{ width: "100%", height: h, background: cnt ? T.accent : "transparent", borderRadius: 99, transition: "height .5s ease-out" }} />
+                  <div style={{ width: 7, height: 32, background: C.surface, borderRadius: 99, overflow: "hidden", display: "flex", alignItems: "flex-end" }}>
+                    <div style={{ width: "100%", height: h, background: cnt ? C.accent : "transparent", borderRadius: 99, transition: "height .5s ease-out" }} />
                   </div>
-                  <span style={{ fontSize: 8, fontWeight: 700, color: T.muted }}>{s}</span>
+                  <span style={{ fontSize: 8, fontWeight: 700, color: C.muted }}>{s}</span>
                 </div>
               );
             })}
@@ -186,22 +211,24 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
       </div>
 
       {/* Divider */}
-      <div style={{ height: 1, background: `linear-gradient(90deg, ${T.borderHi} 0%, transparent 100%)`, marginBottom: 24 }} />
+      <div style={{ height: 1, background: `linear-gradient(90deg, ${C.borderHi} 0%, transparent 100%)`, marginBottom: 24 }} />
 
       {/* Write / Edit form */}
       {userId && (!userHasReviewed || editingId) && (
         <motion.div
           initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            background: T.surface, borderRadius: 18, padding: "22px",
-            marginBottom: 28, border: `1px solid ${T.border}`,
+            background: C.secondary,
+            backgroundImage: "linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07))",
+            borderRadius: 18, padding: "22px",
+            marginBottom: 28, border: `1px solid ${C.accent}50`,
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)"
           }}
         >
-          <p style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".12em", color: T.accent, marginBottom: 14 }}>
+          <p style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".12em", color: C.accent, marginBottom: 14 }}>
             {editingId ? "Edit your review" : "Share your thoughts"}
           </p>
-          <Stars rating={rating} size={26} interactive onChange={setRating} />
+          <Stars rating={rating} size={26} interactive onChange={setRating} colors={colors} />
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -209,21 +236,21 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
             rows={3}
             style={{
               width: "100%", marginTop: 16, padding: "14px 16px",
-              background: T.secondary,
-              border: `1px solid ${T.border}`,
-              borderRadius: 12, fontSize: 13.5, color: T.bg, lineHeight: 1.6,
+              background: C.secondary,
+              border: `1px solid ${C.accent}50`,
+              borderRadius: 12, fontSize: 13.5, color: C.bg, lineHeight: 1.6,
               resize: "none", outline: "none", fontFamily: "inherit",
               transition: "border-color .2s, box-shadow .2s",
               boxSizing: "border-box",
             }}
-            onFocus={(e) => { e.target.style.borderColor = T.accentSoft; e.target.style.boxShadow = `0 0 0 3px ${T.accent}20`; }}
-            onBlur={(e) => { e.target.style.borderColor = T.border; e.target.style.boxShadow = "none"; }}
+            onFocus={(e) => { e.target.style.borderColor = C.accent; e.target.style.boxShadow = `0 0 0 3px ${C.accent}20`; }}
+            onBlur={(e) => { e.target.style.borderColor = C.accent + "50"; e.target.style.boxShadow = "none"; }}
           />
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 }}>
             {editingId && (
               <button onClick={() => { setEditingId(null); setComment(""); setRating(5); }} style={{
                 padding: "9px 20px", borderRadius: 10, fontSize: 12, fontWeight: 700,
-                background: "transparent", color: T.muted, border: `1px solid ${T.border}`, cursor: "pointer",
+                background: "transparent", color: C.muted, border: `1px solid ${C.border}`, cursor: "pointer",
               }}>Cancel</button>
             )}
             <button
@@ -231,11 +258,11 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
               disabled={submitting || rating === 0}
               style={{
                 padding: "9px 24px", borderRadius: 10, fontSize: 12, fontWeight: 900,
-                background: T.accent, color: T.secondary, border: "none", cursor: "pointer",
+                background: C.accent, color: C.secondary, border: "none", cursor: "pointer",
                 opacity: submitting || rating === 0 ? .45 : 1,
                 display: "flex", alignItems: "center", gap: 6,
                 letterSpacing: "0.04em", textTransform: "uppercase",
-                boxShadow: `0 4px 14px ${T.accent}50`,
+                boxShadow: `0 4px 14px ${C.accent}50`,
                 transition: "opacity .2s, transform .1s",
               }}
             >
@@ -249,19 +276,19 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
       {reviews.length === 0 ? (
         <div style={{
           textAlign: "center", padding: "40px 24px",
-          background: T.surface, borderRadius: 18,
-          border: `1px dashed ${T.border}`,
+          background: C.surface, borderRadius: 18,
+          border: `1px dashed ${C.border}`,
         }}>
           <div style={{
             width: 48, height: 48, borderRadius: "50%",
-            background: `${T.accent}18`, display: "flex",
+            background: `${C.accent}18`, display: "flex",
             alignItems: "center", justifyContent: "center",
             margin: "0 auto 14px",
           }}>
-            <MessageSquare size={22} style={{ color: T.accent }} />
+            <MessageSquare size={22} style={{ color: C.accent }} />
           </div>
-          <p style={{ fontSize: 15, fontWeight: 800, color: T.bg }}>No reviews yet</p>
-          <p style={{ fontSize: 13, color: T.muted, marginTop: 4 }}>Be the first to share your experience</p>
+          <p style={{ fontSize: 15, fontWeight: 800, color: C.bg }}>No reviews yet</p>
+          <p style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>Be the first to share your experience</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -272,39 +299,27 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
               style={{
-                display: "flex", gap: 14, padding: "18px 20px",
-                background: T.surface, borderRadius: 16,
-                border: `1px solid ${T.border}`,
+                padding: "16px 18px", borderRadius: 18,
+                background: C.surface, border: `1px solid ${C.border}`,
               }}
             >
-              {/* Avatar */}
-              <div style={{
-                width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                background: `linear-gradient(135deg, ${T.accent} 0%, #A0730A 100%)`,
-                color: T.secondary, display: "flex", alignItems: "center",
-                justifyContent: "center", fontWeight: 900, fontSize: 14,
-                boxShadow: `0 2px 8px ${T.accent}40`,
-              }}>
-                {r.users?.display_name?.[0]?.toUpperCase() ?? "U"}
-              </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <p style={{ fontSize: 13.5, fontWeight: 800, color: T.bg }}>
+                    <p style={{ fontSize: 13.5, fontWeight: 800, color: C.bg }}>
                       {r.users?.display_name ?? "Anonymous"}
                     </p>
-                    <Stars rating={r.rating} size={11} />
+                    <Stars rating={r.rating} size={11} colors={colors} />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, color: T.muted }}>
+                    <span style={{ fontSize: 11, color: C.muted }}>
                       {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                     </span>
                     {userId === r.user_id && !editingId && (
                       <>
                         <button onClick={() => { setEditingId(r.review_id); setRating(r.rating); setComment(r.comment); }} style={{
-                          width: 28, height: 28, borderRadius: 7, border: `1px solid ${T.border}`,
-                          background: T.secondary, color: T.accent,
+                          width: 28, height: 28, borderRadius: 7, border: `1px solid ${C.border}`,
+                          background: C.secondary, color: C.accent,
                           display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
                         }}><Edit2 size={11} /></button>
                         <button onClick={() => handleDelete(r.review_id)} style={{
@@ -317,9 +332,9 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
                   </div>
                 </div>
                 {r.comment ? (
-                  <p style={{ fontSize: 13, color: T.bgDim, lineHeight: 1.65 }}>{r.comment}</p>
+                  <p style={{ fontSize: 13, color: C.bgDim, lineHeight: 1.65 }}>{r.comment}</p>
                 ) : (
-                  <p style={{ fontSize: 12, color: T.muted, fontStyle: "italic" }}>No comment left.</p>
+                  <p style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>No comment left.</p>
                 )}
               </div>
             </motion.div>
@@ -330,17 +345,22 @@ function InlineReviews({ productId, tenantId }: { productId: string; tenantId: s
   );
 }
 
-// ── Main Modal ────────────────────────────────────────────────────────────────
-export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProductModalProps) => {
+
+
+export const FnbProductModal = ({ isOpen, onClose, product, tenantId, colors }: FnbProductModalProps) => {
+  const C = buildC(colors);
+  const { addToCart } = useCart();
   const [selectedSize, setSelectedSize] = useState<FnbProductSize | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     if (product) {
       setSelectedSize(product.sizes.find((s) => s.is_default) ?? product.sizes[0] ?? null);
       setQuantity(1);
       setImgLoaded(false);
+      setAdded(false);
     }
   }, [product]);
 
@@ -351,6 +371,30 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
   const currentYield = hasSizes && selectedSize ? selectedSize.max_yield : product.max_yield;
   const totalPrice   = currentPrice * quantity;
   const inStock      = currentYield > 0;
+
+  const handleAdd = () => {
+    if (!inStock) return;
+
+    addToCart({
+      product_id: product.product_id,
+      tenant_id:  "",
+      item_type:  hasSizes ? "fnb_size" : "fnb_single",
+      name:       product.name,
+      price:      currentPrice,
+      qty:        quantity,
+      image:      product.image_url ?? undefined,
+      size_label: hasSizes && selectedSize ? selectedSize.label : null,
+      option_id:  hasSizes && selectedSize ? selectedSize.size_id : null,
+      modifiers:  hasSizes && selectedSize ? [`Size: ${selectedSize.label}`] : [],
+    });
+
+    setAdded(true);
+    setTimeout(() => {
+      setAdded(false);
+      onClose();
+      setQuantity(1);
+    }, 900);
+  };
 
   return (
     <AnimatePresence>
@@ -367,15 +411,15 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
               background: transparent;
             }
             .subtle-scroll::-webkit-scrollbar-thumb {
-              background: ${T.borderHi};
+              background: ${C.borderHi};
               border-radius: 8px;
             }
             .subtle-scroll::-webkit-scrollbar-thumb:hover {
-              background: ${T.accent};
+              background: ${C.accent};
             }
             .subtle-scroll {
               scrollbar-width: thin;
-              scrollbar-color: ${T.borderHi} transparent;
+              scrollbar-color: ${C.borderHi} transparent;
             }
           `}</style>
 
@@ -395,15 +439,15 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
             className="relative w-full md:max-w-[960px] max-h-[94vh] overflow-y-auto overflow-x-hidden subtle-scroll
                        rounded-t-[28px] md:rounded-[28px] flex flex-col"
             style={{
-              backgroundColor: T.secondary,
-              boxShadow: `0 32px 80px ${T.shadow}, 0 0 0 1px ${T.borderHi}`,
+              backgroundColor: C.primary,
+              boxShadow: `0 32px 80px ${C.shadow}, 0 0 0 1px ${C.borderHi}`,
             }}
           >
             <NoiseBg />
 
             {/* Mobile handle */}
             <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-50">
-              <div style={{ width: 36, height: 3.5, borderRadius: 99, background: T.muted }} />
+              <div style={{ width: 36, height: 3.5, borderRadius: 99, background: C.muted }} />
             </div>
 
             {/* Close */}
@@ -414,9 +458,9 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                 position: "absolute", top: 18, right: 18, zIndex: 50,
                 width: 36, height: 36, borderRadius: "50%",
                 background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)",
-                border: `1px solid ${T.border}`,
+                border: `1px solid ${C.border}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", color: T.bgDim,
+                cursor: "pointer", color: C.bgDim,
               }}
             >
               <X size={16} strokeWidth={2.5} />
@@ -433,7 +477,7 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                   display: "flex",
                   flexDirection: "column",
                   justifyContent: "flex-start",
-                  background: T.secondary,
+                  background: C.primary,
                 }}
               >
                 {/* Image box - Stretch to fill container */}
@@ -444,8 +488,8 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                   minHeight: "300px",
                   borderRadius: 20,
                   overflow: "hidden",
-                  background: T.surface,
-                  boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${T.border}`,
+                  background: C.surface,
+                  boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${C.border}`,
                 }}>
                   {product.image_url ? (
                     /* Main image — stretched to fill with objectFit: cover */
@@ -464,7 +508,7 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                     />
                   ) : (
                     <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <Coffee size={56} style={{ color: T.muted }} />
+                      <Coffee size={56} style={{ color: C.muted }} />
                     </div>
                   )}
 
@@ -472,12 +516,12 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                   {product.category_name && (
                     <div style={{
                       position: "absolute", top: 14, left: 14,
-                      background: `${T.accent}EE`,
+                      background: `${C.accent}EE`,
                       backdropFilter: "blur(6px)",
-                      color: T.secondary,
+                      color: C.secondary,
                       fontSize: 9, fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase",
                       padding: "5px 12px", borderRadius: 99,
-                      boxShadow: `0 4px 12px ${T.accent}50`,
+                      boxShadow: `0 4px 12px ${C.accent}50`,
                     }}>
                       {product.category_name}
                     </div>
@@ -491,7 +535,7 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                 style={{
                   padding: "28px 28px 28px 8px",
                   display: "flex", flexDirection: "column",
-                  background: T.secondary,
+                  background: C.primary,
                 }}
               >
                 {/* Product name + price */}
@@ -500,7 +544,7 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     style={{
                       fontSize: "clamp(24px, 4vw, 32px)",
-                      fontWeight: 900, color: T.bg,
+                      fontWeight: 900, color: C.bg,
                       lineHeight: 1.1, marginBottom: 10,
                       paddingRight: 40,
                       letterSpacing: "-0.02em",
@@ -510,22 +554,22 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                   </motion.h2>
 
                   <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                    <span style={{ fontSize: 28, fontWeight: 900, color: T.accent, letterSpacing: "-0.01em" }}>
+                    <span style={{ fontSize: 28, fontWeight: 900, color: C.accent, letterSpacing: "-0.01em" }}>
                       ₱{currentPrice.toFixed(2)}
                     </span>
                     {/* Stock badge */}
                     <div style={{
                       display: "inline-flex", alignItems: "center", gap: 6,
                       padding: "4px 12px", borderRadius: 99,
-                      background: inStock ? `${T.primary}CC` : "rgba(127,29,29,0.4)",
-                      color: inStock ? T.bg : "#fca5a5",
+                      background: inStock ? `${C.primary}CC` : "rgba(127,29,29,0.4)",
+                      color: inStock ? C.bg : "#fca5a5",
                       fontSize: 11, fontWeight: 700, letterSpacing: "0.04em",
-                      border: `1px solid ${inStock ? T.border : "rgba(252,165,165,0.25)"}`,
+                      border: `1px solid ${inStock ? C.border : "rgba(252,165,165,0.25)"}`,
                     }}>
                       <div style={{
                         width: 5, height: 5, borderRadius: "50%",
-                        background: inStock ? T.accentSoft : "#f87171",
-                        boxShadow: `0 0 6px ${inStock ? T.accent : "#f87171"}`,
+                        background: inStock ? C.accentSoft : "#f87171",
+                        boxShadow: `0 0 6px ${inStock ? C.accent : "#f87171"}`,
                       }} />
                       {inStock ? `${currentYield} left` : "Sold Out"}
                     </div>
@@ -533,17 +577,17 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                 </div>
 
                 {/* Thin decorative rule */}
-                <div style={{ height: 1, background: `linear-gradient(90deg, ${T.borderHi}, transparent)`, marginBottom: 18 }} />
+                <div style={{ height: 1, background: `linear-gradient(90deg, ${C.borderHi}, transparent)`, marginBottom: 18 }} />
 
                 {/* Description */}
-                <p style={{ fontSize: 14, color: T.bgDim, lineHeight: 1.75, marginBottom: 28 }}>
+                <p style={{ fontSize: 14, color: C.bgDim, lineHeight: 1.75, marginBottom: 28 }}>
                   {product.description ?? "No description available."}
                 </p>
 
                 {/* Size selector */}
                 {hasSizes && (
                   <div style={{ marginBottom: 28 }}>
-                    <p style={{ fontSize: 9.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: T.accent, marginBottom: 12 }}>
+                    <p style={{ fontSize: 9.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".14em", color: C.accent, marginBottom: 12 }}>
                       Select Size
                     </p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -562,10 +606,10 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                               padding: "12px 14px", borderRadius: 14,
                               cursor: isUnavailable ? "not-allowed" : "pointer",
                               opacity: isUnavailable ? .3 : 1,
-                              background: isSelected ? T.accent : T.surface,
-                              color: isSelected ? T.secondary : T.bg,
-                              border: `1px solid ${isSelected ? T.accent : T.border}`,
-                              boxShadow: isSelected ? `0 6px 20px ${T.accent}45` : "none",
+                              background: isSelected ? C.accent : C.surface,
+                              color: isSelected ? C.secondary : C.bg,
+                              border: `1px solid ${isSelected ? C.accent : C.border}`,
+                              boxShadow: isSelected ? `0 6px 20px ${C.accent}45` : "none",
                               transition: "all .18s ease",
                               display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
                             }}
@@ -586,24 +630,24 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                   {/* Qty stepper */}
                   <div style={{
                     display: "flex", alignItems: "center",
-                    background: T.surface,
-                    border: `1px solid ${T.border}`,
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
                     borderRadius: 14, overflow: "hidden",
                   }}>
                     <button
                       onClick={() => setQuantity(q => Math.max(1, q - 1))}
                       style={{
                         width: 44, height: 50, border: "none",
-                        background: "transparent", color: T.accent,
+                        background: "transparent", color: C.accent,
                         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                         transition: "background .15s",
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.primary}
+                      onMouseEnter={e => e.currentTarget.style.background = C.primary}
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                     >
                       <Minus size={16} strokeWidth={2.5} />
                     </button>
-                    <span style={{ width: 36, textAlign: "center", fontSize: 17, fontWeight: 900, color: T.bg, userSelect: "none" }}>
+                    <span style={{ width: 36, textAlign: "center", fontSize: 17, fontWeight: 900, color: C.bg, userSelect: "none" }}>
                       {quantity}
                     </span>
                     <button
@@ -611,13 +655,13 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                       disabled={!inStock || quantity >= currentYield}
                       style={{
                         width: 44, height: 50, border: "none",
-                        background: "transparent", color: T.accent,
+                        background: "transparent", color: C.accent,
                         cursor: !inStock || quantity >= currentYield ? "not-allowed" : "pointer",
                         opacity: !inStock || quantity >= currentYield ? .3 : 1,
                         display: "flex", alignItems: "center", justifyContent: "center",
                         transition: "background .15s",
                       }}
-                      onMouseEnter={e => { if (inStock && quantity < currentYield) e.currentTarget.style.background = T.primary; }}
+                      onMouseEnter={e => { if (inStock && quantity < currentYield) e.currentTarget.style.background = C.primary; }}
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                     >
                       <Plus size={16} strokeWidth={2.5} />
@@ -627,23 +671,32 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
                   {/* Add to cart */}
                   <motion.button
                     disabled={!inStock}
-                    whileHover={inStock ? { y: -2, boxShadow: `0 12px 32px ${T.accent}60` } : {}}
+                    onClick={handleAdd}
+                    whileHover={inStock ? { y: -2, boxShadow: `0 12px 32px ${C.accent}60` } : {}}
                     whileTap={inStock ? { scale: 0.97 } : {}}
                     style={{
                       flex: 1, height: 50, borderRadius: 14, border: "none",
-                      background: inStock
-                        ? `linear-gradient(135deg, ${T.accentSoft} 0%, ${T.accent} 100%)`
-                        : T.surface,
-                      color: inStock ? T.secondary : T.muted,
+                      background: added
+                        ? "#22c55e"
+                        : (inStock
+                          ? `linear-gradient(135deg, ${C.accentSoft} 0%, ${C.accent} 100%)`
+                          : C.surface),
+                      color: added ? "#FFFFFF" : (inStock ? C.secondary : C.muted),
                       fontSize: 14, fontWeight: 900, letterSpacing: "0.03em",
                       cursor: inStock ? "pointer" : "not-allowed",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                      boxShadow: inStock ? `0 6px 22px ${T.accent}45` : "none",
-                      transition: "box-shadow .2s",
+                      boxShadow: inStock ? `0 6px 22px ${C.accent}45` : "none",
+                      transition: "box-shadow .2s, background .2s",
                     }}
                   >
-                    <ShoppingBag size={18} strokeWidth={2.5} />
-                    {inStock ? `Add to Bag  ·  ₱${totalPrice.toFixed(2)}` : "Sold Out"}
+                    {added ? (
+                      <><Check size={18} strokeWidth={2.5} /> Added!</>
+                    ) : (
+                      <>
+                        <ShoppingBag size={18} strokeWidth={2.5} />
+                        {inStock ? `Add to Bag  ·  ₱${totalPrice.toFixed(2)}` : "Sold Out"}
+                      </>
+                    )}
                   </motion.button>
                 </div>
               </div>
@@ -652,9 +705,9 @@ export const FnbProductModal = ({ isOpen, onClose, product, tenantId }: FnbProdu
             {/* ── BOTTOM SECTION: Full-Width Reviews ────────────────────────── */}
             <div style={{ padding: "12px 28px 40px 28px", width: "100%" }}>
               {/* Divider before reviews */}
-              <div style={{ marginBottom: 28, height: 1, background: `linear-gradient(90deg, transparent, ${T.borderHi} 50%, transparent)` }} />
+              <div style={{ marginBottom: 28, height: 1, background: `linear-gradient(90deg, transparent, ${C.borderHi} 50%, transparent)` }} />
               
-              <InlineReviews productId={product.product_id} tenantId={tenantId} />
+              <InlineReviews productId={product.product_id} tenantId={tenantId} colors={colors} />
             </div>
           </motion.div>
         </div>

@@ -30,7 +30,18 @@ function mapRole(dbRole: string): StaffRecord["role"] {
   }
 }
 
-export default function UserAdminSection() {
+interface UserAdminSectionProps {
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
+}
+
+export default function UserAdminSection({ colors }: UserAdminSectionProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [tableKey, setTableKey] = useState(0);
@@ -237,6 +248,7 @@ export default function UserAdminSection() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleEmployeeCreated}
+        colors={colors}
       />
 
       <DeleteEmployeeModal
@@ -245,6 +257,7 @@ export default function UserAdminSection() {
         isDeleting={isDeleting}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
+        colors={colors}
       />
     </motion.div>
   );

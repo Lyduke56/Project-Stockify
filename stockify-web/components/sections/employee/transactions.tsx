@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Transactions from "@/components/tables/transactions-table";
 import LoadingScreen from "@/app/loading-screen/loading";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
-export default function EmployeeTransactions() {
+export default function EmployeeTransactions({ colors }: { colors?: StorefrontConfig | null }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -18,7 +19,7 @@ export default function EmployeeTransactions() {
       {isLoading && <LoadingScreen fullScreen={false} />}
 
       <div
-        className={`flex min-h-screen w-full bg-[#FFFCEB] font-['Inter'] transition-all duration-700 ease-out ${
+        className={`flex min-h-screen w-full bg-background font-['Inter'] transition-all duration-700 ease-out ${
           isLoading
             ? "hidden"
             : isVisible
@@ -34,7 +35,7 @@ export default function EmployeeTransactions() {
             <div className="w-[900px] max-w-full h-1.5 bg-accent mt-1 rounded-full" />
           </div>
 
-          <Transactions onLoadComplete={handleLoadComplete} />
+          <Transactions onLoadComplete={handleLoadComplete} colors={colors} />
         </div>
       </div>
     </>

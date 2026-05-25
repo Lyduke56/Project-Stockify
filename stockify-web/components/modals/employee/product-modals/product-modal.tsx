@@ -16,6 +16,7 @@ import {
   type RecipeInput,
   type IngredientOption,
 } from "@/lib/employee/products";
+import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
 
 export type SizeInput = {
   label:      string;
@@ -74,10 +75,11 @@ export interface ProductModalProps {
     sizes:     SizeInput[]
   ) => Promise<void>;
   onClose: () => void;
+  colors?: StorefrontConfig | null;
 }
 
-const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
-const inputStyle = "w-full bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-4 py-3 text-sm text-[#3A6131] font-medium focus:outline-none focus:border-[#F7B71D] focus:ring-4 focus:ring-[#F7B71D]/10 transition-all placeholder:text-gray-300";
+const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-primary/50 mb-2 block";
+const inputStyle = "w-full bg-background border-[1.5px] border-primary/10 rounded-2xl px-4 py-3 text-sm text-primary font-medium focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/10 transition-all placeholder:text-gray-300";
 const selectStyle = `${inputStyle} appearance-none pr-10 bg-[image:url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'%233A6131'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpolyline%20points%3D'6%209%2012%2015%2018%209'%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E")] bg-no-repeat bg-[right_14px_center]`;
 
 const ALL_STEPS = [
@@ -87,7 +89,7 @@ const ALL_STEPS = [
   { id: 4, label: "Pricing & Metrics",    icon: Coins   },
 ];
 
-export default function ProductModal({ mode, tenantId, productId, initial, onSave, onClose }: ProductModalProps) {
+export default function ProductModal({ mode, tenantId, productId, initial, onSave, onClose, colors }: ProductModalProps) {
   const [step,     setStep]     = useState(1);
   const [saving,   setSaving]   = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -103,6 +105,15 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
   const [productType, setProductType] = useState<"single" | "with_sizes">(
     initial?.sizes && initial.sizes.length > 0 ? "with_sizes" : "single"
   );
+
+  const modalStyles = {
+    "--color-primary": colors?.color_primary ?? "#385E31",
+    "--color-secondary": colors?.color_secondary ?? "#2A4725",
+    "--color-accent": colors?.color_accent ?? "#F7B71D",
+    "--color-background": colors?.color_background ?? "#FFFCEB",
+    "--color-text": colors?.color_text ?? "#3A6131",
+    "--color-sidebar-text": colors?.color_sidebar_text ?? "#FFF9D7",
+  } as React.CSSProperties;
 
   const visibleSteps = ALL_STEPS.filter((s) => !(s.sizesOnly && productType === "single"));
   const totalSteps   = visibleSteps.length;
@@ -301,28 +312,28 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
 
   return (
     <ModalBackdrop onClose={onClose}>
-      <motion.div initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="w-full max-w-[960px] bg-[#FFFCEB] rounded-[32px] overflow-hidden border-[1.5px] border-[#F7B71D]/20 shadow-[0_32px_80px_rgba(58,97,49,0.2)] flex flex-col md:flex-row h-[680px] font-inter">
+      <motion.div style={modalStyles} initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="w-full max-w-[960px] bg-background rounded-[32px] overflow-hidden border-[1.5px] border-accent/20 shadow-[0_32px_80px_rgba(0,0,0,0.15)] flex flex-col md:flex-row h-[680px] font-inter">
         {/* SIDEBAR */}
-        <div className="w-full md:w-[300px] bg-[#3A6131] p-10 flex flex-col relative overflow-hidden shrink-0">
-          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-[#F7B71D]/10 rounded-full blur-3xl" />
+        <div className="w-full md:w-[300px] bg-primary p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full blur-3xl" />
           <div className="relative z-10">
-            <div className="bg-[#F7B71D] w-12 h-1 rounded-full mb-8" />
-            <h2 className="text-[#FFFCEB] font-raleway text-3xl font-black leading-tight mb-2">{mode === "add" ? "Create Product" : "Edit Details"}</h2>
-            <p className="text-[#FFFCEB]/60 text-xs font-medium leading-relaxed mb-10">Fill in product details, map ingredients, set pricing, and configure size variants.</p>
+            <div className="bg-accent w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] font-raleway text-3xl font-black leading-tight mb-2">{mode === "add" ? "Create Product" : "Edit Details"}</h2>
+            <p className="text-[var(--color-sidebar-text,#FFF9D7)]/60 text-xs font-medium leading-relaxed mb-10">Fill in product details, map ingredients, set pricing, and configure size variants.</p>
             <nav className="flex flex-col gap-6">
               <AnimatePresence initial={false}>
                 {visibleSteps.map((s) => (
                   <motion.div
-                    key={s.id}
-                    initial={{ opacity: 0, x: -16, height: 0 }}
-                    animate={{ opacity: 1, x: 0, height: "auto" }}
-                    exit={{ opacity: 0, x: -16, height: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="overflow-hidden"
+                     key={s.id}
+                     initial={{ opacity: 0, x: -16, height: 0 }}
+                     animate={{ opacity: 1, x: 0, height: "auto" }}
+                     exit={{ opacity: 0, x: -16, height: 0 }}
+                     transition={{ duration: 0.3, ease: "easeInOut" }}
+                     className="overflow-hidden"
                   >
                     <div className={`flex items-center gap-4 transition-all duration-300 ${step === s.id ? "translate-x-2" : "opacity-40"}`}>
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-[#F7B71D] text-[#385E31] shadow-lg shadow-[#F7B71D]/20" : "bg-white/10 text-white"}`}><s.icon size={18} strokeWidth={2.5} /></div>
-                      <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[#FFFCEB]" : "text-white"}`}>{s.label}</span>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${step === s.id ? "bg-accent text-primary shadow-lg shadow-accent/20" : "bg-white/10 text-white"}`}><s.icon size={18} strokeWidth={2.5} /></div>
+                      <span className={`text-sm font-bold tracking-wide ${step === s.id ? "text-[var(--color-sidebar-text,#FFF9D7)]" : "text-white"}`}>{s.label}</span>
                     </div>
                   </motion.div>
                 ))}
@@ -330,39 +341,39 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
             </nav>
           </div>
           <div className="mt-auto relative z-10 flex gap-2">
-            {visibleSteps.map((s) => <div key={s.id} className={`h-1.5 rounded-full transition-all duration-500 ${step === s.id ? "w-8 bg-[#F7B71D]" : "w-2 bg-white/20"}`} />)}
+            {visibleSteps.map((s) => <div key={s.id} className={`h-1.5 rounded-full transition-all duration-500 ${step === s.id ? "w-8 bg-accent" : "w-2 bg-white/20"}`} />)}
           </div>
         </div>
 
         {/* CONTENT */}
-        <div className="flex-1 flex flex-col relative bg-white/50 backdrop-blur-sm">
-          <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-[#FFFCEB] border border-[#3A6131]/10 flex items-center justify-center text-[#3A6131] hover:bg-[#3A6131] hover:text-[#FFFCEB] transition-all z-20"><X size={20} strokeWidth={2.5} /></button>
-          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#3A6131]/15 [&::-webkit-scrollbar-thumb]:rounded-full">
+        <div className="flex-1 flex flex-col relative bg-background/50 backdrop-blur-sm">
+          <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-background border border-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-[var(--color-sidebar-text,#FFF9D7)] transition-all z-20"><X size={20} strokeWidth={2.5} /></button>
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/15 [&::-webkit-scrollbar-thumb]:rounded-full">
             {error && <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-2xl text-red-600 text-xs font-semibold">{error}</div>}
             <AnimatePresence mode="wait">
 
               {step === 1 && (
                 <motion.div key="s1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-                  <div className="mb-6"><span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 01</span><h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Product Information</h3></div>
+                  <div className="mb-6"><span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 01</span><h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Product Information</h3></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2"><label className={labelStyle}>Product Name</label><input className={inputStyle} value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Signature Espresso" /></div>
                     <div className="col-span-2"><label className={labelStyle}>Description</label><textarea className={`${inputStyle} h-20 resize-none`} value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Briefly describe this product..." /></div>
                     <div><label className={labelStyle}>SKU Code</label><input className={inputStyle} value={form.sku} onChange={(e) => set("sku", e.target.value)} placeholder="ESP-001" /></div>
                     <div><label className={labelStyle}>Category</label>
-                      {loadingCats ? <div className="flex items-center gap-2 text-[#3A6131]/50 text-sm py-3"><Loader2 size={16} className="animate-spin" /> Loading…</div>
+                      {loadingCats ? <div className="flex items-center gap-2 text-primary/50 text-sm py-3"><Loader2 size={16} className="animate-spin" /> Loading…</div>
                       : <select className={selectStyle} value={form.category_id} onChange={(e) => set("category_id", e.target.value)}><option value="">— No Category —</option>{categories.map((c) => <option key={c.category_id} value={c.category_id}>{c.name}</option>)}</select>}
                     </div>
 
                     <div className="col-span-2">
                       <label className={labelStyle}>Product Type</label>
-                      <div className="flex gap-2 p-1 bg-[#3A6131]/5 rounded-2xl border border-[#3A6131]/10">
+                      <div className="flex gap-2 p-1 bg-primary/5 rounded-2xl border border-primary/10">
                         <button
                           type="button"
                           onClick={() => handleProductTypeChange("single")}
                           className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${
                             productType === "single"
-                              ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
-                              : "text-[#3A6131]/50 hover:text-[#3A6131]"
+                              ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)] shadow-md"
+                              : "text-primary/50 hover:text-primary"
                           }`}
                         >
                           Single Item
@@ -372,8 +383,8 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                           onClick={() => handleProductTypeChange("with_sizes")}
                           className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-wide transition-all ${
                             productType === "with_sizes"
-                              ? "bg-[#3A6131] text-[#FFFCEB] shadow-md"
-                              : "text-[#3A6131]/50 hover:text-[#3A6131]"
+                              ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)] shadow-md"
+                              : "text-primary/50 hover:text-primary"
                           }`}
                         >
                           With Sizes
@@ -384,16 +395,16 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                       <label className={labelStyle}>Product Photo</label>
                       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }} />
                       {imagePreview ? (
-                        <div className="flex items-center gap-4 bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl p-3">
-                          <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-[#3A6131]/10 flex-shrink-0" />
-                          <div className="flex-1 min-w-0"><p className="text-xs font-bold text-[#3A6131] truncate">{imageFile ? imageFile.name : "Existing photo"}</p><p className="text-[10px] text-[#3A6131]/40 mt-0.5">Square images display best.</p></div>
+                        <div className="flex items-center gap-4 bg-background border-[1.5px] border-primary/10 rounded-2xl p-3">
+                          <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-primary/10 flex-shrink-0" />
+                          <div className="flex-1 min-w-0"><p className="text-xs font-bold text-primary truncate">{imageFile ? imageFile.name : "Existing photo"}</p><p className="text-[10px] text-primary/40 mt-0.5">Square images display best.</p></div>
                           <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="p-2 text-red-400 hover:text-red-600"><Trash2 size={16} /></button>
-                          <button onClick={() => fileInputRef.current?.click()} className="text-[10px] font-black uppercase tracking-wide text-[#3A6131]/50 hover:text-[#3A6131] pr-1">Change</button>
+                          <button onClick={() => fileInputRef.current?.click()} className="text-[10px] font-black uppercase tracking-wide text-primary/50 hover:text-primary pr-1">Change</button>
                         </div>
                       ) : (
-                        <div onClick={() => fileInputRef.current?.click()} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleImageFile(f); }} className={`cursor-pointer flex items-center gap-4 border-[1.5px] border-dashed rounded-2xl px-5 py-4 transition-all ${dragOver ? "border-[#F7B71D] bg-[#F7B71D]/5" : "border-[#3A6131]/15 bg-white hover:border-[#F7B71D]/60"}`}>
-                          <div className="w-10 h-10 rounded-xl bg-[#3A6131]/5 flex items-center justify-center text-[#3A6131]/40"><UploadCloud size={20} strokeWidth={1.8} /></div>
-                          <div><p className="text-sm font-bold text-[#3A6131]">Click to upload or drag & drop</p><p className="text-[10px] text-[#3A6131]/40 mt-0.5">PNG, JPG, WEBP · Best as 1:1 square</p></div>
+                        <div onClick={() => fileInputRef.current?.click()} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={() => setDragOver(false)} onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) handleImageFile(f); }} className={`cursor-pointer flex items-center gap-4 border-[1.5px] border-dashed rounded-2xl px-5 py-4 transition-all ${dragOver ? "border-accent bg-accent/5" : "border-primary/15 bg-background hover:border-accent/60"}`}>
+                           <div className="w-10 h-10 rounded-xl bg-primary/5 flex items-center justify-center text-primary/40"><UploadCloud size={20} strokeWidth={1.8} /></div>
+                           <div><p className="text-sm font-bold text-primary">Click to upload or drag & drop</p><p className="text-[10px] text-primary/40 mt-0.5">PNG, JPG, WEBP · Best as 1:1 square</p></div>
                         </div>
                       )}
                     </div>
@@ -404,8 +415,8 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
               {step === 2 && (
                 <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
                   <div className="flex justify-between items-start mb-2">
-                    <div><span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 02</span><h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Sizes & Variants (Optional)</h3><p className="text-[11px] text-[#3A6131]/50 mt-1 leading-relaxed pr-16">Add custom sizes if your product has variations. Pricing is configured in Step 4.</p></div>
-                    <button onClick={addSize} className="w-11 h-11 rounded-2xl bg-[#3A6131] text-[#FFFCEB] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"><Plus size={22} strokeWidth={2.8} /></button>
+                    <div><span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 02</span><h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Sizes & Variants (Optional)</h3><p className="text-[11px] text-primary/50 mt-1 leading-relaxed pr-16">Add custom sizes if your product has variations. Pricing is configured in Step 4.</p></div>
+                    <button onClick={addSize} className="w-11 h-11 rounded-2xl bg-primary text-[var(--color-sidebar-text,#FFF9D7)] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"><Plus size={22} strokeWidth={2.8} /></button>
                   </div>
                   <div className="flex gap-3 px-1 mt-6">
                     <span className={`${labelStyle} flex-1 mb-0`}>Size Label</span>
@@ -413,10 +424,10 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                   </div>
                   <div className="space-y-2">
                     {sizes.length === 0 ? (
-                      <div className="py-10 border-2 border-dashed border-[#3A6131]/10 rounded-[20px] flex flex-col items-center justify-center text-[#3A6131]/30"><Ruler size={36} strokeWidth={1} className="mb-2" /><p className="text-sm font-medium">No sizes added — product uses a single base price and recipe</p></div>
+                      <div className="py-10 border-2 border-dashed border-primary/10 rounded-[20px] flex flex-col items-center justify-center text-primary/30"><Ruler size={36} strokeWidth={1} className="mb-2" /><p className="text-sm font-medium">No sizes added — product uses a single base price and recipe</p></div>
                     ) : sizes.map((s, idx) => (
-                      <div key={idx} className="flex gap-3 items-center bg-white rounded-2xl px-4 py-3 border border-[#3A6131]/5 shadow-sm">
-                        <input className="flex-1 bg-transparent border-b border-[#3A6131]/15 text-[13px] font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D] py-1" placeholder="e.g. Solo, Sharing, Large…" value={s.label} onChange={(e) => updateSize(idx, "label", e.target.value)} />
+                      <div key={idx} className="flex gap-3 items-center bg-background rounded-2xl px-4 py-3 border border-primary/5 shadow-sm">
+                        <input className="flex-1 bg-transparent border-b border-primary/15 text-[13px] font-bold text-primary focus:outline-none focus:border-accent py-1" placeholder="e.g. Solo, Sharing, Large…" value={s.label} onChange={(e) => updateSize(idx, "label", e.target.value)} />
                         <button onClick={() => removeSize(idx)} className="w-9 flex justify-center text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
                       </div>
                     ))}
@@ -427,18 +438,18 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
               {step === 3 && (
                 <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5 flex flex-col h-[400px]">
                   <div className="flex justify-between items-start mb-2 shrink-0">
-                    <div><span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 03</span><h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Ingredients Setup</h3></div>
-                    <button onClick={addRecipeRow} className="w-11 h-11 rounded-2xl bg-[#3A6131] text-[#FFFCEB] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"><Plus size={22} strokeWidth={2.8} /></button>
+                    <div><span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 03</span><h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Ingredients Setup</h3></div>
+                    <button onClick={addRecipeRow} className="w-11 h-11 rounded-2xl bg-primary text-[var(--color-sidebar-text,#FFF9D7)] flex items-center justify-center shadow-md hover:scale-110 transition-all active:scale-95 flex-shrink-0 mt-1 mr-10 translate-y-8"><Plus size={22} strokeWidth={2.8} /></button>
                   </div>
-                  <p className="text-[11px] text-[#3A6131]/50 leading-relaxed pr-16 shrink-0">Map each ingredient and its quantity per serving.</p>
+                  <p className="text-[11px] text-primary/50 leading-relaxed pr-16 shrink-0">Map each ingredient and its quantity per serving.</p>
                   
                   {productType === "with_sizes" && sizes.length > 0 && (
-                     <div className="flex gap-2 mb-2 border-b border-[#3A6131]/10 pb-2 overflow-x-auto shrink-0">
+                     <div className="flex gap-2 mb-2 border-b border-primary/10 pb-2 overflow-x-auto shrink-0">
                        {sizes.map(s => (
                          <button 
                            key={s.label}
                            onClick={() => setActiveSizeTab(s.label)}
-                           className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSizeTab === s.label ? "bg-[#3A6131] text-[#FFFCEB]" : "bg-white text-[#3A6131]/50 border border-[#3A6131]/10 hover:border-[#3A6131]/30"}`}
+                           className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeSizeTab === s.label ? "bg-primary text-[var(--color-sidebar-text,#FFF9D7)]" : "bg-background text-primary/50 border border-primary/10 hover:border-primary/30"}`}
                          >
                            {s.label || "Unnamed Size"}
                          </button>
@@ -446,22 +457,22 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                      </div>
                    )}
 
-                  {loadingIngs ? <div className="flex items-center justify-center py-12 text-[#3A6131]/40 gap-2 shrink-0"><Loader2 size={20} className="animate-spin" /> Loading…</div> : (
+                  {loadingIngs ? <div className="flex items-center justify-center py-12 text-primary/40 gap-2 shrink-0"><Loader2 size={20} className="animate-spin" /> Loading…</div> : (
                     <div className="space-y-3 mt-2 flex-1 overflow-y-auto pr-2 pb-10">
                       {recipe.filter(r => (productType === "with_sizes" && sizes.length > 0 ? r.size_label === activeSizeTab : r.size_label === null)).length === 0 ? (
-                        <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30"><Coffee size={40} strokeWidth={1} className="mb-2" /><p className="text-sm font-medium">No ingredients mapped{productType === "with_sizes" && sizes.length > 0 ? " for this size" : ""}</p></div>
+                        <div className="py-12 border-2 border-dashed border-primary/10 rounded-[24px] flex flex-col items-center justify-center text-primary/30"><Coffee size={40} strokeWidth={1} className="mb-2" /><p className="text-sm font-medium">No ingredients mapped{productType === "with_sizes" && sizes.length > 0 ? " for this size" : ""}</p></div>
                       ) : recipe.map((row, idx) => {
                         if (productType === "with_sizes" && sizes.length > 0 && row.size_label !== activeSizeTab) return null;
                         if ((productType === "single" || sizes.length === 0) && row.size_label !== null) return null;
                         return (
-                        <div key={idx} className="flex gap-3 items-center bg-white rounded-2xl p-3 border border-[#3A6131]/5 shadow-sm">
-                          <select className="flex-1 appearance-none bg-[#FFFCEB]/50 border border-[#3A6131]/20 rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-[#3A6131] focus:outline-none focus:border-[#F7B71D]" value={row.item_id} onChange={(e) => updateRecipeRow(idx, e.target.value)}>
+                        <div key={idx} className="flex gap-3 items-center bg-background rounded-2xl p-3 border border-primary/5 shadow-sm">
+                          <select className="flex-1 appearance-none bg-background border border-primary/20 rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-primary focus:outline-none focus:border-accent" value={row.item_id} onChange={(e) => updateRecipeRow(idx, e.target.value)}>
                             <option value="">Select Ingredient</option>
                             <optgroup label="F&B Ingredients">{ingredients.filter((i) => i.item_type === "fnb").map((ing) => <option key={ing.item_id} value={ing.item_id}>{ing.name}</option>)}</optgroup>
                           </select>
-                          <input className="w-20 bg-[#FFFCEB]/50 border border-[#3A6131]/20 rounded-xl px-3 py-2 text-[13px] font-black text-[#3A6131] text-center focus:outline-none" type="number" placeholder="0" min="0" value={row.amount} onChange={(e) => updateRecipeAmount(idx, e.target.value)} />
+                          <input className="w-20 bg-background border border-primary/20 rounded-xl px-3 py-2 text-[13px] font-black text-primary text-center focus:outline-none" type="number" placeholder="0" min="0" value={row.amount} onChange={(e) => updateRecipeAmount(idx, e.target.value)} />
                           
-                          <select className="w-16 appearance-none bg-[#FFFCEB]/50 border border-[#3A6131]/20 rounded-xl px-2 py-2 text-[12px] font-black text-[#F7B71D] uppercase text-center focus:outline-none cursor-pointer" value={row.unit} onChange={(e) => updateRecipeUnit(idx, e.target.value)}>
+                          <select className="w-16 appearance-none bg-background border border-primary/20 rounded-xl px-2 py-2 text-[12px] font-black text-accent uppercase text-center focus:outline-none cursor-pointer" value={row.unit} onChange={(e) => updateRecipeUnit(idx, e.target.value)}>
                             <option value="" disabled>—</option>
                             {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
                           </select>
@@ -476,13 +487,13 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
 
               {step === 4 && (
                 <motion.div key="s4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                  <div className="mb-6"><span className="bg-[#F7B71D]/15 text-[#385E31] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 04</span><h3 className="text-2xl font-black text-[#3A6131] mt-2 font-raleway italic">Pricing & Metrics</h3><p className="text-[11px] text-[#3A6131]/50 mt-1">Configure pricing and track yields for your product.</p></div>
+                  <div className="mb-6"><span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Step 04</span><h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">Pricing & Metrics</h3><p className="text-[11px] text-primary/50 mt-1">Configure pricing and track yields for your product.</p></div>
                   
                   {/* ── Dynamic Metrics Cards ── */}
                   <div className="flex gap-4 shrink-0">
-                    <div className="flex-1 bg-[#3A6131]/5 p-5 rounded-[24px] border border-[#3A6131]/10">
-                      <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider mb-2 block">Unit Cost (Internal)</label>
-                      <div className="text-2xl font-black text-[#3A6131]">
+                    <div className="flex-1 bg-primary/5 p-5 rounded-[24px] border border-primary/10">
+                      <label className="text-[10px] font-black uppercase text-primary/50 tracking-wider mb-2 block">Unit Cost (Internal)</label>
+                      <div className="text-2xl font-black text-primary">
                         {(() => {
                            if (productType === "single" || sizes.length === 0) return `₱${getRecipeCostForSize(null).toFixed(2)}`;
                            const costs = sizes.map(s => getRecipeCostForSize(s.label));
@@ -491,17 +502,17 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                            return min === max ? `₱${min.toFixed(2)}` : `₱${min.toFixed(2)} - ₱${max.toFixed(2)}`;
                         })()}
                       </div>
-                      <p className="text-[10px] text-[#3A6131]/40 mt-1 font-bold">Auto-calculated from recipe</p>
+                      <p className="text-[10px] text-primary/40 mt-1 font-bold">Auto-calculated from recipe</p>
                     </div>
 
-                    <div className={`flex-1 p-5 rounded-[24px] border transition-all ${productType === "single" ? "bg-[#F7B71D] border-[#F7B71D] shadow-lg shadow-[#F7B71D]/20" : "bg-[#F7B71D]/10 border-[#F7B71D]/30"}`}>
-                      <label className={`text-[10px] font-black uppercase tracking-wider mb-2 block ${productType === "single" ? "text-[#385E31]/60" : "text-[#7a5c00]"}`}>Base Selling Price</label>
-                      <div className={`flex items-center text-2xl font-black ${productType === "single" ? "text-[#385E31]" : "text-[#7a5c00]"}`}>
+                    <div className={`flex-1 p-5 rounded-[24px] border transition-all ${productType === "single" ? "bg-accent border-accent shadow-lg shadow-accent/20" : "bg-accent/10 border-accent/30"}`}>
+                      <label className={`text-[10px] font-black uppercase tracking-wider mb-2 block ${productType === "single" ? "text-primary/60" : "text-primary/80"}`}>Base Selling Price</label>
+                      <div className={`flex items-center text-2xl font-black text-primary`}>
                         <span className="mr-2 opacity-30 text-xl">₱</span>
                         {productType === "single" ? (
                           <input
                             type="number"
-                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl placeholder:text-[#385E31]/30"
+                            className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl placeholder:text-primary/30"
                             value={form.price}
                             onChange={(e) => set("price", e.target.value)}
                             placeholder="0.00"
@@ -517,20 +528,20 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                           </span>
                         )}
                       </div>
-                      {productType === "single" && <p className="text-[10px] text-[#385E31]/40 mt-1 font-bold">Customer selling price</p>}
+                      {productType === "single" && <p className="text-[10px] text-primary/40 mt-1 font-bold">Customer selling price</p>}
                     </div>
 
                     {productType === "single" && (
-                      <div className="flex-1 bg-white p-5 rounded-[24px] border border-[#3A6131]/20 shadow-sm">
+                      <div className="flex-1 bg-background p-5 rounded-[24px] border border-primary/20 shadow-sm">
                         <div className="flex justify-between items-center mb-2">
-                          <label className="text-[10px] font-black uppercase text-[#3A6131]/50 tracking-wider">Target Yield</label>
-                          <span className="text-[9px] font-black text-[#3A6131]/40 uppercase bg-[#3A6131]/5 px-1.5 py-0.5 rounded-md">
-                            Max: {getYieldForSize(null)}
-                          </span>
+                           <label className="text-[10px] font-black uppercase text-primary/50 tracking-wider">Target Yield</label>
+                           <span className="text-[9px] font-black text-primary/40 uppercase bg-primary/5 px-1.5 py-0.5 rounded-md">
+                             Max: {getYieldForSize(null)}
+                           </span>
                         </div>
                         <input
                           type="number"
-                          className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl text-[#3A6131]"
+                          className="bg-transparent border-none p-0 focus:ring-0 w-full font-black text-2xl text-primary"
                           value={form.max_yield}
                           onChange={(e) => set("max_yield", e.target.value)}
                           placeholder="0"
@@ -544,25 +555,25 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
 
                   <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2 pb-10">
                     {productType === "single" || sizes.length === 0 ? (
-                      <div className="py-12 border-2 border-dashed border-[#3A6131]/10 rounded-[24px] flex flex-col items-center justify-center text-[#3A6131]/30">
+                      <div className="py-12 border-2 border-dashed border-primary/10 rounded-[24px] flex flex-col items-center justify-center text-primary/30">
                         <PackageCheck size={40} strokeWidth={1} className="mb-2" />
                         <p className="text-sm font-medium">Single size product</p>
                         <p className="text-xs">Adjust price and yield in the cards above</p>
                       </div>
                     ) : (
                       sizes.map((s, idx) => (
-                        <div key={idx} className="bg-white p-5 rounded-[24px] border border-[#3A6131]/10 flex flex-col gap-4 shadow-sm">
-                          <div className="flex justify-between items-center border-b border-[#3A6131]/5 pb-2">
-                            <h4 className="font-black text-[#3A6131] text-lg">{s.label || "Unnamed Size"}</h4>
+                        <div key={idx} className="bg-background p-5 rounded-[24px] border border-primary/10 flex flex-col gap-4 shadow-sm">
+                          <div className="flex justify-between items-center border-b border-primary/5 pb-2">
+                            <h4 className="font-black text-primary text-lg">{s.label || "Unnamed Size"}</h4>
                             <div className="text-right">
-                              <span className="text-[10px] uppercase font-black tracking-wider text-[#3A6131]/40 block leading-none mb-1">Unit Cost</span>
-                              <span className="text-sm font-black text-[#3A6131]">₱{getRecipeCostForSize(s.label).toFixed(2)}</span>
+                              <span className="text-[10px] uppercase font-black tracking-wider text-primary/40 block leading-none mb-1">Unit Cost</span>
+                              <span className="text-sm font-black text-primary">₱{getRecipeCostForSize(s.label).toFixed(2)}</span>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-6">
                            <div>
                              <label className={labelStyle}>Selling Price</label>
-                             <div className="flex items-center text-xl font-black text-[#3A6131] border-b border-[#3A6131]/10 pb-1">
+                             <div className="flex items-center text-xl font-black text-primary border-b border-primary/10 pb-1">
                                <span className="mr-2 opacity-50">₱</span>
                                <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full" value={s.price} onChange={(e) => updateSize(idx, "price", e.target.value)} placeholder="0.00" />
                              </div>
@@ -570,11 +581,11 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                            <div>
                              <div className="flex justify-between items-center mb-2">
                                <label className={`${labelStyle} !mb-0`}>Max Yield (Servings)</label>
-                               <span className="text-[10px] font-black text-[#3A6131]/40 uppercase tracking-wider">
+                               <span className="text-[10px] font-black text-primary/40 uppercase tracking-wider">
                                  Possible: {getYieldForSize(s.label)}
                                </span>
                              </div>
-                             <div className="flex items-center text-xl font-black text-[#3A6131] border-b border-[#3A6131]/10 pb-1">
+                             <div className="flex items-center text-xl font-black text-primary border-b border-primary/10 pb-1">
                                <input type="number" className="bg-transparent border-none p-0 focus:ring-0 w-full" value={s.max_yield} onChange={(e) => updateSize(idx, "max_yield", e.target.value)} placeholder="0" />
                              </div>
                              {Number(s.max_yield) > getYieldForSize(s.label) && getYieldForSize(s.label) > 0 && (
@@ -587,18 +598,18 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#3A6131]/10">
-                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-[#3A6131]/10 flex items-center justify-center text-[#3A6131]"><PackageCheck size={20} /></div><span className="text-sm font-bold text-[#3A6131]">Show on Storefront</span></div>
-                    <button onClick={() => set("visible", !form.visible)} className={`w-12 h-6 rounded-full transition-all relative ${form.visible ? "bg-[#3A6131]" : "bg-gray-200"}`}><div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.visible ? "right-1" : "left-1"}`} /></button>
+                  <div className="flex items-center justify-between bg-background p-4 rounded-2xl border border-primary/10">
+                    <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary"><PackageCheck size={20} /></div><span className="text-sm font-bold text-primary">Show on Storefront</span></div>
+                    <button onClick={() => set("visible", !form.visible)} className={`w-12 h-6 rounded-full transition-all relative ${form.visible ? "bg-primary" : "bg-gray-200"}`}><div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.visible ? "right-1" : "left-1"}`} /></button>
                   </div>
                 </motion.div>
               )}
 
             </AnimatePresence>
           </div>
-          <div className="px-8 py-5 border-t border-[#3A6131]/10 bg-white/80 flex justify-between items-center z-20">
-            <button onClick={goBack} className="text-[#3A6131]/50 text-sm font-bold hover:text-[#3A6131] transition-colors">{currentStepIdx === 0 ? "Cancel" : "Back"}</button>
-            <button onClick={goNext} disabled={saving} className="bg-[#3A6131] text-[#FFFCEB] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
+          <div className="px-8 py-5 border-t border-primary/10 bg-background/80 flex justify-between items-center z-20">
+            <button onClick={goBack} className="text-primary/50 text-sm font-bold hover:text-primary transition-colors">{currentStepIdx === 0 ? "Cancel" : "Back"}</button>
+            <button onClick={goNext} disabled={saving} className="bg-primary text-[var(--color-sidebar-text,#FFF9D7)] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
               {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <>{currentStepIdx === totalSteps - 1 ? "Complete & Save" : "Continue"} <ChevronRight size={16} /></>}
             </button>
           </div>

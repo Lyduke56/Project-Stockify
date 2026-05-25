@@ -25,6 +25,7 @@ export interface StorefrontConfig {
   color_text: string;
   color_search_bar?: string;
   color_sidebar_text?: string;
+  color_navbar_text?: string;
   /** Typography */
   font_family: string;
   /** Legacy single-banner fields (kept for DB compat) */
@@ -45,6 +46,7 @@ const DEFAULTS: Omit<StorefrontConfig, "tenant_id"> = {
   color_text: "#3A6131",
   color_search_bar: "#2A4725",
   color_sidebar_text: "#FFF9D7",
+  color_navbar_text: "#385E31",
   font_family: "Inter",
   hero_banner_type: "text",
   hero_banner_image_url: null,
