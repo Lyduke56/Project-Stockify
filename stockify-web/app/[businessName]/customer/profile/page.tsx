@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 import { CustomerHeader } from "@/components/headers/customer-header";
 import { getStorefrontTenant } from "@/backend/hooks/getStoreFront";
 import { fetchStorefrontConfig } from "@/lib/admin/storefront-actions";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 export default function CustomerProfilePage() {
   const params = useParams();
@@ -94,11 +95,7 @@ export default function CustomerProfilePage() {
     : "?";
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: c.bg }}>
-        <div className="w-9 h-9 rounded-full border-4 border-black/5 border-t-[#F7B71D] animate-spin" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
@@ -174,7 +171,7 @@ export default function CustomerProfilePage() {
             {/* Name + email */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-[22px] font-black leading-tight" style={{ color: c.text }}>
+                <h2 className="text-[22px] font-black leading-tight" style={{ color: c.primary }}>
                   {profile?.display_name || `${profile?.first_name} ${profile?.last_name}`}
                 </h2>
                 <span
@@ -184,7 +181,7 @@ export default function CustomerProfilePage() {
                   Customer
                 </span>
               </div>
-              <p className="flex items-center gap-1.5 mt-1 text-[13px] font-medium" style={{ color: c.text + "66" }}>
+              <p className="flex items-center gap-1.5 mt-1 text-[13px] font-medium" style={{ color: c.primary + "99" }}>
                 <Mail size={13} strokeWidth={2} />
                 {profile?.email}
               </p>
@@ -347,7 +344,7 @@ function ProfileField({
     <div className="flex flex-col gap-1.5">
       <label
         className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest"
-        style={{ color: c.text + "55" }}
+        style={{ color: c.primary + "8C" }}
       >
         <Icon size={12} strokeWidth={2.5} />
         {label}
@@ -361,7 +358,7 @@ function ProfileField({
           style={{
             backgroundColor: c.bg,
             borderColor: c.primary + "25",
-            color: c.text,
+            color: c.primary,
             // @ts-ignore
             "--accent": c.accent,
             "--accent-10": c.accent + "18",
@@ -370,7 +367,7 @@ function ProfileField({
       ) : (
         <div
           className="px-3.5 py-2.5 rounded-xl text-[14px] font-semibold"
-          style={{ backgroundColor: c.text + "05", color: value ? c.text : c.text + "40" }}
+          style={{ backgroundColor: c.primary + "0A", color: value ? c.primary : c.primary + "59" }}
         >
           {value || "Not set"}
         </div>

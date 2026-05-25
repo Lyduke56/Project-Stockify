@@ -23,6 +23,7 @@ import { CheckoutModal } from "@/components/modals/customer/checkout-modal";
 import type { NfnbProduct } from "@/components/cards/storefront/nfnb-product-card";
 import { CustomerHeader } from "@/components/headers/customer-header";
 import { toggleFavorite, fetchFavorites, fetchTopRatedProduct } from "@/lib/customer/customer-actions";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 // --- DB Hooks ---
 import { createClient } from "@/lib/supabase/client";
@@ -278,6 +279,11 @@ export default function NfnbStorefront() {
     return matchesCategory && matchesSearch;
   });
 
+  // ─── Loading State ───────────────────────────────────────────────────────────
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   // ─── Error State ─────────────────────────────────────────────────────────────
   if (error) {
     return (
@@ -411,10 +417,6 @@ export default function NfnbStorefront() {
         <div className="flex flex-col gap-4 sticky top-[72px] sm:top-[80px] z-30 backdrop-blur-md pt-4 -mx-4 px-4 sm:mx-0 sm:px-0" style={{ backgroundColor: c.bg + "F2" }}>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-[24px] font-bold" style={{ color: c.text }}>Collections</h2>
-            <button className="flex items-center gap-2 bg-white border text-[14px] font-bold shadow-sm px-5 py-2.5 rounded-full transition-colors"
-              style={{ borderColor: c.text + "33", color: c.text }}>
-              <SlidersHorizontal size={20} /> Filters & Sorting
-            </button>
           </div>
           <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-hide">
             {categoryTabs.map((cat) => (
@@ -501,6 +503,7 @@ export default function NfnbStorefront() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         tenantId={tenant?.tenant_id || ""}
+        colors={c}
       />
 
       <CheckoutModal
@@ -508,6 +511,7 @@ export default function NfnbStorefront() {
         onClose={() => setIsCheckoutOpen(false)}
         tenantId={tenant?.tenant_id ?? ""}
         onSuccess={() => { }}
+        colors={c}
       />
     </div>
   );

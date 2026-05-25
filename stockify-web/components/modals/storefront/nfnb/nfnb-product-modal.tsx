@@ -14,9 +14,33 @@ interface ProductModalProps {
   onClose: () => void;
   tenantId: string;
   readOnly?: boolean;
+  colors?: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    bg: string;
+    text: string;
+  };
 }
 
-export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = false }: ProductModalProps) => {
+const buildC = (colors?: ProductModalProps["colors"]) => {
+  const primary = colors?.primary ?? "#385E31";
+  const secondary = colors?.secondary ?? "#254020";
+  return {
+    primary,
+    secondary,
+    accent:      colors?.accent      ?? "#F7B71D",
+    accentSoft:  colors?.accent      ?? "#F7B71D",
+    bg:          colors?.bg          ?? "#FFFCEB",
+    bgDim:       colors?.bg          ? colors.bg + "D9" : "rgba(255, 252, 235, 0.85)",
+    muted:       colors?.bg          ? colors.bg + "80" : "rgba(255, 252, 235, 0.5)",
+    border:      colors?.accent      ? colors.accent + "33" : "rgba(247, 183, 29, 0.2)",
+    borderHi:    colors?.accent      ? colors.accent + "80" : "rgba(247, 183, 29, 0.5)",
+  };
+};
+
+export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = false, colors }: ProductModalProps) => {
+  const C = buildC(colors);
   const { addToCart } = useCart();
   const [qty, setQty]   = useState(1);
   const [added, setAdded] = useState(false);
@@ -122,10 +146,16 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="bg-[#FFFCEB] rounded-[28px] w-full max-w-[440px] overflow-hidden shadow-2xl pointer-events-auto max-h-[92dvh] flex flex-col">
+            <div 
+              className="rounded-[28px] w-full max-w-[440px] overflow-hidden shadow-2xl pointer-events-auto max-h-[92dvh] flex flex-col border"
+              style={{ backgroundColor: C.primary, color: C.bg, borderColor: C.borderHi }}
+            >
 
               {/* ── Header Image / Icon ─────────────────────────── */}
-              <div className="w-full h-48 bg-gradient-to-b from-[#385E31]/10 to-[#385E31]/5 flex items-center justify-center relative shrink-0 overflow-hidden">
+              <div 
+                className="w-full h-48 flex items-center justify-center relative shrink-0 overflow-hidden"
+                style={{ background: `linear-gradient(to bottom, ${C.secondary}4D, ${C.secondary}26)` }}
+              >
                 {product.image_url ? (
                   <img
                     src={product.image_url.split('?')[0]}
@@ -137,21 +167,25 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                     }}
                   />
                 ) : null}
-                <Package size={96} className="text-[#385E31]/20" style={product.image_url ? { display: 'none' } : {}} />
+                <Package size={96} style={{ color: C.bg + "26" }} className={product.image_url ? 'hidden' : ''} />
                 <button
                   onClick={onClose}
-                  className="absolute top-4 right-4 w-9 h-9 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-[#385E31] hover:bg-white transition-colors shadow-md"
+                  className="absolute top-4 right-4 w-9 h-9 backdrop-blur-sm rounded-full flex items-center justify-center transition-colors shadow-md border"
+                  style={{ backgroundColor: C.primary + "CC", color: C.accent, borderColor: C.border }}
                 >
                   <X size={18} />
                 </button>
                 {product.category_name && (
-                  <span className="absolute bottom-4 left-4 bg-[#385E31] text-[#F7B71D] text-[11px] font-bold px-3 py-1 rounded-full">
+                  <span 
+                    className="absolute bottom-4 left-4 text-[11px] font-bold px-3 py-1 rounded-full border shadow-sm"
+                    style={{ backgroundColor: C.secondary, color: C.accent, borderColor: C.border }}
+                  >
                     {product.category_name}
                   </span>
                 )}
                 {!inStock && (
-                  <div className="absolute inset-0 bg-white/50 flex items-center justify-center">
-                    <span className="text-red-500 font-bold text-[13px] bg-red-50 border border-red-100 px-4 py-1.5 rounded-full">
+                  <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: C.primary + "80" }}>
+                    <span className="text-red-500 font-bold text-[13px] bg-red-50 border border-red-100 px-4 py-1.5 rounded-full shadow-md">
                       Out of Stock
                     </span>
                   </div>
@@ -164,8 +198,8 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
 
                   {/* Name & Description */}
                   <div>
-                    <h2 className="text-[#385E31] text-[22px] font-black mb-1">{product.name}</h2>
-                    <p className="text-[#385E31]/60 text-[13px] leading-relaxed">
+                    <h2 className="text-[22px] font-black mb-1" style={{ color: C.bg }}>{product.name}</h2>
+                    <p className="text-[13px] leading-relaxed" style={{ color: C.bgDim }}>
                       {product.description ?? "No description available."}
                     </p>
                   </div>
@@ -173,16 +207,15 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                   {/* Price & Availability */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#385E31]/40 mb-0.5">Price</p>
-                      <span className="text-[#385E31] text-[28px] font-black leading-none">
+                      <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: C.muted }}>Price</p>
+                      <span className="text-[28px] font-black leading-none" style={{ color: C.accent }}>
                         ₱{Number(activePrice).toFixed(2)}
                       </span>
                     </div>
-                    <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full border ${
-                      inStock
-                        ? "bg-[#FFFCEB] border-[#385E31]/20 text-[#385E31]"
-                        : "bg-red-50 border-red-100 text-red-400"
-                    }`}>
+                    <span 
+                      className="text-[12px] font-bold px-3 py-1.5 rounded-full border"
+                      style={inStock ? { backgroundColor: C.secondary, borderColor: C.accent + "33", color: C.accent } : { backgroundColor: "rgba(127, 29, 29, 0.4)", borderColor: "rgba(252, 165, 165, 0.2)", color: "#fca5a5" }}
+                    >
                       {inStock
                         ? hasVariants
                           ? (allSelected ? `${Math.min(...Object.values(selections).map((o) => o?.stock ?? 0))} in stock` : "Select options")
@@ -194,7 +227,7 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                   {/* ── Variant Selectors ─────────────────────────────────── */}
                   {hasVariants && product.variants.map((vt) => (
                     <div key={vt.variant_type_id}>
-                      <p className="text-[11px] font-black uppercase tracking-wider text-[#385E31]/50 mb-3">
+                      <p className="text-[11px] font-black uppercase tracking-wider mb-3" style={{ color: C.accent }}>
                         {vt.name}
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -211,23 +244,24 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                                   [vt.variant_type_id]: isSel ? null : opt,
                                 }))
                               }
-                              className={`relative px-4 py-2.5 rounded-xl border-2 text-[13px] font-black transition-all ${
-                                isSel
-                                  ? "border-[#385E31] bg-[#385E31] text-[#FFFCEB] shadow-md"
-                                  : avail
-                                  ? "border-[#385E31]/20 text-[#385E31] hover:border-[#385E31]/60"
-                                  : "border-[#385E31]/10 text-[#385E31]/30 cursor-not-allowed"
-                              }`}
+                              className="relative px-4 py-2.5 rounded-xl border-2 text-[13px] font-black transition-all"
+                              style={isSel ? { borderColor: C.accent, backgroundColor: C.accent, color: C.secondary, boxShadow: `0 6px 20px ${C.accent}45` } : avail ? { borderColor: C.accent + "33", backgroundColor: C.secondary, color: C.bg } : { borderColor: C.accent + "1A", backgroundColor: C.secondary + "4D", color: C.muted, cursor: "not-allowed" }}
                             >
                               <span className="block leading-none">{opt.label}</span>
-                              <span className={`block text-[11px] font-bold mt-0.5 ${isSel ? "text-[#F7B71D]" : "text-[#385E31]/50"}`}>
+                              <span 
+                                className="block text-[11px] font-bold mt-0.5"
+                                style={{ color: isSel ? C.secondary : C.accent }}
+                              >
                                 ₱{opt.price.toFixed(2)}
                               </span>
                               {!avail && (
                                 <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-red-400 text-white px-1.5 py-0.5 rounded-full">out</span>
                               )}
                               {avail && (
-                                <span className={`block text-[10px] font-medium mt-0.5 ${isSel ? "text-[#FFFCEB]/60" : "text-[#385E31]/30"}`}>
+                                <span 
+                                  className="block text-[10px] font-medium mt-0.5"
+                                  style={{ color: isSel ? C.secondary + "99" : C.muted }}
+                                >
                                   {opt.stock} left
                                 </span>
                               )}
@@ -241,17 +275,22 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                   {/* ── Qty + Add ──────────────────────────────────── */}
                   {!readOnly && inStock && allSelected && (
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 bg-[#385E31]/5 border border-[#385E31]/10 rounded-[10px] px-2 py-1.5">
+                      <div 
+                        className="flex items-center gap-2 rounded-[10px] px-2 py-1.5 border"
+                        style={{ backgroundColor: C.secondary, borderColor: C.accent + "33" }}
+                      >
                         <button
                           onClick={() => setQty((q) => Math.max(1, q - 1))}
-                          className="w-8 h-8 flex items-center justify-center text-[#385E31] hover:bg-[#385E31]/10 rounded-[6px] transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-[6px] transition-colors"
+                          style={{ color: C.accent }}
                         >
                           <Minus size={16} />
                         </button>
-                        <span className="w-8 text-center text-[#385E31] font-bold text-[16px]">{qty}</span>
+                        <span className="w-8 text-center font-bold text-[16px]" style={{ color: C.bg }}>{qty}</span>
                         <button
                           onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
-                          className="w-8 h-8 flex items-center justify-center text-[#385E31] hover:bg-[#385E31]/10 rounded-[6px] transition-colors"
+                          className="w-8 h-8 flex items-center justify-center rounded-[6px] transition-colors"
+                          style={{ color: C.accent }}
                         >
                           <Plus size={16} />
                         </button>
@@ -260,9 +299,8 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                       <motion.button
                         onClick={handleAdd}
                         whileTap={{ scale: 0.97 }}
-                        className={`flex-1 text-[#FFFCEB] flex justify-center items-center gap-2 py-3 rounded-[10px] font-bold text-[14px] transition-all ${
-                          added ? "bg-[#22c55e]" : "bg-[#385E31] hover:opacity-90"
-                        }`}
+                        className="flex-1 flex justify-center items-center gap-2 py-3 rounded-[10px] font-bold text-[14px] transition-all"
+                        style={added ? { backgroundColor: "#22c55e", color: "#FFFFFF" } : { backgroundColor: C.accent, color: C.secondary }}
                       >
                         {added ? (
                           <><Check size={16} /> Added!</>
@@ -278,7 +316,7 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                   )}
 
                   {hasVariants && !allSelected && inStock && (
-                    <p className="text-center text-[#385E31]/50 text-[13px] font-medium flex items-center justify-center gap-1">
+                    <p className="text-center text-[13px] font-medium flex items-center justify-center gap-1" style={{ color: C.accent }}>
                       <ChevronRight size={14} /> Select all options to continue
                     </p>
                   )}
@@ -288,6 +326,7 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                     productId={product.product_id} 
                     productType="nfb" 
                     tenantId={tenantId} 
+                    colors={colors}
                   />
                 </div>
               </div>

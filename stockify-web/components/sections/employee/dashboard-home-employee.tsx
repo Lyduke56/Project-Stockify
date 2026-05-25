@@ -156,10 +156,10 @@ function LiveRevenueCard({ data, colors }: { data: DashboardData; colors?: Store
           <span className="text-[13px] font-extrabold text-primary tracking-wide">Daily Revenue Trend</span>
           <div className="flex items-center gap-5 text-[11px] font-bold text-primary/70">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-4 h-1 bg-primary rounded-full" /> REVENUE
+              <span className="inline-block w-4 h-1 rounded-full" style={{ backgroundColor: colors?.color_primary || "#385E31" }} /> REVENUE
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block w-4 border-t-2 border-dashed border-accent" /> AVG ₱{chartAvg}K
+              <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: colors?.color_accent || "#F7B71D" }} /> AVG ₱{chartAvg}K
             </span>
           </div>
         </div>
@@ -168,16 +168,16 @@ function LiveRevenueCard({ data, colors }: { data: DashboardData; colors?: Store
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 25, right: 10, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={colors?.color_primary || "#385E31"} stopOpacity={0.25} />
-                  <stop offset="95%" stopColor={colors?.color_primary || "#385E31"} stopOpacity={0} />
+                <linearGradient id="revenueGradEmployee" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={colors?.color_accent || "#F7B71D"} stopOpacity={0.65} />
+                  <stop offset="95%" stopColor={colors?.color_accent || "#F7B71D"} stopOpacity={0.05} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="day" tickFormatter={(v) => `D${v}`}
                 tick={{ fontSize: 10, fill: "#888", fontWeight: 600 }} axisLine={false} tickLine={false} interval="preserveStartEnd" dy={10} />
               <YAxis tickFormatter={(v) => `₱${v}k`}
                 tick={{ fontSize: 10, fill: "#888", fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-              <Tooltip content={<CustomTooltip colors={colors} />} cursor={{ stroke: colors?.color_secondary || "#2A4725", strokeWidth: 1, strokeDasharray: "4 4" }} />
+              <Tooltip content={<CustomTooltip colors={colors} />} cursor={{ stroke: colors?.color_primary || "#385E31", strokeWidth: 1, strokeDasharray: "4 4" }} />
               {chartAvg > 0 && (
                 <ReferenceLine y={chartAvg} stroke={colors?.color_accent || "#F7B71D"} strokeDasharray="5 4" strokeWidth={2} />
               )}
@@ -197,11 +197,16 @@ function LiveRevenueCard({ data, colors }: { data: DashboardData; colors?: Store
                   }}
                 />
               )}
-              <Area type="monotone" dataKey="revenue" stroke={colors?.color_primary || "#385E31"} strokeWidth={3} fill="url(#revenueGrad)"
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke={colors?.color_primary || "#385E31"}
+                strokeWidth={2.5}
+                fill="url(#revenueGradEmployee)"
                 dot={(props: any) => {
                   const { cx, cy, payload } = props;
                   if (payload.day === peakPoint?.day) {
-                    return <circle key={`dot-${payload.day}`} cx={cx} cy={cy} r={5} fill={colors?.color_primary || "#385E31"} stroke={colors?.color_background || "#FEFCE8"} strokeWidth={2.5} />;
+                    return <circle key={`dot-${payload.day}`} cx={cx} cy={cy} r={5} fill={colors?.color_accent || "#F7B71D"} stroke={colors?.color_primary || "#385E31"} strokeWidth={2.5} />;
                   }
                   return <g key={`dot-${payload.day}`} />;
                 }}

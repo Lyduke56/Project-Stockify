@@ -466,13 +466,13 @@ export default function ProductModal({ mode, tenantId, productId, initial, onSav
                         if ((productType === "single" || sizes.length === 0) && row.size_label !== null) return null;
                         return (
                         <div key={idx} className="flex gap-3 items-center bg-background rounded-2xl p-3 border border-primary/5 shadow-sm">
-                          <select className="flex-1 appearance-none bg-background/50 border border-primary/20 rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-primary focus:outline-none focus:border-accent" value={row.item_id} onChange={(e) => updateRecipeRow(idx, e.target.value)}>
+                          <select className="flex-1 appearance-none bg-background border border-primary/20 rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-primary focus:outline-none focus:border-accent" value={row.item_id} onChange={(e) => updateRecipeRow(idx, e.target.value)}>
                             <option value="">Select Ingredient</option>
                             <optgroup label="F&B Ingredients">{ingredients.filter((i) => i.item_type === "fnb").map((ing) => <option key={ing.item_id} value={ing.item_id}>{ing.name}</option>)}</optgroup>
                           </select>
-                          <input className="w-20 bg-background/50 border border-primary/20 rounded-xl px-3 py-2 text-[13px] font-black text-primary text-center focus:outline-none" type="number" placeholder="0" min="0" value={row.amount} onChange={(e) => updateRecipeAmount(idx, e.target.value)} />
+                          <input className="w-20 bg-background border border-primary/20 rounded-xl px-3 py-2 text-[13px] font-black text-primary text-center focus:outline-none" type="number" placeholder="0" min="0" value={row.amount} onChange={(e) => updateRecipeAmount(idx, e.target.value)} />
                           
-                          <select className="w-16 appearance-none bg-background/50 border border-primary/20 rounded-xl px-2 py-2 text-[12px] font-black text-accent uppercase text-center focus:outline-none cursor-pointer" value={row.unit} onChange={(e) => updateRecipeUnit(idx, e.target.value)}>
+                          <select className="w-16 appearance-none bg-background border border-primary/20 rounded-xl px-2 py-2 text-[12px] font-black text-accent uppercase text-center focus:outline-none cursor-pointer" value={row.unit} onChange={(e) => updateRecipeUnit(idx, e.target.value)}>
                             <option value="" disabled>—</option>
                             {UNIT_OPTIONS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
                           </select>

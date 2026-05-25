@@ -16,6 +16,7 @@ import { FnbProductCard } from "@/components/cards/storefront/fnb-product-card";
 import { FnbProductModal as ProductModal } from "@/components/modals/storefront/fnb/fnb-product-modal";
 import { CheckoutModal } from "@/components/modals/customer/checkout-modal";
 import { CustomerHeader } from "@/components/headers/customer-header";
+import LoadingScreen from "@/app/loading-screen/loading";
 import {
   toggleFavorite,
   fetchFavorites,
@@ -364,6 +365,10 @@ export default function FnbStorefront() {
   const activeBanners = buildActiveBanners();
 
   // ─── Error State ─────────────────────────────────────────────────────────────
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-[#FFFCEB] flex items-center justify-center text-[#385E31]">
@@ -521,17 +526,14 @@ export default function FnbStorefront() {
         </motion.div>
 
         {/* Filters */}
-        <div className="flex flex-col gap-4 sticky top-[72px] sm:top-[80px] z-30 bg-[#FFFCEB]/95 backdrop-blur-md pt-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div 
+          className="flex flex-col gap-4 sticky top-[72px] sm:top-[80px] z-30 backdrop-blur-md pt-4 -mx-4 px-4 sm:mx-0 sm:px-0"
+          style={{ backgroundColor: c.bg + "F2" }}
+        >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <h2 className="text-[24px] font-bold" style={{ color: c.text }}>
               Our Menu
             </h2>
-            <button
-              className="flex items-center gap-2 bg-white border text-[14px] font-bold shadow-sm px-5 py-2.5 rounded-full transition-colors"
-              style={{ borderColor: c.text + "33", color: c.text }}
-            >
-              <SlidersHorizontal size={20} /> Filters
-            </button>
           </div>
           <div className="flex gap-2 w-full overflow-x-auto pb-2 scrollbar-hide">
             {categoryTabs.map((cat) => (
@@ -634,6 +636,7 @@ export default function FnbStorefront() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         tenantId={tenant?.tenant_id || ""}
+        colors={c}
       />
 
       <CheckoutModal
