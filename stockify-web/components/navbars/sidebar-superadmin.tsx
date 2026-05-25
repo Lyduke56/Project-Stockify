@@ -64,7 +64,6 @@ export default function SidebarSuperAdmin({
   const adminNavItems: { label: string; iconFileName: string; section: SuperadminSectionKey }[] = [
     { label: "Dashboard",            iconFileName: "icon-dashboard",            section: "dashboard" },
     { label: "Tenant Management",    iconFileName: "icon-tenant-management",    section: "tenant-management" },
-    { label: "Tenant Review",        iconFileName: "icon-storefront",           section: "tenant-review" },
     { label: "Subscription Billing", iconFileName: "icon-subscription-billing", section: "subscription-billing" },
     { label: "Audit Logs",           iconFileName: "icon-audit-logs",           section: "audit-logs" },
   ];
