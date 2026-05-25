@@ -222,7 +222,7 @@ export default function ProductsTable({ tenantId, onLoadComplete }: ProductsTabl
                   )}
                 </div>
                 <div className={`flex items-center ${COLUMNS[6].className}`}>
-                  <div className={`px-2.5 py-0.5 rounded-[40px] flex justify-center items-center ${row.visible ? "bg-accent text-primary" : "bg-transparent border border-primary/40 text-primary"}`}>
+                  <div className={`px-2.5 pb-[3px] pt-[4px] rounded-[40px] flex justify-center items-center ${row.visible ? "bg-accent text-primary" : "bg-transparent border border-primary/40 text-primary"}`}>
                     <span className="text-[10px] font-bold leading-tight">{row.visible ? "Yes" : "No"}</span>
                   </div>
                 </div>

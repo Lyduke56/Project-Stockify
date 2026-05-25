@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom"; // <-- IMPORT PORTAL
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   X, FileText, User, Tag, Calendar, Hash, Info, 
@@ -57,6 +58,12 @@ interface DetailModalProps {
 export default function DetailModal({ log, onClose }: DetailModalProps) {
   const [step, setStep] = useState(1);
 
+  // <-- MOUNT STATE FOR PORTAL
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Prettify the Details JSON
   const detailEntries = log.details ? Object.entries(log.details) : [];
 
@@ -72,8 +79,12 @@ export default function DetailModal({ log, onClose }: DetailModalProps) {
   const labelStyle = "text-[11px] font-black uppercase tracking-[0.12em] text-[#3A6131]/50 mb-2 block";
   const cardStyle = "bg-white border-[1.5px] border-[#3A6131]/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm";
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#385E31]/40 backdrop-blur-sm p-4">
+  // <-- PREVENT RENDER UNTIL MOUNTED
+  if (!mounted) return null;
+
+  // <-- PORTAL THE MODAL TO document.body
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <motion.div 
         initial={{ scale: 0.95, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -275,6 +286,7 @@ export default function DetailModal({ log, onClose }: DetailModalProps) {
 
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 }

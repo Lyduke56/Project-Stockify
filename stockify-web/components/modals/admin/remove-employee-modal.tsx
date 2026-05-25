@@ -1,5 +1,7 @@
 "use client";
 
+import React, { useState, useEffect } from "react"; // <-- IMPORT REACT HOOKS
+import { createPortal } from "react-dom"; // <-- IMPORT PORTAL
 import { AlertTriangle, X, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -18,7 +20,18 @@ export default function DeleteEmployeeModal({
   onClose,
   onConfirm,
 }: DeleteEmployeeModalProps) {
-  return (
+  
+  // <-- MOUNT STATE FOR PORTAL
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // <-- PREVENT RENDER UNTIL MOUNTED
+  if (!mounted) return null;
+
+  // <-- PORTAL THE ENTIRE MODAL TO document.body
+  return createPortal(
     <AnimatePresence>
       {isOpen && user && (
         <>
@@ -28,12 +41,12 @@ export default function DeleteEmployeeModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-[#385E31]/40 backdrop-blur-sm"
+            className="fixed inset-0 z-9999 bg-black/40 backdrop-blur-sm"
             onClick={onClose} // Optional: clicking backdrop closes modal
           />
 
           {/* Modal Container */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="fixed inset-0 z-9999 flex items-center justify-center pointer-events-none">
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -102,6 +115,7 @@ export default function DeleteEmployeeModal({
           </div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
