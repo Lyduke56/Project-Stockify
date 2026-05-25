@@ -46,10 +46,6 @@ const COLUMNS = [
   { label: "ACTIONS",   className: "flex-[1]   min-w-[80px]  justify-center text-center"  },
 ];
 
-// ── Dropdown position type ────────────────────────────────────
-
-type DropdownPos = { top: number; right: number };
-
 // ── Component ─────────────────────────────────────────────────
 
 interface NfbProductsTableProps {
@@ -73,10 +69,7 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
 
   // ── UI popover states ──────────────────────────────────────────
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const [dropdownPos,    setDropdownPos]    = useState<DropdownPos | null>(null);
-  
   const [variantPopId,   setVariantPopId]   = useState<string | null>(null);
-  const [variantPopPos,  setVariantPopPos]  = useState<DropdownPos | null>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -111,9 +104,7 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
       ) return;
       
       setOpenDropdownId(null);
-      setDropdownPos(null);
       setVariantPopId(null);
-      setVariantPopPos(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -121,34 +112,24 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
 
   useEffect(() => { setVisibleCount(5); }, [search, filterStatus]);
 
-  // ── Toggle dropdown with fixed screen position ────────────────
+  // ── Toggle popovers inline ─────────────────────────────────────
 
   const handleActionClick = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
+    e.stopPropagation();
     if (openDropdownId === productId) {
       setOpenDropdownId(null);
-      setDropdownPos(null);
       return;
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setDropdownPos({
-      top:   rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
     setOpenDropdownId(productId);
     setVariantPopId(null); // close other popovers
   };
 
   const handleVariantClick = (e: React.MouseEvent<HTMLButtonElement>, productId: string) => {
+    e.stopPropagation();
     if (variantPopId === productId) {
       setVariantPopId(null);
-      setVariantPopPos(null);
       return;
     }
-    const rect = e.currentTarget.getBoundingClientRect();
-    setVariantPopPos({
-      top:   rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
     setVariantPopId(productId);
     setOpenDropdownId(null); // close other popovers
   };
@@ -353,19 +334,68 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
                 </div>
 
                 {/* Status Column */}
-                <div className={`flex items-center justify-center ${COLUMNS[6].className}`}>
+                <div className={`flex items-center justify-center relative ${COLUMNS[6].className}`}>
                   {hasVariants ? (
-                    <button
-                      onClick={(e) => handleVariantClick(e, row.product_id)}
-                      className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all flex items-center gap-1.5 ${
-                        variantPopId === row.product_id 
-                          ? "bg-accent text-primary border-accent" 
-                          : "bg-white/10 text-primary border-primary/20 hover:bg-primary/5"
-                      }`}
-                    >
-                      <RefreshCw size={10} className={variantPopId === row.product_id ? "animate-spin" : ""} />
-                      View Variants
-                    </button>
+                    <>
+                      <button
+                        onClick={(e) => handleVariantClick(e, row.product_id)}
+                        className={`text-[10px] font-black px-2.5 py-1 rounded-full border transition-all flex items-center gap-1.5 ${
+                          variantPopId === row.product_id 
+                            ? "bg-accent text-primary border-accent" 
+                            : "bg-white/10 text-primary border-primary/20 hover:bg-primary/5"
+                        }`}
+                      >
+                        <RefreshCw size={10} className={variantPopId === row.product_id ? "animate-spin" : ""} />
+                        View Variants
+                      </button>
+
+                      {variantPopId === row.product_id && (() => {
+                        const threshold = row.reorder_threshold ?? 0;
+                        return (
+                          <div
+                            id="nfb-variant-popover"
+                            className="absolute top-full mt-1 right-0 w-[280px] bg-background border border-primary shadow-2xl rounded-[16px] py-3 flex flex-col text-primary z-50 text-left"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="px-4 pb-2 border-b border-primary/10 mb-2">
+                              <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{row.name} Variants</h4>
+                            </div>
+                            <div className="max-h-[200px] overflow-y-auto px-2 space-y-1">
+                              {row.variants!.flatMap(vt => vt.options).map((opt, i) => {
+                                const stock = Number(opt.stock) || 0;
+                                const variantThreshold = Number(opt.reorder_threshold) || 0;
+                                const isLow = stock <= variantThreshold && variantThreshold > 0;
+                                return (
+                                  <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-primary/5 transition-colors">
+                                    <div className="flex flex-col">
+                                      <span className="text-[12px] font-bold text-primary">{opt.label}</span>
+                                      <span className="text-[10px] text-primary/50 font-medium">Qty: {stock} {row.unit_of_measure}</span>
+                                    </div>
+                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+                                      isLow ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
+                                    }`}>
+                                      {isLow ? "Low" : "Good"}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="mt-2 px-4 pt-2 border-t border-primary/5 flex justify-between items-center bg-primary/5 py-2">
+                              <span className="text-[10px] font-bold text-primary/40 italic">Threshold: {threshold}</span>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setVariantPopId(null);
+                                }} 
+                                className="text-[10px] font-black text-primary hover:underline"
+                              >
+                                Close
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </>
                   ) : (
                     (() => {
                       const threshold = row.reorder_threshold ?? 0;
@@ -393,8 +423,8 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
                   </div>
                 </div>
 
-                {/* Actions — button only; dropdown rendered via fixed portal below */}
-                <div className={`flex items-center justify-center ${COLUMNS[8].className}`}>
+                {/* Actions */}
+                <div className={`flex items-center justify-center relative ${COLUMNS[8].className}`}>
                   <button
                     onClick={(e) => handleActionClick(e, row.product_id)}
                     className={`border border-primary rounded-full px-3 py-1 text-[11px] font-bold flex items-center gap-1 transition-colors ${
@@ -403,87 +433,39 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
                   >
                     Action <ChevronDown />
                   </button>
+
+                  {isOpen && (
+                    <div
+                      id="nfb-action-dropdown"
+                      className="absolute top-full mt-1 right-0 w-[140px] bg-background border border-primary shadow-lg rounded-[4px] py-1 flex flex-col text-primary text-[11px] font-semibold text-left z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => { setEditTarget(row); setOpenDropdownId(null); }}
+                        className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
+                      >
+                        Edit Product
+                      </button>
+                      <button
+                        onClick={() => { setRestockTarget(row); setOpenDropdownId(null); }}
+                        className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
+                      >
+                        Restock
+                      </button>
+                      <button
+                        onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }}
+                        className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors"
+                      >
+                        Delete Product
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })
         )}
       </div>
-
-      {/* ── Fixed variant popover ── */}
-      {variantPopId && variantPopPos && (() => {
-        const row = products.find((p) => p.product_id === variantPopId);
-        if (!row || !row.variants) return null;
-        const threshold = row.reorder_threshold ?? 0;
-        
-        return (
-          <div
-            id="nfb-variant-popover"
-            style={{ position: "fixed", top: variantPopPos.top, right: variantPopPos.right, zIndex: 9999 }}
-            className="w-[280px] bg-background border border-primary shadow-2xl rounded-[16px] py-3 overflow-hidden flex flex-col text-primary"
-          >
-            <div className="px-4 pb-2 border-b border-primary/10 mb-2">
-              <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{row.name} Variants</h4>
-            </div>
-            <div className="max-h-[300px] overflow-y-auto px-2 space-y-1">
-              {row.variants.flatMap(vt => vt.options).map((opt, i) => {
-                const stock = Number(opt.stock) || 0;
-                const variantThreshold = Number(opt.reorder_threshold) || 0;
-                const isLow = stock <= variantThreshold && variantThreshold > 0;
-                return (
-                  <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-primary/5 transition-colors">
-                    <div className="flex flex-col">
-                      <span className="text-[12px] font-bold text-primary">{opt.label}</span>
-                      <span className="text-[10px] text-primary/50 font-medium">Qty: {stock} {row.unit_of_measure}</span>
-                    </div>
-                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
-                      isLow ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
-                    }`}>
-                      {isLow ? "Low" : "Good"}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-2 px-4 pt-2 border-t border-primary/5 flex justify-between items-center bg-primary/5 py-2">
-              <span className="text-[10px] font-bold text-primary/40 italic">Threshold: {threshold}</span>
-              <button onClick={() => setVariantPopId(null)} className="text-[10px] font-black text-primary hover:underline">Close</button>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Fixed action dropdown ── */}
-      {openDropdownId && dropdownPos && (() => {
-        const row = products.find((p) => p.product_id === openDropdownId);
-        if (!row) return null;
-        return (
-          <div
-            id="nfb-action-dropdown"
-            style={{ position: "fixed", top: dropdownPos.top, right: dropdownPos.right, zIndex: 9999 }}
-            className="w-[140px] bg-background border border-primary shadow-lg rounded-[4px] py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col text-left"
-          >
-            <button
-              onClick={() => { setEditTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
-            >
-              Edit Product
-            </button>
-            <button
-              onClick={() => { setRestockTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
-            >
-              Restock
-            </button>
-            <button
-              onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
-              className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors"
-            >
-              Delete Product
-            </button>
-          </div>
-        );
-      })()}
 
       {/* Pagination */}
       <div className="w-full flex justify-end items-center gap-3 mt-6">
