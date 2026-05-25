@@ -140,7 +140,17 @@ export default function FnbStorefront() {
           return;
         }
 
-        const tenantData = await getStorefrontTenant(user.id);
+        const { data: allTenants } = await supabase
+          .from("tenants")
+          .select("tenant_id, business_name");
+
+        const currentTenant = allTenants?.find((t: any) => 
+          t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+        );
+
+        if (!currentTenant) throw new Error("Could not find the business.");
+
+        const tenantData = await getStorefrontTenant(user.id, currentTenant.tenant_id);
         if (!tenantData) throw new Error("Could not load store information.");
 
         const [cats, prods, favs, sett, sf] = await Promise.all([

@@ -7,15 +7,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   businessName: string;
+  sfConfig?: any;
 }
 
 const easeOutQuint: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
-// Shared input className — identical to the login page inputs
-const inputClass =
-  "w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white focus:border-[#385E31] focus:ring-4 focus:ring-[#385E31]/10 transition-all duration-300";
-
-export default function RegistrationForm({ businessName }: Props) {
+export default function RegistrationForm({ businessName, sfConfig }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -63,11 +60,13 @@ export default function RegistrationForm({ businessName }: Props) {
     setError("");
     setLoading(true);
 
-    const { data: tenant, error: tenantErr } = await supabase
+    const { data: allTenants, error: tenantErr } = await supabase
       .from("tenants")
-      .select("tenant_id, is_active, subscription_status")
-      .ilike("business_name", businessName.replace(/-/g, " "))
-      .maybeSingle();
+      .select("tenant_id, business_name, is_active, subscription_status");
+
+    const tenant = allTenants?.find((t: any) => 
+      t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+    );
 
     if (tenantErr || !tenant) {
       setLoading(false);
@@ -83,7 +82,7 @@ export default function RegistrationForm({ businessName }: Props) {
 
     const redirectTo = `${window.location.origin}/${businessName}/customer/complete-profile`;
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -103,6 +102,12 @@ export default function RegistrationForm({ businessName }: Props) {
       return;
     }
 
+    // If email confirmation is disabled in Supabase, session is returned immediately
+    if (data?.session) {
+      router.push(`/${businessName}/customer/complete-profile`);
+      return;
+    }
+
     setSent(true);
   };
 
@@ -119,16 +124,20 @@ export default function RegistrationForm({ businessName }: Props) {
           initial={{ scale: 0, rotate: -15 }}
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", bounce: 0.5, delay: 0.1 }}
-          className="w-20 h-20 rounded-full bg-[#385E31] flex items-center justify-center shadow-[0_8px_20px_rgba(56,94,49,0.3)] mb-2"
+          className="w-20 h-20 rounded-full flex items-center justify-center mb-2"
+          style={{
+            backgroundColor: sfConfig?.color_primary ?? '#385E31',
+            boxShadow: `0 8px 20px ${sfConfig?.color_primary ?? '#385E31'}4d`,
+          }}
         >
-          <svg className="w-10 h-10 text-[#F7B71D]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <svg className="w-10 h-10" style={{ color: sfConfig?.color_accent ?? '#F7B71D' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
         </motion.div>
         <h2 className="font-['Fredoka'] font-bold text-[28px] text-gray-900">Check Your Email!</h2>
         <p className="font-['Fredoka'] text-[15px] text-gray-500 leading-relaxed max-w-[280px]">
           We sent a confirmation link to{" "}
-          <span className="font-semibold text-[#385E31]">{email}</span>
+          <span className="font-semibold" style={{ color: sfConfig?.color_primary ?? '#385E31' }}>{email}</span>
         </p>
         <div className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4">
           <p className="font-['Fredoka'] text-[13px] text-gray-500 leading-relaxed">
@@ -138,7 +147,10 @@ export default function RegistrationForm({ businessName }: Props) {
         <button
           type="button"
           onClick={() => router.push(`/${businessName}/login`)}
-          className="mt-2 font-['Fredoka'] text-[14px] text-[#385E31] font-bold hover:text-[#F7B71D] transition-colors duration-300"
+          className="mt-2 font-['Fredoka'] text-[14px] font-bold transition-colors duration-300"
+          style={{ color: sfConfig?.color_primary ?? '#385E31' }}
+          onMouseEnter={e => (e.currentTarget.style.color = sfConfig?.color_accent ?? '#F7B71D')}
+          onMouseLeave={e => (e.currentTarget.style.color = sfConfig?.color_primary ?? '#385E31')}
         >
           Back to Sign In
         </button>
@@ -181,7 +193,9 @@ export default function RegistrationForm({ businessName }: Props) {
           value={email}
           onChange={(e) => { setEmail(e.target.value); setError(""); }}
           required
-          className={inputClass}
+          className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+          onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+          onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
         />
       </div>
 
@@ -197,7 +211,9 @@ export default function RegistrationForm({ businessName }: Props) {
             value={password}
             onChange={(e) => { setPassword(e.target.value); setError(""); }}
             required
-            className={`${inputClass} pr-12`}
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
           />
           <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
         </div>
@@ -244,11 +260,24 @@ export default function RegistrationForm({ businessName }: Props) {
             value={confirmPassword}
             onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
             required
-            className={`${inputClass} pr-12 ${
+            className={`w-full bg-gray-50 border text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white transition-all duration-300 ${
               confirmPassword && password !== confirmPassword
-                ? "border-red-300 focus:border-red-400 focus:ring-red-500/10"
-                : ""
+                ? "border-red-300 focus:border-red-400"
+                : "border-gray-200"
             }`}
+            onFocus={e => {
+              if (confirmPassword && password !== confirmPassword) {
+                e.currentTarget.style.borderColor = '#f87171';
+                e.currentTarget.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.1)';
+              } else {
+                e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31';
+                e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`;
+              }
+            }}
+            onBlur={e => {
+              e.currentTarget.style.borderColor = '';
+              e.currentTarget.style.boxShadow = '';
+            }}
           />
           <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
         </div>
@@ -265,7 +294,14 @@ export default function RegistrationForm({ businessName }: Props) {
           whileHover={{ scale: loading ? 1 : 1.015 }}
           whileTap={{ scale: loading ? 1 : 0.98 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full bg-[#385E31] text-[#FFFCEB] font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl hover:bg-[#2A4725] shadow-[0_8px_20px_rgba(56,94,49,0.3)] disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-300 overflow-hidden"
+          className="relative w-full font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-300 overflow-hidden"
+          style={{
+            backgroundColor: sfConfig?.color_primary ?? '#385E31',
+            color: sfConfig?.color_sidebar_text ?? '#FFFCEB',
+            boxShadow: `0 8px 20px ${sfConfig?.color_primary ?? '#385E31'}4d`,
+          }}
+          onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_secondary ?? '#2A4725'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_primary ?? '#385E31'; }}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-2">
@@ -288,7 +324,10 @@ export default function RegistrationForm({ businessName }: Props) {
         <button
           type="button"
           onClick={() => router.push(`/${businessName}/login`)}
-          className="text-[#385E31] font-bold hover:text-[#F7B71D] transition-colors duration-300"
+          className="font-bold transition-colors duration-300"
+          style={{ color: sfConfig?.color_primary ?? '#385E31' }}
+          onMouseEnter={e => (e.currentTarget.style.color = sfConfig?.color_accent ?? '#F7B71D')}
+          onMouseLeave={e => (e.currentTarget.style.color = sfConfig?.color_primary ?? '#385E31')}
         >
           Sign in here
         </button>

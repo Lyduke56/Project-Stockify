@@ -102,12 +102,12 @@ export default function BusinessLoginPage() {
   useEffect(() => {
     const loadConfig = async () => {
       if (!businessName) return;
-      const { data: tenant } = await supabase
+      const { data: allTenants } = await supabase
         .from("tenants")
-        .select("tenant_id")
-        .ilike("business_name", businessName.replace(/-/g, " "))
-        .single();
-
+        .select("tenant_id, business_name");
+      const tenant = allTenants?.find((t: any) => 
+        t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+      );
       if (tenant?.tenant_id) {
         const cfg = await fetchStorefrontConfig(tenant.tenant_id);
         setSfConfig(cfg);
@@ -145,49 +145,67 @@ export default function BusinessLoginPage() {
       }
 
       if (data?.user) {
-        const userRole = await getUserData(data.user.id);
+        const { data: allTenants } = await supabase
+          .from("tenants")
+          .select("tenant_id, business_name, business_type, is_active, subscription_status");
 
-        if (userRole === "Superadmin") {
+        const tenant = allTenants?.find((t: any) => 
+          t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+        );
+
+        if (!tenant) {
+          await supabase.auth.signOut();
+          setLoading(false);
+          setError("Business not found. Please check the URL.");
+          return;
+        }
+
+        if (!tenant.is_active || tenant.subscription_status === "Suspended") {
+          await supabase.auth.signOut();
+          setLoading(false);
+          setError("This store is currently unavailable.");
+          return;
+        }
+
+        // Check if the user is a Superadmin (global check)
+        const { data: globalProfile } = await supabase
+          .from("users")
+          .select("role")
+          .eq("user_id", data.user.id)
+          .eq("role", "Superadmin")
+          .limit(1)
+          .maybeSingle();
+
+        if (globalProfile?.role === "Superadmin") {
           await supabase.auth.signOut();
           setLoading(false);
           setError("Superadmin accounts must use the admin portal.");
           return;
         }
 
-        if (userRole === null) {
+        // Fetch user profile specifically for this tenant
+        const { data: userProfile } = await supabase
+          .from("users")
+          .select("role, is_active")
+          .eq("user_id", data.user.id)
+          .eq("tenant_id", tenant.tenant_id)
+          .maybeSingle();
+
+        if (userProfile === null) {
           setLoading(false);
           router.push(`/${businessName}/customer/complete-profile`);
           return;
         }
 
-        const { data: userData } = await supabase
-          .from("users")
-          .select("is_active")
-          .eq("user_id", data.user.id)
-          .single();
-
-        if (!userData?.is_active) {
+        if (!userProfile.is_active) {
           await supabase.auth.signOut();
           setLoading(false);
           router.push("/auth/account/waiting-approved");
           return;
         }
 
-        const tenantData = await getBusinessNameByUserId(data.user.id);
-        const shopName = tenantData?.business_name;
-        const businessType = tenantData?.business_type;
-
-        const normalizedShop = shopName?.toLowerCase().replace(/\s+/g, "-").trim();
-        const normalizedParam = businessName?.toLowerCase().trim();
-
-        if (!shopName || normalizedShop !== normalizedParam) {
-          await supabase.auth.signOut();
-          setLoading(false);
-          setError(`Access denied. Shop: "${shopName}", URL: "${businessName}"`);
-          return;
-        }
-
         setLoading(false);
+        const userRole = userProfile.role;
 
         switch (userRole) {
           case "Administrator":
@@ -199,7 +217,7 @@ export default function BusinessLoginPage() {
             break;
           case "Customer": {
             const typeSlug =
-              businessType === "Food & Beverage"
+              tenant.business_type === "Food & Beverage"
                 ? "food-and-beverage"
                 : "non-food-and-beverage";
             router.push(`/${businessName}/customer/${typeSlug}/storefront`);

@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 interface Props {
   user: User;
   businessName: string;
+  sfConfig?: any;
 }
 
 type Gender = "Male" | "Female" | "Prefer not to say" | "";
@@ -58,9 +59,11 @@ const CITIZENSHIP_OPTIONS = [
 function CitizenshipDropdown({
   value,
   onChange,
+  sfConfig,
 }: {
   value: string;
   onChange: (val: string) => void;
+  sfConfig?: any;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -93,7 +96,9 @@ function CitizenshipDropdown({
       <button
         type="button"
         onClick={() => { setOpen((o) => !o); setSearch(""); }}
-        className="w-full bg-[#FFD980]/60 text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30 flex items-center justify-between gap-2"
+        className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[14px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300 flex items-center justify-between gap-2"
+        onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+        onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
       >
         <span className="flex items-center gap-2 truncate">
           {selected ? (
@@ -102,11 +107,12 @@ function CitizenshipDropdown({
               <span>{selected.label}</span>
             </>
           ) : (
-            <span className="text-[#A88D40]">Select citizenship...</span>
+            <span className="text-gray-400">Select citizenship...</span>
           )}
         </span>
         <svg
-          className={`w-4 h-4 shrink-0 text-[#385E31] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          style={{ color: sfConfig?.color_primary ?? '#385E31' }}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -123,13 +129,14 @@ function CitizenshipDropdown({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-1.5 w-full bg-[#FFFCEB] border border-[#F7B71D]/40 rounded-2xl shadow-xl overflow-hidden"
+            className="absolute z-50 mt-1.5 w-full bg-white/95 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-xl overflow-hidden"
           >
             {/* Search */}
-            <div className="p-2.5 border-b border-[#F7B71D]/20">
+            <div className="p-2.5 border-b border-gray-100">
               <div className="relative">
                 <svg
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#385E31]/50"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+                  style={{ color: `${sfConfig?.color_primary ?? '#385E31'}80` }}
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
@@ -140,7 +147,9 @@ function CitizenshipDropdown({
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-[#FFD980]/60 text-[#3A3A3A] font-['Fredoka'] text-[13px] pl-8 pr-3 py-2 rounded-xl outline-none focus:ring-2 focus:ring-[#385E31] border border-[#F7B71D]/30 placeholder-[#A88D40]"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[13px] pl-8 pr-3 py-2 rounded-xl outline-none focus:bg-white transition-all"
+                  onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 3px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
                 />
               </div>
             </div>
@@ -148,7 +157,7 @@ function CitizenshipDropdown({
             {/* Options */}
             <ul className="max-h-44 overflow-y-auto py-1">
               {filtered.length === 0 ? (
-                <li className="px-4 py-2 text-[13px] font-['Fredoka'] text-[#A88D40] text-center">
+                <li className="px-4 py-2 text-[13px] font-['Fredoka'] text-gray-400 text-center">
                   No results
                 </li>
               ) : (
@@ -157,16 +166,15 @@ function CitizenshipDropdown({
                     <button
                       type="button"
                       onClick={() => { onChange(c.label); setOpen(false); setSearch(""); }}
-                      className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left font-['Fredoka'] text-[14px] transition-colors hover:bg-[#FFD980]/50 ${
-                        value === c.label
-                          ? "bg-[#FFD980]/70 text-[#385E31] font-semibold"
-                          : "text-[#3A3A3A]"
-                      }`}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left font-['Fredoka'] text-[14px] transition-colors duration-200"
+                      onMouseEnter={e => { if (value !== c.label) e.currentTarget.style.backgroundColor = `${sfConfig?.color_primary ?? '#385E31'}0d`; }}
+                      onMouseLeave={e => { if (value !== c.label) e.currentTarget.style.backgroundColor = ''; }}
+                      style={value === c.label ? { backgroundColor: `${sfConfig?.color_primary ?? '#385E31'}1a`, color: sfConfig?.color_primary ?? '#385E31', fontWeight: 600 } : { color: '#3A3A3A' }}
                     >
                       <span className="text-base leading-none">{c.flag}</span>
                       <span>{c.label}</span>
                       {value === c.label && (
-                        <svg className="ml-auto w-3.5 h-3.5 text-[#385E31]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
+                        <svg className="ml-auto w-3.5 h-3.5" style={{ color: sfConfig?.color_primary ?? '#385E31' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       )}
@@ -182,7 +190,7 @@ function CitizenshipDropdown({
   );
 }
 
-export default function CompleteProfileForm({ user, businessName }: Props) {
+export default function CompleteProfileForm({ user, businessName, sfConfig }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -212,11 +220,13 @@ export default function CompleteProfileForm({ user, businessName }: Props) {
     setError("");
     setLoading(true);
 
-    const { data: tenant, error: tenantErr } = await supabase
+    const { data: allTenants, error: tenantErr } = await supabase
       .from("tenants")
-      .select("tenant_id, business_type")
-      .ilike("business_name", businessName.replace(/-/g, " "))
-      .maybeSingle();
+      .select("tenant_id, business_name, business_type");
+
+    const tenant = allTenants?.find((t: any) => 
+      t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+    );
 
     if (tenantErr || !tenant) {
       setLoading(false);
@@ -279,14 +289,14 @@ export default function CompleteProfileForm({ user, businessName }: Props) {
 
       {/* Linked email — read-only */}
       <div className="flex flex-col gap-1">
-        <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+        <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
           Email (confirmed)
         </label>
-        <div className="flex items-center gap-2 bg-[#E8EDDE] px-5 py-3 rounded-2xl border border-[#C8D5B9]">
-          <svg className="w-4 h-4 text-[#385E31] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-center gap-2 bg-gray-50 px-5 py-3.5 rounded-2xl border border-gray-200">
+          <svg className="w-4 h-4 shrink-0" style={{ color: sfConfig?.color_primary ?? '#385E31' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
-          <span className="font-['Fredoka'] text-[14px] text-[#385E31] font-semibold truncate">
+          <span className="font-['Fredoka'] text-[14px] font-semibold truncate" style={{ color: sfConfig?.color_primary ?? '#385E31' }}>
             {user.email}
           </span>
         </div>
@@ -295,23 +305,27 @@ export default function CompleteProfileForm({ user, businessName }: Props) {
       {/* Name row */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
             First Name <span className="text-red-400">*</span>
           </label>
           <input
             name="firstName" type="text" placeholder="Juan"
             value={form.firstName} onChange={handleChange}
-            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
             Last Name <span className="text-red-400">*</span>
           </label>
           <input
             name="lastName" type="text" placeholder="Dela Cruz"
             value={form.lastName} onChange={handleChange}
-            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
           />
         </div>
       </div>
@@ -319,23 +333,27 @@ export default function CompleteProfileForm({ user, businessName }: Props) {
       {/* Middle name + suffix */}
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-2 flex flex-col gap-1">
-          <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
             Middle Name
           </label>
           <input
             name="middleName" type="text" placeholder="Santos"
             value={form.middleName} onChange={handleChange}
-            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
             Suffix
           </label>
           <input
             name="suffix" type="text" placeholder="Jr."
             value={form.suffix} onChange={handleChange}
-            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
           />
         </div>
       </div>
@@ -343,51 +361,65 @@ export default function CompleteProfileForm({ user, businessName }: Props) {
       {/* Contact + Gender */}
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
             Contact No. <span className="text-red-400">*</span>
           </label>
           <input
             name="contactNumber" type="tel" placeholder="+63 9XX XXX XXXX"
             value={form.contactNumber} onChange={handleChange}
-            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
+            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
             Gender
           </label>
-          <select
-            name="gender" value={form.gender} onChange={handleChange}
-            className="w-full bg-[#FFD980]/60 text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30 appearance-none cursor-pointer"
-          >
-            <option value="">Select...</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Prefer not to say">Prefer not to say</option>
-          </select>
+          <div className="relative">
+            <select
+              name="gender" value={form.gender} onChange={handleChange}
+              className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300 appearance-none cursor-pointer"
+              onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+              onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
+            >
+              <option value="">Select...</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Prefer not to say">Prefer not to say</option>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Address */}
       <div className="flex flex-col gap-1">
-        <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+        <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
           Address <span className="text-red-400">*</span>
         </label>
         <input
           name="address" type="text" placeholder="Cebu City, Cebu, Philippines"
           value={form.address} onChange={handleChange}
-          className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[14px] px-4 py-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
+          className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
+          onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
+          onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
         />
       </div>
 
       {/* Citizenship — searchable dropdown */}
       <div className="flex flex-col gap-1">
-        <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+        <label className="font-['Fredoka'] text-[12px] text-gray-500 pl-2 font-semibold">
           Citizenship
         </label>
         <CitizenshipDropdown
           value={form.citizenship}
           onChange={(val) => { setForm((prev) => ({ ...prev, citizenship: val })); setError(""); }}
+          sfConfig={sfConfig}
         />
       </div>
 
@@ -395,9 +427,16 @@ export default function CompleteProfileForm({ user, businessName }: Props) {
       <motion.button
         type="submit"
         disabled={loading}
-        whileHover={{ scale: loading ? 1 : 1.02 }}
-        whileTap={{ scale: loading ? 1 : 0.97 }}
-        className="mt-2 w-full bg-[#385E31] text-[#F7B71D] font-['Fredoka'] font-bold tracking-wide text-[19px] py-3.5 rounded-2xl hover:bg-[#2A4725] shadow-md disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-200"
+        whileHover={{ scale: loading ? 1 : 1.015 }}
+        whileTap={{ scale: loading ? 1 : 0.98 }}
+        className="mt-2 w-full font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-300"
+        style={{
+          backgroundColor: sfConfig?.color_primary ?? '#385E31',
+          color: sfConfig?.color_sidebar_text ?? '#FFFCEB',
+          boxShadow: `0 8px 20px ${sfConfig?.color_primary ?? '#385E31'}4d`,
+        }}
+        onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_secondary ?? '#2A4725'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_primary ?? '#385E31'; }}
       >
         {loading ? (
           <span className="flex items-center justify-center gap-2">

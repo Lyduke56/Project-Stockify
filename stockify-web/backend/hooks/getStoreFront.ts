@@ -64,16 +64,22 @@ export interface NfnbProduct {
 // ─── Tenant ────────────────────────────────────────────────────────────────────
 
 export const getStorefrontTenant = async (
-  userId: string
+  userId: string,
+  tenantId?: string
 ): Promise<StorefrontTenant | null> => {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("users")
     .select(
       "tenant_id, tenants(tenant_id, business_name, business_type, logo_url)"
     )
-    .eq("user_id", userId)
-    .single();
+    .eq("user_id", userId);
+
+  if (tenantId) {
+    query = query.eq("tenant_id", tenantId);
+  }
+
+  const { data, error } = await query.limit(1).maybeSingle();
 
   if (error || !data) return null;
 
