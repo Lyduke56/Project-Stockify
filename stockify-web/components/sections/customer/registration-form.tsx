@@ -10,9 +10,7 @@ interface Props {
   sfConfig?: any;
 }
 
-const easeOutQuint: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
-export default function RegistrationForm({ businessName, sfConfig }: Props) {
+export default function RegistrationForm({ businessName }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -50,7 +48,7 @@ export default function RegistrationForm({ businessName, sfConfig }: Props) {
   if (!businessName) {
     setError("Invalid business URL. Please check the link.");
     setLoading(false);
-    return null;
+    return;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +58,8 @@ export default function RegistrationForm({ businessName, sfConfig }: Props) {
     setError("");
     setLoading(true);
 
-    const { data: allTenants, error: tenantErr } = await supabase
+    // Verify tenant exists before creating auth user
+    const { data: tenant, error: tenantErr } = await supabase
       .from("tenants")
       .select("tenant_id, business_name, is_active, subscription_status");
 
@@ -80,6 +79,7 @@ export default function RegistrationForm({ businessName, sfConfig }: Props) {
       return;
     }
 
+    // Sign up — email confirmation will redirect to complete-profile
     const redirectTo = `${window.location.origin}/${businessName}/customer/complete-profile`;
 
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -111,98 +111,73 @@ export default function RegistrationForm({ businessName, sfConfig }: Props) {
     setSent(true);
   };
 
-  // ── Success state ─────────────────────────────────────────────────────────
+  // ── Success / email-sent state ──────────────────────────────────────────────
   if (sent) {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, ease: easeOutQuint }}
-        className="flex flex-col items-center text-center gap-4 py-4"
-      >
-        <motion.div
-          initial={{ scale: 0, rotate: -15 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", bounce: 0.5, delay: 0.1 }}
-          className="w-20 h-20 rounded-full flex items-center justify-center mb-2"
-          style={{
-            backgroundColor: sfConfig?.color_primary ?? '#385E31',
-            boxShadow: `0 8px 20px ${sfConfig?.color_primary ?? '#385E31'}4d`,
-          }}
-        >
-          <svg className="w-10 h-10" style={{ color: sfConfig?.color_accent ?? '#F7B71D' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <div className="flex flex-col items-center text-center gap-4">
+        <div className="w-20 h-20 rounded-full bg-[#385E31] flex items-center justify-center shadow-lg mb-2">
+          <svg className="w-9 h-9 text-[#F7B71D]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-        </motion.div>
-        <h2 className="font-['Fredoka'] font-bold text-[28px] text-gray-900">Check Your Email!</h2>
-        <p className="font-['Fredoka'] text-[15px] text-gray-500 leading-relaxed max-w-[280px]">
+        </div>
+        <h2 className="font-['Fredoka'] font-bold text-[30px] text-[#385E31]">Check Your Email!</h2>
+        <p className="font-['Fredoka'] text-[14px] text-[#6B7C65] leading-relaxed max-w-xs">
           We sent a confirmation link to{" "}
-          <span className="font-semibold" style={{ color: sfConfig?.color_primary ?? '#385E31' }}>{email}</span>
+          <span className="font-semibold text-[#385E31]">{email}</span>.
+          Click it to continue setting up your account.
         </p>
-        <div className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4">
-          <p className="font-['Fredoka'] text-[13px] text-gray-500 leading-relaxed">
-            <span className="mr-1">💡</span> Didn't get it? Check your spam folder. The link expires in 24 hours.
+        <div className="mt-2 w-full bg-[#FFD980]/40 border border-[#F7B71D]/40 rounded-2xl px-5 py-3.5">
+          <p className="font-['Fredoka'] text-[12px] text-[#8B6B2B]">
+            💡 Didn't get it? Check your spam folder. The link expires in 24 hours.
           </p>
         </div>
         <button
           type="button"
           onClick={() => router.push(`/${businessName}/login`)}
-          className="mt-2 font-['Fredoka'] text-[14px] font-bold transition-colors duration-300"
-          style={{ color: sfConfig?.color_primary ?? '#385E31' }}
-          onMouseEnter={e => (e.currentTarget.style.color = sfConfig?.color_accent ?? '#F7B71D')}
-          onMouseLeave={e => (e.currentTarget.style.color = sfConfig?.color_primary ?? '#385E31')}
+          className="mt-4 font-['Fredoka'] text-[13px] text-[#385E31] hover:underline font-semibold"
         >
           Back to Sign In
         </button>
-      </motion.div>
+      </div>
     );
   }
 
-  // ── Registration form ─────────────────────────────────────────────────────
+  // ── Registration form ───────────────────────────────────────────────────────
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-
-      {/* Error message — same style as login page */}
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      {/* Error */}
       <AnimatePresence>
         {error && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, y: -6 }}
-            animate={{ opacity: 1, height: "auto", y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -6 }}
-            transition={{ duration: 0.35, ease: easeOutQuint }}
-            className="overflow-hidden"
+          <motion.p
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="font-['Fredoka'] text-[13px] text-red-600 bg-red-50 border border-red-200 px-4 py-2.5 rounded-2xl text-center"
           >
-            <div className="font-['Fredoka'] text-[14px] font-medium text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-2xl flex items-start gap-2">
-              <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>{error}</span>
-            </div>
-          </motion.div>
+            {error}
+          </motion.p>
         )}
       </AnimatePresence>
 
       {/* Email */}
-      <div className="flex flex-col gap-1.5">
-        <label className="font-['Fredoka'] text-[14px] text-gray-700 pl-1 font-semibold">
-          Email Address
+      <div className="flex flex-col gap-1">
+        <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          Email Address <span className="text-red-400">*</span>
         </label>
         <input
           type="email"
-          placeholder="name@example.com"
+          placeholder="juan@email.com"
           value={email}
           onChange={(e) => { setEmail(e.target.value); setError(""); }}
           required
-          className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 rounded-2xl outline-none focus:bg-white transition-all duration-300"
-          onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
-          onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
+          className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-5 py-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
         />
       </div>
 
       {/* Password */}
-      <div className="flex flex-col gap-1.5">
-        <label className="font-['Fredoka'] text-[14px] text-gray-700 pl-1 font-semibold">
-          Password
+      <div className="flex flex-col gap-1">
+        <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          Password <span className="text-red-400">*</span>
         </label>
         <div className="relative">
           <input
@@ -211,47 +186,33 @@ export default function RegistrationForm({ businessName, sfConfig }: Props) {
             value={password}
             onChange={(e) => { setPassword(e.target.value); setError(""); }}
             required
-            className="w-full bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white transition-all duration-300"
-            onFocus={e => { e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31'; e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`; }}
-            onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = ''; }}
+            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-5 py-3.5 pr-12 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
           />
           <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
         </div>
-
         {/* Strength bar */}
-        <AnimatePresence>
-          {password && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: easeOutQuint }}
-              className="flex items-center gap-2.5 px-1 mt-0.5"
-            >
-              <div className="flex gap-1.5 flex-1">
-                {[1, 2, 3, 4].map((n) => (
-                  <div
-                    key={n}
-                    className="h-1.5 flex-1 rounded-full transition-all duration-300"
-                    style={{ background: passwordStrength >= n ? strengthColor : "#e5e7eb" }}
-                  />
-                ))}
-              </div>
-              <span
-                className="font-['Fredoka'] text-[12px] font-bold w-12 text-right"
-                style={{ color: strengthColor }}
-              >
-                {strengthLabel}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {password && (
+          <div className="flex items-center gap-2 pl-1 mt-0.5">
+            <div className="flex gap-1 flex-1">
+              {[1, 2, 3, 4].map((n) => (
+                <div
+                  key={n}
+                  className="h-1 flex-1 rounded-full transition-all duration-300"
+                  style={{ background: passwordStrength >= n ? strengthColor : "#E8EDDE" }}
+                />
+              ))}
+            </div>
+            <span className="font-['Fredoka'] text-[11px] font-semibold" style={{ color: strengthColor }}>
+              {strengthLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Confirm Password */}
-      <div className="flex flex-col gap-1.5">
-        <label className="font-['Fredoka'] text-[14px] text-gray-700 pl-1 font-semibold">
-          Confirm Password
+      <div className="flex flex-col gap-1">
+        <label className="font-['Fredoka'] text-[12px] text-[#6B7C65] pl-2 font-semibold">
+          Confirm Password <span className="text-red-400">*</span>
         </label>
         <div className="relative">
           <input
@@ -260,89 +221,61 @@ export default function RegistrationForm({ businessName, sfConfig }: Props) {
             value={confirmPassword}
             onChange={(e) => { setConfirmPassword(e.target.value); setError(""); }}
             required
-            className={`w-full bg-gray-50 border text-gray-900 placeholder-gray-400 font-['Fredoka'] text-[15px] px-4 py-3.5 pr-12 rounded-2xl outline-none focus:bg-white transition-all duration-300 ${
-              confirmPassword && password !== confirmPassword
-                ? "border-red-300 focus:border-red-400"
-                : "border-gray-200"
-            }`}
-            onFocus={e => {
-              if (confirmPassword && password !== confirmPassword) {
-                e.currentTarget.style.borderColor = '#f87171';
-                e.currentTarget.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.1)';
-              } else {
-                e.currentTarget.style.borderColor = sfConfig?.color_primary ?? '#385E31';
-                e.currentTarget.style.boxShadow = `0 0 0 4px ${sfConfig?.color_primary ?? '#385E31'}1a`;
-              }
-            }}
-            onBlur={e => {
-              e.currentTarget.style.borderColor = '';
-              e.currentTarget.style.boxShadow = '';
-            }}
+            className="w-full bg-[#FFD980]/60 placeholder-[#A88D40] text-[#3A3A3A] font-['Fredoka'] text-[15px] px-5 py-3.5 pr-12 rounded-2xl outline-none focus:ring-2 focus:ring-[#385E31] focus:bg-[#FFD980]/80 transition-all border border-[#F7B71D]/30"
           />
           <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
         </div>
         {confirmPassword && password !== confirmPassword && (
-          <p className="font-['Fredoka'] text-[12px] text-red-500 pl-1">Passwords do not match</p>
+          <p className="font-['Fredoka'] text-[11px] text-red-500 pl-2">Passwords don't match</p>
+        )}
+        {confirmPassword && password === confirmPassword && (
+          <p className="font-['Fredoka'] text-[11px] text-green-600 pl-2">✓ Passwords match</p>
         )}
       </div>
 
-      {/* Submit button — identical to login's Sign In button */}
-      <div className="pt-2">
-        <motion.button
-          type="submit"
-          disabled={loading}
-          whileHover={{ scale: loading ? 1 : 1.015 }}
-          whileTap={{ scale: loading ? 1 : 0.98 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full font-['Fredoka'] font-bold tracking-wide text-[17px] py-4 rounded-2xl disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-300 overflow-hidden"
-          style={{
-            backgroundColor: sfConfig?.color_primary ?? '#385E31',
-            color: sfConfig?.color_sidebar_text ?? '#FFFCEB',
-            boxShadow: `0 8px 20px ${sfConfig?.color_primary ?? '#385E31'}4d`,
-          }}
-          onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_secondary ?? '#2A4725'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = sfConfig?.color_primary ?? '#385E31'; }}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Creating Account...
-            </span>
-          ) : (
-            "Create Account"
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
-        </motion.button>
-      </div>
+      {/* Submit */}
+      <motion.button
+        type="submit"
+        disabled={loading}
+        whileHover={{ scale: loading ? 1 : 1.02 }}
+        whileTap={{ scale: loading ? 1 : 0.97 }}
+        className="mt-2 w-full bg-[#385E31] text-[#F7B71D] font-['Fredoka'] font-bold tracking-wide text-[19px] py-3.5 rounded-2xl hover:bg-[#2A4725] shadow-md disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-200"
+      >
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            SENDING...
+          </span>
+        ) : (
+          "SEND CONFIRMATION EMAIL"
+        )}
+      </motion.button>
 
-      {/* Sign in link — same style as login's register link */}
-      <p className="font-['Fredoka'] text-[14px] text-gray-500 text-center mt-1">
+      {/* Sign in link */}
+      <p className="font-['Fredoka'] text-[13px] text-[#8C9B85] text-center mt-1">
         Already have an account?{" "}
         <button
           type="button"
           onClick={() => router.push(`/${businessName}/login`)}
-          className="font-bold transition-colors duration-300"
-          style={{ color: sfConfig?.color_primary ?? '#385E31' }}
-          onMouseEnter={e => (e.currentTarget.style.color = sfConfig?.color_accent ?? '#F7B71D')}
-          onMouseLeave={e => (e.currentTarget.style.color = sfConfig?.color_primary ?? '#385E31')}
+          className="text-[#385E31] font-semibold hover:underline"
         >
-          Sign in here
+          Sign in
         </button>
       </p>
     </form>
   );
 }
 
-// ── Eye toggle — same icon set as login page ──────────────────────────────────
+// ── Eye toggle icon ─────────────────────────────────────────────────────────
 function EyeToggle({ show, onToggle }: { show: boolean; onToggle: () => void }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8B6B2B] hover:text-[#385E31] transition-colors focus:outline-none"
     >
       {show ? (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
