@@ -59,6 +59,7 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
   const [qty, setQty]   = useState(1);
   const [added, setAdded] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   // One selected option per variant type
   const [selections, setSelections] = useState<Record<string, NfnbVariantOption | null>>({});
@@ -68,6 +69,7 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
     setQty(1);
     setAdded(false);
     setImgLoaded(false);
+    setImgError(false);
 
     // Default-select the first in-stock option for each variant type
     const init: Record<string, NfnbVariantOption | null> = {};
@@ -234,11 +236,12 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                   background: C.secondary,
                   boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px ${C.border}`,
                 }}>
-                  {product.image_url ? (
+                  {product.image_url && !imgError ? (
                     <motion.img
                       src={product.image_url.split("?")[0]}
                       alt={product.name}
                       onLoad={() => setImgLoaded(true)}
+                      onError={() => setImgError(true)}
                       initial={{ opacity: 0, scale: 1.04 }}
                       animate={{ opacity: imgLoaded ? 1 : 0, scale: 1 }}
                       transition={{ duration: 0.45, ease: "easeOut" }}

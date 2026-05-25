@@ -20,6 +20,7 @@ import { useCart } from "@/lib/customer/cart-context";
 import { createClient } from "@/lib/supabase/client";
 import { confirmOrderReceipt, reportOrderUnreceived } from "@/lib/employee/order-actions";
 import { AlertCircle, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { getStorefrontTenant } from "@/backend/hooks/getStoreFront";
 
 interface Notification {
   id: string;
@@ -64,16 +65,40 @@ export function CustomerHeader({
   const supabase = createClient();
   const { cartCount } = useCart();
 
-  // Determine the current business category path (fnb or nfnb)
-  const isNfnb = propIsNfnb !== undefined ? propIsNfnb : pathname.includes("non-food-and-beverage");
-  const categoryPath = isNfnb ? "non-food-and-beverage" : "food-and-beverage";
-
+  const [tenant, setTenant] = useState<any>(null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [reportingOrder, setReportingOrder] = useState<{ id: string, order_id: string } | null>(null);
+
+  // Load tenant info to determine business_type for accurate storefront routing
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const tenantData = await getStorefrontTenant(user.id);
+        if (tenantData) {
+          setTenant(tenantData);
+        }
+      } catch (err) {
+        console.error("Failed to load tenant in header:", err);
+      }
+    };
+    loadTenant();
+  }, []);
+
+  // Determine the current business category path (fnb or nfnb)
+  const isNfnb = (() => {
+    if (tenant?.business_type) {
+      return tenant.business_type === "non-food-and-beverage";
+    }
+    if (propIsNfnb !== undefined) return propIsNfnb;
+    return pathname.includes("non-food-and-beverage");
+  })();
+  const categoryPath = isNfnb ? "non-food-and-beverage" : "food-and-beverage";
 
   const c = colors || {
     primary: "#385E31",

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Plus, Heart, Package, Layers } from "lucide-react";
 
@@ -51,6 +51,7 @@ export const NfnbProductCard = ({
   onToggleFavorite,
   colors
 }: NfnbProductCardProps) => {
+  const [imgError, setImgError] = useState(false);
   const c = {
     primary:   colors?.primary   || "#385E31",
     secondary: colors?.secondary || "#2A4725",
@@ -123,23 +124,21 @@ export const NfnbProductCard = ({
           />
         </button>
 
-        {product.image_url ? (
+        {product.image_url && !imgError ? (
           <img
             src={product.image_url.split("?")[0]}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-              (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('style');
-            }}
+            onError={() => setImgError(true)}
           />
-        ) : null}
-        <div 
-          className="w-full h-full flex items-center justify-center text-[10px] tracking-widest uppercase font-bold"
-          style={product.image_url ? { display: 'none', color: `${c.textLight}40` } : { color: `${c.textLight}40` }}
-        >
-          No Image
-        </div>
+        ) : (
+          <div 
+            className="w-full h-full flex items-center justify-center text-[10px] tracking-widest uppercase font-bold"
+            style={{ color: `${c.textLight}40` }}
+          >
+            No Image
+          </div>
+        )}
         
         {/* Out of Stock Overlay */}
         {!inStock && (
