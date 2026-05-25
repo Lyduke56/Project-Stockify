@@ -93,7 +93,8 @@ export function CustomerHeader({
   // Determine the current business category path (fnb or nfnb)
   const isNfnb = (() => {
     if (tenant?.business_type) {
-      return tenant.business_type === "non-food-and-beverage";
+      const typeLower = tenant.business_type.toLowerCase();
+      return typeLower.includes("non-food") || typeLower.includes("nfnb");
     }
     if (propIsNfnb !== undefined) return propIsNfnb;
     return pathname.includes("non-food-and-beverage");

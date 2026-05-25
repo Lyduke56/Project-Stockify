@@ -126,7 +126,7 @@ export const NfnbProductCard = ({
 
         {product.image_url && !imgError ? (
           <img
-            src={product.image_url.split("?")[0]}
+            src={product.image_url}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
             onError={() => setImgError(true)}
@@ -172,6 +172,13 @@ export const NfnbProductCard = ({
           >
             {product.name}
           </h3>
+
+          <p 
+            className="text-[12px] font-medium leading-relaxed mt-1 line-clamp-2 min-h-[36px]" 
+            style={{ color: c.textLight, opacity: 0.7 }}
+          >
+            {product.description ?? "No description available."}
+          </p>
           
           <p 
             className="font-black text-[18px] mt-1.5"

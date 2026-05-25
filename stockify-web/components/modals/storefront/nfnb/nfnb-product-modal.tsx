@@ -238,7 +238,7 @@ export const ProductModal = ({ product, isOpen, onClose, tenantId, readOnly = fa
                 }}>
                   {product.image_url && !imgError ? (
                     <motion.img
-                      src={product.image_url.split("?")[0]}
+                      src={product.image_url}
                       alt={product.name}
                       onLoad={() => setImgLoaded(true)}
                       onError={() => setImgError(true)}
