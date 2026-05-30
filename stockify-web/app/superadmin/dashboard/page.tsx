@@ -26,6 +26,7 @@ import AuditLogsSection from "@/components/sections/superadmin/audit-logs";
 import SubscriptionBillingSection from "@/components/sections/superadmin/subscription-billing";
 import TenantManagementSection from "@/components/sections/superadmin/tenant-management";
 import TenantReviewSection from "@/components/sections/superadmin/tenant-review";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 
 // ── Singleton Supabase client ─────────────────────────────────────────────────
@@ -250,6 +251,7 @@ export default function SuperadminDashboard() {
 
   const [auditLogs,    setAuditLogs]  = useState<AuditLog[]>([]);
   const [logsLoading,  setLogsLoading]  = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   // ── Sync URL with State ──
   useEffect(() => {
@@ -317,6 +319,9 @@ export default function SuperadminDashboard() {
         }
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
+      } finally {
+        // ADD THIS BLOCK
+        setStatsLoading(false);
       }
     };
 
@@ -345,6 +350,10 @@ export default function SuperadminDashboard() {
       />
     )
   };
+
+  if (logsLoading || statsLoading) {
+    return <LoadingScreen fullScreen={true} />;
+  }
 
   return (
     <div className="flex h-screen w-full bg-[#FFFCEB] overflow-hidden font-['Inter']">

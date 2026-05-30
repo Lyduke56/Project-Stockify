@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient }   from "@supabase/supabase-js";
 import { motion }         from "framer-motion";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 import BillingPaymentTable, { BillingRow } from "@/components/tables/subscription-billing/billing-payment-table";
 
@@ -109,8 +110,11 @@ export default function SubscriptionBillingSection() {
     return () => { supabaseBrowser.removeChannel(channel); };
   }, [fetchData]);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  if (loading) {
+    return <LoadingScreen fullScreen={false} />;
+  }
 
+  
   return (
     <div className="w-full flex flex-col items-center">
       {/* Page Header */}
@@ -126,42 +130,34 @@ export default function SubscriptionBillingSection() {
         <div className="w-full max-w-[900px] h-1.5 bg-[#F7B71D] rounded-full" />
       </motion.div>
 
-      {/* Stat Cards */}
-      {loading ? (
-        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="bg-[#385E31]/20 rounded-[8px] h-[140px] animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <StatCard
-            title="Total Paid"
-            value={stats ? formatStatValue(stats.total_paid) : "—"}
-            trendText={`Current year (${new Date().getFullYear()})`}
-            svgName="SA-rev-stat"
-            delay={0.15}
-          />
-          <StatCard
-            title="Late Payments"
-            value={stats?.overdue_count ?? 0}
-            trendText={
-              stats?.avg_days_late
-                ? `Avg. ${stats.avg_days_late} days late`
-                : "No overdue accounts"
-            }
-            svgName="SA-late-payments"
-            delay={0.25}
-          />
-          <StatCard
-            title="Missed Payments"
-            value={stats?.missed_count ?? 0}
-            trendText="Currently suspended"
-            svgName="SA-missed-payments"
-            delay={0.35}
-          />
-        </div>
-      )}
+      {/* Stat Cards (Removed the loading skeleton logic) */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <StatCard
+          title="Total Paid"
+          value={stats ? formatStatValue(stats.total_paid) : "—"}
+          trendText={`Current year (${new Date().getFullYear()})`}
+          svgName="SA-rev-stat"
+          delay={0.15}
+        />
+        <StatCard
+          title="Late Payments"
+          value={stats?.overdue_count ?? 0}
+          trendText={
+            stats?.avg_days_late
+              ? `Avg. ${stats.avg_days_late} days late`
+              : "No overdue accounts"
+          }
+          svgName="SA-late-payments"
+          delay={0.25}
+        />
+        <StatCard
+          title="Missed Payments"
+          value={stats?.missed_count ?? 0}
+          trendText="Currently suspended"
+          svgName="SA-missed-payments"
+          delay={0.35}
+        />
+      </div>
 
       {/* Payment Tracker header */}
       <motion.h2
@@ -173,20 +169,14 @@ export default function SubscriptionBillingSection() {
         Payment Tracker
       </motion.h2>
 
-      {/* Table */}
+      {/* Table (Removed the text loading fallback) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 25, delay: 0.45 }}
         className="w-full flex flex-col"
       >
-        {loading ? (
-          <div className="w-full text-center py-16 text-[#385E31] font-bold text-lg">
-            Loading billing data…
-          </div>
-        ) : (
-          <BillingPaymentTable rows={rows} onRefresh={fetchData} />
-        )}
+        <BillingPaymentTable rows={rows} onRefresh={fetchData} />
       </motion.div>
     </div>
   );
