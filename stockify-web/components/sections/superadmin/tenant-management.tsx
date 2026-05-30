@@ -10,6 +10,7 @@ import ActiveTenantsTab from "@/components/sections/superadmin/active-tenants-ta
 import TerminatedTenantsTab from "@/components/sections/superadmin/terminated-tenants-table";
 import SuspendedTenantsTab from "@/components/sections/superadmin/supend-tenant-modal";
 import TrialTenantsTab from "@/components/sections/superadmin/trial-tenants-tab";
+import LoadingScreen from "@/app/loading-screen/loading";
 
 // ── Singleton Supabase client ─────────────────────────────────────────────────
 let supabaseInstance: SupabaseClient | null = null;
@@ -83,6 +84,8 @@ export default function TenantManagementSection({ onReviewTenant }: TenantManage
     terminated: 0,
   });
 
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     const fetchAllStats = async () => {
       try {
@@ -94,16 +97,18 @@ export default function TenantManagementSection({ onReviewTenant }: TenantManage
         ]);
 
         setStats({
-          active:     activeRes.count     || 0,
-          pending:    pendingRes.count    || 0,
-          suspended:  suspendedRes.count  || 0,
+          active:     activeRes.count    || 0,
+          pending:    pendingRes.count   || 0,
+          suspended:  suspendedRes.count || 0,
           terminated: terminatedRes.count || 0,
         });
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
+      } finally {
+        // ── ADD THIS LINE ──
+        setIsLoading(false); 
       }
     };
-
     // Initial fetch
     fetchAllStats();
 
@@ -113,6 +118,10 @@ export default function TenantManagementSection({ onReviewTenant }: TenantManage
     // Cleanup on unmount
     return () => clearInterval(interval);
   }, []);
+
+  if (isLoading) {
+    return <LoadingScreen fullScreen={false} />; 
+  }
 
   return (
     <div className="w-full flex flex-col items-center">

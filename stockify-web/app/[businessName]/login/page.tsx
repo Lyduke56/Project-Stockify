@@ -43,13 +43,9 @@ const SLIDE_DURATION = 5000;
 const easeOutQuint: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 // ─── Animation Variants ──────────────────────────────────────────────────────
-// Swipe-from-right entrance: panel slides in from the right on load.
-// slide in from the right simultaneously. Everything shares the same duration
-// so they land together as one cohesive motion.
 const SWIPE_DURATION = 0.75;
 const SWIPE_EASE: [number, number, number, number] = [0.25, 1, 0.35, 1];
 
-// Login panel: slides in from the right, slight opacity fade for polish
 const containerVariants: Variants = {
   hidden: { opacity: 0, x: 60 },
   show: {
@@ -81,6 +77,7 @@ export default function BusinessLoginPage() {
   // ─── State ───────────────────────────────────────────────────────
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sfConfig, setSfConfig] = useState<any>(null);
+  const [isConfigLoading, setIsConfigLoading] = useState(true); // Added loading state
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -88,8 +85,6 @@ export default function BusinessLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // isFirstSlide: true until after the first RAF, so slide 0 paints
-  // instantly (duration 0) and subsequent slide transitions crossfade.
   const [isFirstSlide, setIsFirstSlide] = useState(true);
 
   const supabase = createClient();
@@ -101,16 +96,25 @@ export default function BusinessLoginPage() {
 
   useEffect(() => {
     const loadConfig = async () => {
-      if (!businessName) return;
-      const { data: allTenants } = await supabase
-        .from("tenants")
-        .select("tenant_id, business_name");
-      const tenant = allTenants?.find((t: any) => 
-        t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
-      );
-      if (tenant?.tenant_id) {
-        const cfg = await fetchStorefrontConfig(tenant.tenant_id);
-        setSfConfig(cfg);
+      try {
+        if (!businessName) return;
+        const { data: allTenants } = await supabase
+          .from("tenants")
+          .select("tenant_id, business_name");
+        
+        const tenant = allTenants?.find((t: any) => 
+          t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
+        );
+        
+        if (tenant?.tenant_id) {
+          const cfg = await fetchStorefrontConfig(tenant.tenant_id);
+          setSfConfig(cfg);
+        }
+      } catch (err) {
+        console.error("Failed to load storefront config:", err);
+      } finally {
+        // ALWAYS turn off loading when done
+        setIsConfigLoading(false);
       }
     };
     loadConfig();
@@ -235,16 +239,16 @@ export default function BusinessLoginPage() {
 
   const slide = SLIDES[currentSlide];
 
+  // ── Show loading screen until colors are fetched ──
+  if (isConfigLoading) {
+    return <LoadingScreen fullScreen={true} />;
+  }
+
   return (
-    // FIX: CSS variables are now set with fallbacks directly, so they are
-    // correct on the very first paint — no layout shift when sfConfig loads.
     <div
       className="relative w-full min-h-screen overflow-hidden flex items-center justify-center md:justify-end md:pr-[5%] lg:pr-[8%]"
       style={
         {
-          // This background color is shown on the very first frame before the
-          // animated slide div has painted. Matching it to the slide gradient's
-          // start color eliminates the white flash entirely.
           backgroundColor: sfConfig?.color_secondary ?? "#2A4725",
           "--color-primary": sfConfig?.color_primary ?? "#385E31",
           "--color-secondary": sfConfig?.color_secondary ?? "#2A4725",
@@ -253,15 +257,6 @@ export default function BusinessLoginPage() {
       }
     >
       {/* ── Animated Slideshow Background ──────────────────────────────────── */}
-      {/*
-        FIX: The original code omitted mode="wait" to allow crossfading, but
-        without it Framer Motion stacks both slides in the DOM simultaneously,
-        causing a composite-layer battle that visibly jumps.
-
-        The fix: keep mode="wait" so only one slide is in the DOM at a time,
-        and use a slightly longer fade so the transition still feels luxurious.
-        We also only start animating after hydration to avoid the first-frame pop.
-      */}
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.id}
@@ -269,8 +264,6 @@ export default function BusinessLoginPage() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{
-            // First slide: instant paint — the dark backgroundColor already shows,
-            // so no animation is needed. Subsequent slides: snappy crossfade.
             duration: isFirstSlide ? 0 : 0.5,
             ease: "easeOut",
           }}
@@ -293,10 +286,6 @@ export default function BusinessLoginPage() {
       </AnimatePresence>
 
       {/* ── Slide headline (left side) ─────────────────────────────────────── */}
-      {/*
-        FIX: The headline container is always rendered (no conditional mount)
-        so it never causes a layout shift. Only the inner text crossfades.
-      */}
       <div className="absolute left-8 md:left-[8%] lg:left-[10%] bottom-[20%] z-10 hidden md:block max-w-[50%]">
         <AnimatePresence mode="wait">
           <motion.div
@@ -343,16 +332,6 @@ export default function BusinessLoginPage() {
       </div>
 
       {/* ── Floating Login Panel ────────────────────────────────────────────── */}
-      {/*
-        FIX: Removed layout="position" — it triggers continuous layout
-        recalculations as children animate in, compounding jank on initial load.
-        The panel doesn't need layout animation; a clean opacity+x entry is enough.
-
-        Also removed filter:"blur()" from the panel entry — blur forces a new
-        compositing layer on an element that overlaps the background's
-        compositing layer, and resolving that conflict is what caused the biggest
-        visible jump on load.
-      */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -417,8 +396,6 @@ export default function BusinessLoginPage() {
             )}
           </AnimatePresence>
 
-          {/* FIX: Removed layout="position" from the form for the same reason
-              as the panel — it's unnecessary and causes reflow jank. */}
           <motion.form onSubmit={handleSubmit} className="flex flex-col gap-5">
             <motion.div variants={itemVariants} className="flex flex-col gap-1.5">
               <label className="font-['Fredoka'] text-[14px] text-gray-700 pl-1 font-semibold">
