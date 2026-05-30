@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       tenant_id: tenantId,
       notification_type: "trial_started",
       recipient_email: tenant.owner_email,
-      subject: `Your 7-day free trial has started — ${tenant.business_name}`,
+      subject: `Your ${trialDays}-day free trial has started — ${tenant.business_name}`,
     });
 
     // ── Audit: tenant approved + trial started ────────────────────────────

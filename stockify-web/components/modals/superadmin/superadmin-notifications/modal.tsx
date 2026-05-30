@@ -68,7 +68,26 @@ export default function SuperadminNotificationModal({
           ) : (
             notifications.map((notif, i) => {
               const isExpanded = expandedIndex === i;
+              const titleLower = notif.title.toLowerCase();
+              const isRedAlert = notif.type === "alert" || titleLower.includes("suspended") || titleLower.includes("suspension") || titleLower.includes("missed") || titleLower.includes("expired") || titleLower.includes("terminated") || titleLower.includes("rejection");
+              const isOrangeAlert = notif.type === "billing" || titleLower.includes("overdue") || titleLower.includes("warning") || titleLower.includes("limit") || titleLower.includes("low");
               
+              let tagBg = "rgba(56,94,49,0.10)";
+              let tagColor = primaryColor;
+              let rowBg = "transparent";
+
+              if (isRedAlert) {
+                tagBg = "rgba(239,68,68,0.15)";
+                tagColor = "#ef4444";
+                rowBg = "rgba(239,68,68,0.04)";
+              } else if (isOrangeAlert) {
+                tagBg = "rgba(245,158,11,0.15)";
+                tagColor = "#d97706";
+                rowBg = "rgba(245,158,11,0.04)";
+              } else if (notif.isUnread) {
+                rowBg = "rgba(56,94,49,0.04)";
+              }
+
               return (
                 <div
                   key={notif.id}
@@ -76,16 +95,25 @@ export default function SuperadminNotificationModal({
                     setExpandedIndex(isExpanded ? null : i);
                     if (notif.isUnread) onMarkAsRead(notif.id);
                   }}
-                  className={`flex flex-col px-8 py-5 cursor-pointer ${hoverBg} transition-colors ${!notif.isUnread ? 'opacity-80' : ''}`}
-                  style={{ borderBottom: `1px solid ${itemBorderColor}` }}
+                  className={`flex flex-col px-8 py-5 cursor-pointer ${hoverBg} transition-colors`}
+                  style={{
+                    backgroundColor: rowBg,
+                    borderBottom: `1px solid ${itemBorderColor}`,
+                  }}
                 >
                   <div className="flex items-start justify-between w-full gap-4">
                     <div className="flex flex-col gap-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                          {notif.isUnread && (
-                           <span className="w-2 h-2 rounded-full bg-red-500" />
+                           <span className="w-2 h-2 rounded-full bg-red-500 mr-1 animate-pulse" />
                          )}
-                         <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-[#385E31]/10 text-[#385E31]">
+                         <span 
+                           className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded"
+                           style={{
+                             backgroundColor: tagBg,
+                             color: tagColor
+                           }}
+                         >
                            {notif.type}
                          </span>
                       </div>
@@ -93,22 +121,34 @@ export default function SuperadminNotificationModal({
                         {notif.title}
                       </span>
                       {isExpanded && (
-                        <p className="text-sm font-normal font-['Inter'] mt-2 leading-relaxed" style={{ color: primaryColor, opacity: 0.8 }}>
+                        <p className="text-sm font-normal font-['Inter'] mt-2 leading-relaxed whitespace-pre-wrap" style={{ color: primaryColor, opacity: 0.8 }}>
                           {notif.description}
                         </p>
                       )}
                     </div>
                     
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <span className="text-sm font-normal font-['Inter']" style={{ color: primaryColor, opacity: 0.6 }}>
                         {notif.time}
                       </span>
-                      <button 
-                        onClick={(e) => onRemove(notif.id, e)}
-                        className="text-[10px] font-bold text-red-600 hover:underline"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex gap-2.5 items-center">
+                        <button 
+                          onClick={() => {
+                            setExpandedIndex(isExpanded ? null : i);
+                            if (notif.isUnread) onMarkAsRead(notif.id);
+                          }}
+                          className="text-[10px] font-bold text-[#385E31]/60 hover:underline"
+                        >
+                          {isExpanded ? "Collapse" : "Expand"}
+                        </button>
+                        <span style={{ color: primaryColor, opacity: 0.2 }}>|</span>
+                        <button 
+                          onClick={(e) => onRemove(notif.id, e)}
+                          className="text-[10px] font-bold text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

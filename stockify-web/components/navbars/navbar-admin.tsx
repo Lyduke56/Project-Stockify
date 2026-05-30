@@ -31,42 +31,76 @@ export default function NavbarAdmin({
 
   const fetchNotificationCount = useCallback(async (tid: string) => {
     try {
-      // 1. Fetch billing notifications count
-      const { count, error } = await supabase
+      let dismissed: string[] = [];
+      try {
+        const stored = localStorage.getItem("stockify_dismissed_alerts");
+        dismissed = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(dismissed)) dismissed = [];
+      } catch {
+        dismissed = [];
+      }
+
+      let totalCount = 0;
+
+      // 1. Fetch billing notifications IDs
+      const { data: billingData } = await supabase
         .from("billing_notifications")
-        .select("*", { count: "exact", head: true })
+        .select("id")
         .eq("tenant_id", tid);
 
-      let totalCount = !error && count !== null ? count : 0;
+      if (billingData) {
+        billingData.forEach((notif: any) => {
+          if (!dismissed.includes(notif.id)) {
+            totalCount += 1;
+          }
+        });
+      }
 
-      // 2. Fetch tenant status for suspension
+      // 2. Fetch tenant status for suspension/trial alerts
       const { data: tenantRow } = await supabase
         .from("tenants")
-        .select("is_suspended")
+        .select("is_suspended, subscription_status, trial_ends_at")
         .eq("tenant_id", tid)
         .single();
       
-      if (tenantRow?.is_suspended) {
-        totalCount += 1;
+      if (tenantRow) {
+        if (tenantRow.is_suspended && !dismissed.includes(`suspension-${tid}`)) {
+          totalCount += 1;
+        }
+
+        if (tenantRow.subscription_status === "Trial" && tenantRow.trial_ends_at) {
+          const trialEnd = new Date(tenantRow.trial_ends_at);
+          const now = new Date();
+          const diffTime = trialEnd.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays <= 0 && !dismissed.includes(`trial-expired-${tid}`)) {
+            totalCount += 1;
+          } else if (diffDays > 0 && diffDays <= 2 && !dismissed.includes(`trial-ending-${tid}-${diffDays}`)) {
+            totalCount += 1;
+          }
+        }
       }
 
       // 3. Fetch pending, overdue, or missed subscription records
       const { data: subData } = await supabase
         .from("subscription_records")
-        .select("payment_status, overdue_at")
+        .select("subscription_id, payment_status, overdue_at")
         .eq("tenant_id", tid)
         .in("payment_status", ["Pending", "Overdue", "Missed"]);
 
       if (subData) {
         const now = new Date();
         subData.forEach((record: any) => {
-          if (record.payment_status === "Overdue" || record.payment_status === "Missed") {
+          if (record.payment_status === "Overdue" && !dismissed.includes(`sub-overdue-${record.subscription_id}`)) {
+            totalCount += 1;
+          } else if (record.payment_status === "Missed" && !dismissed.includes(`sub-missed-${record.subscription_id}`)) {
             totalCount += 1;
           } else if (record.payment_status === "Pending" && record.overdue_at) {
             const overdueDate = new Date(record.overdue_at);
             const diffTime = overdueDate.getTime() - now.getTime();
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            if (diffDays >= 0 && diffDays <= 3) {
+            if (diffDays >= 0 && diffDays <= 3 && !dismissed.includes(`sub-pending-warning-${record.subscription_id}`)) {
               totalCount += 1;
             }
           }
@@ -244,7 +278,7 @@ export default function NavbarAdmin({
         <div className="relative flex items-center justify-center">
           <button
             onClick={handleNotifClick} 
-            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
+            className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none"
             title="Notifications"
           >
             <div
@@ -265,7 +299,7 @@ export default function NavbarAdmin({
           </button>
           
           {notifCount > 0 && !hasDismissedCurrentNotifs && (
-            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm pointer-events-none transition-opacity duration-300">
               {notifCount > 9 ? "9+" : notifCount}
             </div>
           )}

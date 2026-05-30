@@ -22,7 +22,10 @@ const getDetailedBody = (type: string, subject: string): string => {
     return "Your monthly subscription payment is pending. Please pay your fee of ₱1,000.00 to ensure your business remains active and uninterrupted.";
   }
   if (lower === "trial_started") {
-    return "Welcome to Stockify! Your 7-day free trial has been successfully activated. You have full access to all inventory and sales features.";
+    // Extract days from subject if available (e.g. "Your 30-day free trial has started")
+    const match = subject.match(/(\d+)-day/);
+    const days = match ? match[1] : "";
+    return `Welcome to Stockify! Your${days ? ` ${days}-day` : ""} free trial has been successfully activated. You have full access to all inventory and sales features.`;
   }
   return subject;
 };

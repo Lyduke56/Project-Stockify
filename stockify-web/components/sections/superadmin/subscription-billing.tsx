@@ -153,7 +153,7 @@ export default function SubscriptionBillingSection() {
         <StatCard
           title="Missed Payments"
           value={stats?.missed_count ?? 0}
-          trendText="Currently suspended"
+          trendText="Currently missed payments after grace period"
           svgName="SA-missed-payments"
           delay={0.35}
         />

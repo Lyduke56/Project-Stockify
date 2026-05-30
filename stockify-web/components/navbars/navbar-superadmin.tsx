@@ -53,7 +53,7 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
         .or("subscription_status.eq.Pending,is_suspended.eq.true"),
       supabase
         .from("subscription_records")
-        .select("subscription_id, tenant_id, payment_status, created_at, tenants(business_name)")
+        .select("subscription_id, tenant_id, payment_status, overdue_at, paid_at")
         .or("payment_status.eq.Paid,payment_status.eq.Overdue,payment_status.eq.Missed")
     ]);
 
@@ -84,10 +84,29 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
       });
     }
 
+    // Build a map of tenant_id → business_name from the tenants query above
+    const tenantMap = new Map<string, string>();
+    if (!tenantsRes.error && tenantsRes.data) {
+      tenantsRes.data.forEach((t: any) => tenantMap.set(t.tenant_id, t.business_name || "Unknown Tenant"));
+    }
+
     // Map Payment Notifications & Term Failures
     if (!subRes.error && subRes.data) {
+      // Fetch any remaining business names not already in tenantMap
+      const missingIds = (subRes.data as any[])
+        .map((s: any) => s.tenant_id)
+        .filter((id: string) => !tenantMap.has(id));
+
+      if (missingIds.length > 0) {
+        const { data: extraTenants } = await supabase
+          .from("tenants")
+          .select("tenant_id, business_name")
+          .in("tenant_id", missingIds);
+        (extraTenants || []).forEach((t: any) => tenantMap.set(t.tenant_id, t.business_name || "Unknown Tenant"));
+      }
+
       const subRecords = subRes.data as any[];
-      subRecords.forEach((s: { subscription_id: string; tenant_id: string; payment_status: string; created_at: string; tenants: { business_name: string } | null }) => {
+      subRecords.forEach((s: { subscription_id: string; tenant_id: string; payment_status: string; overdue_at: string | null; paid_at: string | null }) => {
         const notifId = `sub-${s.subscription_id}`;
         if (localRemoved.includes(notifId)) return; // Skip if user removed it
 
@@ -97,23 +116,26 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
 
         if (s.payment_status === "Paid") {
           titleText = "Payment Received! 🎉";
-          descText = `${s.tenants?.business_name || "A client"} has successfully posted their subscription payment invoice settlement.`;
+          descText = `${tenantMap.get(s.tenant_id) || "A client"} has successfully posted their subscription payment invoice settlement.`;
           notifType = "billing";
         } else if (s.payment_status === "Overdue") {
           titleText = "Invoice Overdue ⚠️";
-          descText = `The billing invoice allocation assigned to ${s.tenants?.business_name || "a client"} is overdue.`;
+          descText = `The billing invoice allocation assigned to ${tenantMap.get(s.tenant_id) || "a client"} is overdue.`;
           notifType = "alert";
         } else if (s.payment_status === "Missed") {
           titleText = "Payment Term Missed ❌";
-          descText = `${s.tenants?.business_name || "A client"} missed their payment cutoff grace period parameter windows.`;
+          descText = `${tenantMap.get(s.tenant_id) || "A client"} missed their payment cutoff grace period parameter windows.`;
           notifType = "alert";
         }
+
+        // Use paid_at for paid records, overdue_at for overdue/missed
+        const timeVal = s.payment_status === "Paid" ? s.paid_at : s.overdue_at;
 
         builtNotifications.push({
           id: notifId,
           title: titleText,
           description: descText,
-          time: s.created_at ? new Date(s.created_at).toLocaleDateString() : "Recent",
+          time: timeVal ? new Date(timeVal).toLocaleDateString() : "Recent",
           isUnread: !localRead.includes(notifId),
           type: notifType
         });
@@ -218,14 +240,28 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
           <div className="relative flex items-center justify-center">
             <button 
               onClick={() => { if (openNotifs) openNotifs(); else setIsNotifModalOpen(true); }} 
-              className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer" 
+              className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer p-0.5 bg-transparent border-0 focus:outline-none" 
               title="Notifications"
             >
-              <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
+              <div
+                className="w-full h-full bg-[#385E31]"
+                style={{
+                  WebkitMaskImage: "url(/navbar-notif.svg)",
+                  maskImage: "url(/navbar-notif.svg)",
+                  WebkitMaskSize: "contain",
+                  maskSize: "contain",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskPosition: "center",
+                  maskPosition: "center",
+                }}
+                role="img"
+                aria-label="Notifications"
+              />
             </button>
             
             {systemAlertCount > 0 && (
-              <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm pointer-events-none">
+              <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm pointer-events-none transition-opacity duration-300">
                 {systemAlertCount}
               </div>
             )}

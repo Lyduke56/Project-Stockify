@@ -35,48 +35,59 @@ function calcGraceEndsAt(overdueAt: string, gracePeriodDays: number): string {
 
 export async function GET(req: NextRequest) {
   try {
-    // 1. Fetch records joined with tenant info
+    const { data: settings } = await supabase
+      .from("billing_settings")
+      .select("suspension_days")
+      .single();
+
+    const suspensionDays = settings?.suspension_days ?? 14;
+
+    // 1. Fetch subscription records (no FK join — resolved separately below)
     const { data: records, error } = await supabase
       .from("subscription_records")
-      .select(`
-        subscription_id,
-        tenant_id,
-        billing_period,
-        payment_status,
-        amount,
-        amount_paid,
-        paid_at,
-        overdue_at,
-        grace_ends_at,
-        tenants (
-          business_name,
-          owner_full_name,
-          owner_email,
-          subscription_status,
-          is_suspended
-        )
-      `)
+      .select(
+        "subscription_id, tenant_id, billing_period, payment_status, amount, amount_paid, paid_at, overdue_at, grace_ends_at"
+      )
       .order("billing_period", { ascending: false });
 
     if (error) throw error;
+
+    // 2. Resolve tenant info for all records in one query
+    const tenantIds = [...new Set((records || []).map((r: any) => r.tenant_id).filter(Boolean))];
+    let tenantMap = new Map<string, { business_name: string; owner_full_name: string; owner_email: string; subscription_status: string; is_suspended: boolean }>();
+
+    if (tenantIds.length > 0) {
+      const { data: tenants } = await supabase
+        .from("tenants")
+        .select("tenant_id, business_name, owner_full_name, owner_email, subscription_status, is_suspended")
+        .in("tenant_id", tenantIds);
+      (tenants || []).forEach((t: any) => tenantMap.set(t.tenant_id, t));
+    }
 
     let totalPaid = 0;
     let overdueCount = 0;
     let missedCount = 0;
     let suspendedCount = 0;
 
-    // 2. Format the data to match your frontend's `BillingRow` interface
+    // 3. Format the data to match your frontend's `BillingRow` interface
     const rows = (records || []).map((r: any) => {
       const billed = Number(r.amount || 0);
       const paid = Number(r.amount_paid || 0);
       const balance = Math.max(0, billed - paid);
-      
-      const tenant = r.tenants || {};
+
+      const tenant = tenantMap.get(r.tenant_id) ?? {
+        business_name: "Unknown Business",
+        owner_full_name: "Unknown Owner",
+        owner_email: "",
+        subscription_status: "Active",
+        is_suspended: false,
+      };
+
       let displayStatus = r.payment_status;
-      
+
       // Determine display status:
       // - "Missed" only when the subscription record itself is tagged "Missed"
-      //   (this happens via the billing cron when grace period expires unpaid)
+      //   (auto-set by grace-check cron when grace period expires unpaid)
       // - "Suspended" when the tenant was manually suspended from Tenant Management
       //   but the billing record is NOT yet "Missed"
       if (
@@ -87,9 +98,8 @@ export async function GET(req: NextRequest) {
         displayStatus = "Suspended";
       }
 
-      // Tally up stats while we loop
+      // Tally stats
       if (displayStatus === "Paid") {
-        // Accumulate paid amount if it happened this year (simple check)
         if (r.paid_at && new Date(r.paid_at).getFullYear() === new Date().getFullYear()) {
           totalPaid += paid;
         }
@@ -101,37 +111,43 @@ export async function GET(req: NextRequest) {
         suspendedCount++;
       }
 
+      let terminationDate = null;
+      if (r.overdue_at) {
+        const d = new Date(r.overdue_at);
+        d.setDate(d.getDate() + suspensionDays);
+        terminationDate = d.toISOString();
+      }
+
       return {
         tenant_id: r.tenant_id,
-        business_name: tenant.business_name || "Unknown Business",
-        owner_full_name: tenant.owner_full_name || "Unknown Owner",
-        owner_email: tenant.owner_email || "",
-        subscription_status: tenant.subscription_status || "Active",
+        business_name: tenant.business_name,
+        owner_full_name: tenant.owner_full_name,
+        owner_email: tenant.owner_email,
+        subscription_status: tenant.subscription_status,
         display_status: displayStatus,
-        billing_period: r.billing_period,
+        // Show the month/year of the due date (overdue_at) as the billing period label
+        billing_period: r.overdue_at
+          ? r.overdue_at.slice(0, 7)
+          : r.billing_period,
         due_date: r.overdue_at,
         grace_ends_at: r.grace_ends_at,
         last_paid_at: r.paid_at,
-        balance: balance,
+        termination_date: terminationDate,
+        balance,
         subscription_id: r.subscription_id,
-        next_billing_date: null, 
+        next_billing_date: null,
       };
     });
 
-    // 3. Construct the Stats object expected by your StatCards
+    // 4. Stats for StatCards
     const stats = {
-      total_paid: totalPaid,
+      total_paid:    totalPaid,
       overdue_count: overdueCount,
-      missed_count: missedCount,
-      avg_days_late: 0, 
+      missed_count:  missedCount,
+      avg_days_late: 0,
     };
 
-    // 4. Return exactly what page.tsx expects: { data, stats }
-    return NextResponse.json({
-      success: true,
-      data: rows,
-      stats: stats
-    });
+    return NextResponse.json({ success: true, data: rows, stats });
 
   } catch (err: any) {
     console.error("[Billing GET Error]:", err);

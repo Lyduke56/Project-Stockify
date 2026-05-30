@@ -1,7 +1,7 @@
-// app/api/cron/billing/cron/route.ts
+// app/api/cron/billing-check/route.ts
 //
 // Vercel Cron — runs daily at 00:05 UTC.
-// vercel.json: { "path": "/api/cron/billing/cron", "schedule": "5 0 * * *" }
+// vercel.json: { "path": "/api/cron/billing-check", "schedule": "5 0 * * *" }
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -38,6 +38,21 @@ export async function GET(req: NextRequest) {
     errors:                  [] as string[],
   };
 
+  // ── Load billing settings ────────────────────────────────────────────────────
+  const { data: settings, error: settingsError } = await supabase
+    .from("billing_settings")
+    .select("trial_days, grace_period_days, suspension_days, monthly_price, billing_due_days")
+    .single();
+
+  if (settingsError || !settings) {
+    console.error("[cron/billing-check] Could not load billing settings:", settingsError?.message);
+    return NextResponse.json({ error: "Could not load billing settings." }, { status: 500 });
+  }
+
+  const monthlyPrice    = Number(settings.monthly_price    ?? 1000);
+  const billingDueDays  = Number(settings.billing_due_days  ?? 30);
+  const gracePeriodDays = Number(settings.grace_period_days ?? 7);
+
   // ── 1. Fetch all active / trial tenants ─────────────────────────────────────
   const { data: tenants, error: tenantsError } = await supabase
     .from("tenants")
@@ -46,7 +61,7 @@ export async function GET(req: NextRequest) {
     .eq("is_active", true);
 
   if (tenantsError) {
-    console.error("[cron/billing] Failed to fetch tenants:", tenantsError.message);
+    console.error("[cron/billing-check] Failed to fetch tenants:", tenantsError.message);
     return NextResponse.json({ error: tenantsError.message }, { status: 500 });
   }
 
@@ -76,7 +91,6 @@ export async function GET(req: NextRequest) {
               subject:           `Your free trial ends tomorrow — ${tenant.business_name}`,
             });
 
-            // Audit: trial reminder sent
             await logAudit({
               performedBy:  "Automated System",
               eventType:    AuditEvent.TRIAL_REMINDER_SENT,
@@ -93,17 +107,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // ── 3. Trial has expired → upgrade to Active + create first billing record ──
+    // ── 3. Trial has expired → upgrade to Active ──────────────────────────────
     if (tenant.subscription_status === "Trial" && trialEndsAt && now >= trialEndsAt) {
       const { error: upgradeError } = await supabase
         .from("tenants")
-        .update({ subscription_status: "Active" })
+        .update({ subscription_status: "Active", trial_ends_at: null })
         .eq("tenant_id", tenant.tenant_id);
 
       if (!upgradeError) {
-        // Audit: trial converted automatically
         await logAudit({
-          performedBy:  "Cron: billing",
+          performedBy:  "Cron: billing-check",
           eventType:    AuditEvent.TRIAL_CONVERTED,
           tenantId:     tenant.tenant_id,
           businessName: tenant.business_name,
@@ -119,6 +132,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── 4. Generate monthly billing record (first day of current month) ─────────
+    // Uses billing_settings for amount, overdue_at, and grace_ends_at.
     if (tenant.subscription_status === "Active") {
       const billingPeriod = new Date(now.getFullYear(), now.getMonth(), 1)
         .toISOString()
@@ -132,11 +146,16 @@ export async function GET(req: NextRequest) {
         .maybeSingle();
 
       if (!existing) {
-        const overdueAt = new Date(
-          now.getFullYear(),
-          now.getMonth() + 1,
-          15
-        ).toISOString();
+        // overdue_at = billing_period + billing_due_days (from settings)
+        const overdueDate = new Date(billingPeriod + "T00:00:00");
+        overdueDate.setDate(overdueDate.getDate() + billingDueDays);
+
+        // grace_ends_at = overdue_at + grace_period_days (from settings)
+        const graceEndsDate = new Date(overdueDate);
+        graceEndsDate.setDate(graceEndsDate.getDate() + gracePeriodDays);
+
+        const overdueAt   = overdueDate.toISOString();
+        const graceEndsAt = graceEndsDate.toISOString();
 
         const { data: newRecord, error: insertError } = await supabase
           .from("subscription_records")
@@ -144,8 +163,9 @@ export async function GET(req: NextRequest) {
             tenant_id:      tenant.tenant_id,
             billing_period: billingPeriod,
             payment_status: "Pending",
-            amount:         1000.0,
+            amount:         monthlyPrice,
             overdue_at:     overdueAt,
+            grace_ends_at:  graceEndsAt,
           })
           .select("subscription_id")
           .single();
@@ -162,7 +182,7 @@ export async function GET(req: NextRequest) {
               tenant.owner_email,
               tenant.business_name,
               billingPeriod,
-              1000
+              monthlyPrice
             );
             await supabase.from("billing_notifications").insert({
               tenant_id:         tenant.tenant_id,
@@ -171,18 +191,18 @@ export async function GET(req: NextRequest) {
               subject:           `Monthly invoice for ${billingPeriod} — ${tenant.business_name}`,
             });
 
-            // Audit: invoice generated
             await logAudit({
               performedBy:  "Automated System",
               eventType:    AuditEvent.INVOICE_GENERATED,
               tenantId:     tenant.tenant_id,
               businessName: tenant.business_name,
-              description:  `Monthly invoice generated for billing period ${billingPeriod}. Invoice email dispatched to owner.`,
+              description:  `Monthly invoice generated for billing period ${billingPeriod}. Amount: ₱${monthlyPrice}. Due: ${overdueAt.split("T")[0]}.`,
               metadata: {
                 subscriptionId: newRecord.subscription_id,
                 billingPeriod,
-                amount: 1000,
+                amount:       monthlyPrice,
                 overdueAt,
+                graceEndsAt,
               },
             });
           } catch (e) {
@@ -193,68 +213,72 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── 5. Mark overdue records ──────────────────────────────────────────────────
+  // ── 5. Mark overdue records (Pending past overdue_at → Overdue) ──────────────
   const { data: overdueRecords } = await supabase
     .from("subscription_records")
-    .select(`
-      subscription_id,
-      tenant_id,
-      billing_period,
-      notification_sent_at,
-      tenants ( business_name, owner_email )
-    `)
+    .select("subscription_id, tenant_id, billing_period, grace_ends_at, notification_sent_at")
     .eq("payment_status", "Pending")
     .lt("overdue_at", now.toISOString());
 
-  for (const record of overdueRecords ?? []) {
-    const t = (Array.isArray(record.tenants) ? record.tenants[0] : record.tenants) as {
-      business_name: string;
-      owner_email: string;
-    };
+  if ((overdueRecords ?? []).length > 0) {
+    const overdueIds = [...new Set((overdueRecords ?? []).map(r => r.tenant_id))];
+    const { data: overdueTenants } = await supabase
+      .from("tenants")
+      .select("tenant_id, business_name, owner_email")
+      .in("tenant_id", overdueIds);
+    const overdueMap = new Map<string, { business_name: string; owner_email: string }>();
+    (overdueTenants || []).forEach((t: any) => overdueMap.set(t.tenant_id, t));
 
-    const { error: overdueError } = await supabase
-      .from("subscription_records")
-      .update({ payment_status: "Overdue" })
-      .eq("subscription_id", record.subscription_id);
+    for (const record of overdueRecords ?? []) {
+      const t = overdueMap.get(record.tenant_id) ?? { business_name: "Unknown", owner_email: "" };
 
-    if (!overdueError) {
-      results.overdue_marked.push(record.subscription_id);
+      // Ensure grace_ends_at is set; compute from settings if missing
+      let graceEndsAt: string | undefined = record.grace_ends_at ?? undefined;
+      if (!graceEndsAt) {
+        const g = new Date(now);
+        g.setDate(g.getDate() + gracePeriodDays);
+        graceEndsAt = g.toISOString();
+      }
 
-      if (!record.notification_sent_at) {
-        try {
-          await sendOverdueNotificationEmail(
-            t.owner_email,
-            t.business_name,
-            record.billing_period
-          );
-          await supabase
-            .from("subscription_records")
-            .update({ notification_sent_at: now.toISOString() })
-            .eq("subscription_id", record.subscription_id);
+      const { error: overdueError } = await supabase
+        .from("subscription_records")
+        .update({ payment_status: "Overdue", grace_ends_at: graceEndsAt })
+        .eq("subscription_id", record.subscription_id);
 
-          await supabase.from("billing_notifications").insert({
-            tenant_id:         record.tenant_id,
-            notification_type: "overdue_notice",
-            recipient_email:   t.owner_email,
-            subject:           `Payment overdue for ${record.billing_period} — ${t.business_name}`,
-          });
+      if (!overdueError) {
+        results.overdue_marked.push(record.subscription_id);
 
-          // Audit: overdue notice sent
-          await logAudit({
-            performedBy:  "Automated System",
-            eventType:    AuditEvent.OVERDUE_NOTICE_SENT,
-            tenantId:     record.tenant_id,
-            businessName: t.business_name,
-            description:  `Payment overdue for billing period ${record.billing_period}. Overdue notification dispatched to owner's email.`,
-            metadata: { subscriptionId: record.subscription_id },
-          });
-        } catch (e) {
-          results.errors.push(`Overdue email failed for ${record.subscription_id}: ${e}`);
+        if (!record.notification_sent_at) {
+          try {
+            await sendOverdueNotificationEmail(t.owner_email, t.business_name, record.billing_period);
+            await supabase
+              .from("subscription_records")
+              .update({ notification_sent_at: now.toISOString() })
+              .eq("subscription_id", record.subscription_id);
+
+            await supabase.from("billing_notifications").insert({
+              tenant_id:         record.tenant_id,
+              notification_type: "overdue_notice",
+              recipient_email:   t.owner_email,
+              subject:           `Payment overdue for ${record.billing_period} — ${t.business_name}`,
+            });
+
+            await logAudit({
+              performedBy:  "Automated System",
+              eventType:    AuditEvent.OVERDUE_NOTICE_SENT,
+              tenantId:     record.tenant_id,
+              businessName: t.business_name,
+              description:  `Payment overdue for billing period ${record.billing_period}. Overdue notification dispatched to owner's email. Grace period ends ${graceEndsAt?.split("T")[0]}.`,
+              metadata: { subscriptionId: record.subscription_id, graceEndsAt },
+            });
+          } catch (e) {
+            results.errors.push(`Overdue email failed for ${record.subscription_id}: ${e}`);
+          }
         }
       }
     }
   }
 
-  console.log("[cron/billing] Completed:", results);
+  console.log("[cron/billing-check] Completed:", results);
   return NextResponse.json({ success: true, results });
 }
