@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { SectionKey } from "@/app/[businessName]/administrator/dashboard/page";
 
@@ -8,22 +8,28 @@ interface NavbarAdminProps {
   setActiveSection: (section: SectionKey) => void;
   openProfile: () => void;
   openNotifs: () => void;
+  // Added optional prop to clear counts if handled by modal trigger pipelines
+  setResetNotificationBadge?: (fn: () => void) => void; 
 }
 
 export default function NavbarAdmin({ 
   setActiveSection, 
   openProfile, 
-  openNotifs
+  openNotifs,
+  setResetNotificationBadge
 }: NavbarAdminProps) {
   const supabase = createClient();
   const [notifCount, setNotifCount] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
   
-  // ── NEW BRAND STATES ────────────────────────────────────────────────────────
+  // Local interaction tracking to prevent badge re-inflation bugs upon reloading browser tabs
+  const [hasDismissedCurrentNotifs, setHasDismissedCurrentNotifs] = useState<boolean>(false);
+
+  // ── BRAND STATES ────────────────────────────────────────────────────────────
   const [businessName, setBusinessName] = useState<string>("STOCKIFY");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
-  const fetchNotificationCount = async (tid: string) => {
+  const fetchNotificationCount = useCallback(async (tid: string) => {
     try {
       // 1. Fetch billing notifications count
       const { count, error } = await supabase
@@ -71,7 +77,22 @@ export default function NavbarAdmin({
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [supabase]);
+
+  // Expose an interactive cleanup method directly to parent views via reference hooks
+  const clearBadgeStateLocally = useCallback(() => {
+    setNotifCount(0);
+    setHasDismissedCurrentNotifs(true);
+    if (tenantId) {
+      localStorage.setItem(`admin_dismissed_notifs_${tenantId}`, "true");
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (setResetNotificationBadge) {
+      setResetNotificationBadge(clearBadgeStateLocally);
+    }
+  }, [setResetNotificationBadge, clearBadgeStateLocally]);
 
   useEffect(() => {
     const initNotifications = async () => {
@@ -88,6 +109,10 @@ export default function NavbarAdmin({
         const tid = userProfile.tenant_id;
         setTenantId(tid);
         fetchNotificationCount(tid);
+
+        // Check if user has previously dismissed notifications within localStorage
+        const wasDismissed = localStorage.getItem(`admin_dismissed_notifs_${tid}`) === "true";
+        setHasDismissedCurrentNotifs(wasDismissed);
 
         // ── FETCH BRAND INFORMATION FROM THE TENANTS TABLE ───────────────────
         const { data: tenantBrand } = await supabase
@@ -108,7 +133,7 @@ export default function NavbarAdmin({
     };
 
     initNotifications();
-  }, []);
+  }, [fetchNotificationCount, supabase]);
 
   // Listen to incoming billing logs, subscriptions, and tenant details in real-time
   useEffect(() => {
@@ -116,71 +141,57 @@ export default function NavbarAdmin({
 
     const channel1 = supabase
       .channel("realtime-admin-billing")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "billing_notifications",
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => {
-          fetchNotificationCount(tenantId);
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "billing_notifications", filter: `tenant_id=eq.${tenantId}` }, () => {
+        setHasDismissedCurrentNotifs(false); // New data arrived! Show badge again
+        localStorage.removeItem(`admin_dismissed_notifs_${tenantId}`);
+        fetchNotificationCount(tenantId);
+      })
       .subscribe();
 
     const channel2 = supabase
       .channel("realtime-admin-subscriptions")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "subscription_records",
-          filter: `tenant_id=eq.${tenantId}`,
-        },
-        () => {
-          fetchNotificationCount(tenantId);
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscription_records", filter: `tenant_id=eq.${tenantId}` }, () => {
+        setHasDismissedCurrentNotifs(false);
+        localStorage.removeItem(`admin_dismissed_notifs_${tenantId}`);
+        fetchNotificationCount(tenantId);
+      })
       .subscribe();
 
     const channel3 = supabase
-  .channel("realtime-admin-tenants")
-  .on(
-    "postgres_changes",
-    {
-      event: "*",
-      schema: "public",
-      table: "tenants",
-      filter: `tenant_id=eq.${tenantId}`,
-    },
-    () => {
-      fetchNotificationCount(tenantId);
-      
-      // Real-time update for logo or business name adjustments
-      supabase
-        .from("tenants")
-        .select("business_name, logo_url")
-        .eq("tenant_id", tenantId)
-        .single()
-        .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
-          if (data) {
-            if (data.business_name) setBusinessName(data.business_name.toUpperCase());
-            if (data.logo_url) setLogoUrl(data.logo_url);
-          }
-        });
-    }
-  )
-  .subscribe();
+      .channel("realtime-admin-tenants")
+      .on("postgres_changes", { event: "*", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` }, () => {
+        setHasDismissedCurrentNotifs(false);
+        localStorage.removeItem(`admin_dismissed_notifs_${tenantId}`);
+        fetchNotificationCount(tenantId);
+        
+        supabase
+          .from("tenants")
+          .select("business_name, logo_url")
+          .eq("tenant_id", tenantId)
+          .single()
+          .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
+            if (data) {
+              if (data.business_name) setBusinessName(data.business_name.toUpperCase());
+              if (data.logo_url) setLogoUrl(data.logo_url);
+            }
+          });
+      })
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel1);
       supabase.removeChannel(channel2);
       supabase.removeChannel(channel3);
     };
-  }, [tenantId]);
+  }, [tenantId, fetchNotificationCount, supabase]);
+
+  const handleNotifClick = () => {
+    setHasDismissedCurrentNotifs(true);
+    if (tenantId) {
+      localStorage.setItem(`admin_dismissed_notifs_${tenantId}`, "true");
+    }
+    openNotifs();
+  };
 
   return (
     <nav className="relative w-full h-[48px] px-4 md:px-12 bg-accent rounded-[50px] shadow-[2px_4px_4px_0px_rgba(43,88,12,0.70)] flex items-center justify-between z-[100]">
@@ -232,10 +243,7 @@ export default function NavbarAdmin({
         {/* Notifications Icon */}
         <div className="relative flex items-center justify-center">
           <button
-            onClick={() => {
-              openNotifs();
-              setNotifCount(0);
-            }} 
+            onClick={handleNotifClick} 
             className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
             title="Notifications"
           >
@@ -256,7 +264,7 @@ export default function NavbarAdmin({
             />
           </button>
           
-          {notifCount > 0 && (
+          {notifCount > 0 && !hasDismissedCurrentNotifs && (
             <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5 bg-red-600 rounded-full border border-white text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
               {notifCount > 9 ? "9+" : notifCount}
             </div>

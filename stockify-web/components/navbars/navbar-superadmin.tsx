@@ -28,33 +28,103 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false); 
   const [systemAlertCount, setSystemAlertCount] = useState<number>(0);
-  
-  // Explicitly typing state arrays to keep TypeScript happy 🚀
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+
+  // Local persistent storage state identifiers to track deleted/read notifications across page refreshes
   const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
   const [removedNotifIds, setRemovedNotifIds] = useState<string[]>([]);
 
+  // Load persistence configurations on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedRead = localStorage.getItem("sa_read_notifs");
+      const storedRemoved = localStorage.getItem("sa_removed_notifs");
+      if (storedRead) setReadNotifIds(JSON.parse(storedRead));
+      if (storedRemoved) setRemovedNotifIds(JSON.parse(storedRemoved));
+    }
+  }, []);
+
   const checkGlobalPlatformIssues = useCallback(async () => {
-    // Query tenants and subscription records across global context scope
+    // 1. Fetch data from DB tables
     const [tenantsRes, subRes] = await Promise.all([
       supabase
         .from("tenants")
-        .select("tenant_id")
+        .select("tenant_id, business_name, subscription_status, is_suspended, created_at")
         .or("subscription_status.eq.Pending,is_suspended.eq.true"),
       supabase
         .from("subscription_records")
-        .select("subscription_id")
+        .select("subscription_id, tenant_id, payment_status, created_at, tenants(business_name)")
         .or("payment_status.eq.Paid,payment_status.eq.Overdue,payment_status.eq.Missed")
     ]);
 
-    let totalCount = 0;
+    // Read latest states from localStorage if available to ensure accurate real-time filtering
+    const localRemoved = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sa_removed_notifs") || "[]") : [];
+    const localRead = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("sa_read_notifs") || "[]") : [];
+
+    const builtNotifications: NotificationItem[] = [];
+
+    // Map Applications & Suspensions
+    // Map Applications & Suspensions
     if (!tenantsRes.error && tenantsRes.data) {
-      totalCount += tenantsRes.data.length;
+      tenantsRes.data.forEach((t: { tenant_id: string; business_name: string; subscription_status: string; is_suspended: boolean | null; created_at: string }) => {
+        const notifId = `tenant-${t.tenant_id}`;
+        if (localRemoved.includes(notifId)) return; // Skip if user removed it
+
+        const isPending = t.subscription_status === "Pending";
+        builtNotifications.push({
+          id: notifId,
+          title: isPending ? "New Tenancy Application" : "Tenant Suspended ⚠️",
+          description: isPending 
+            ? `${t.business_name || "A new organization"} applied for a system registration link.` 
+            : `${t.business_name || "A tenant"} has been suspended on the platform system context.`,
+          time: t.created_at ? new Date(t.created_at).toLocaleDateString() : "Recent",
+          isUnread: !localRead.includes(notifId),
+          type: isPending ? "tenant" : "alert"
+        });
+      });
     }
+
+    // Map Payment Notifications & Term Failures
     if (!subRes.error && subRes.data) {
-      totalCount += subRes.data.length;
+      const subRecords = subRes.data as any[];
+      subRecords.forEach((s: { subscription_id: string; tenant_id: string; payment_status: string; created_at: string; tenants: { business_name: string } | null }) => {
+        const notifId = `sub-${s.subscription_id}`;
+        if (localRemoved.includes(notifId)) return; // Skip if user removed it
+
+        let titleText = "Subscription Update";
+        let descText = "";
+        let notifType: "tenant" | "alert" | "billing" = "billing";
+
+        if (s.payment_status === "Paid") {
+          titleText = "Payment Received! 🎉";
+          descText = `${s.tenants?.business_name || "A client"} has successfully posted their subscription payment invoice settlement.`;
+          notifType = "billing";
+        } else if (s.payment_status === "Overdue") {
+          titleText = "Invoice Overdue ⚠️";
+          descText = `The billing invoice allocation assigned to ${s.tenants?.business_name || "a client"} is overdue.`;
+          notifType = "alert";
+        } else if (s.payment_status === "Missed") {
+          titleText = "Payment Term Missed ❌";
+          descText = `${s.tenants?.business_name || "A client"} missed their payment cutoff grace period parameter windows.`;
+          notifType = "alert";
+        }
+
+        builtNotifications.push({
+          id: notifId,
+          title: titleText,
+          description: descText,
+          time: s.created_at ? new Date(s.created_at).toLocaleDateString() : "Recent",
+          isUnread: !localRead.includes(notifId),
+          type: notifType
+        });
+      });
     }
-    setSystemAlertCount(totalCount);
+
+    // Badge count should only track actual notifications that are unread
+    const activeUnreadCount = builtNotifications.filter(n => n.isUnread).length;
+
+    setNotifications(builtNotifications);
+    setSystemAlertCount(activeUnreadCount);
   }, [supabase]);
 
   useEffect(() => {
@@ -63,25 +133,17 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
     // Listen to changes globally across all tenants
     const channelTenants = supabase
       .channel("global-system-tenants")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "tenants" },
-        () => {
-          checkGlobalPlatformIssues();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "tenants" }, () => {
+        checkGlobalPlatformIssues();
+      })
       .subscribe();
 
     // Listen to changes globally across subscription records
     const channelSubs = supabase
       .channel("global-system-subs")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "subscription_records" },
-        () => {
-          checkGlobalPlatformIssues();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "subscription_records" }, () => {
+        checkGlobalPlatformIssues();
+      })
       .subscribe();
 
     return () => {
@@ -92,25 +154,42 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
 
   // ── Action Handlers ──
   const handleRemoveNotif = (id: string) => {
-    setRemovedNotifIds((prev) => [...prev, id]);
-    setNotifications((prev) => prev.filter((n: NotificationItem) => n.id !== id));
+    const updatedRemoved = Array.from(new Set([...removedNotifIds, id]));
+    setRemovedNotifIds(updatedRemoved);
+    localStorage.setItem("sa_removed_notifs", JSON.stringify(updatedRemoved));
+
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setSystemAlertCount((prev) => Math.max(0, prev - 1));
   };
 
   const handleClearAllNotifs = () => {
-    const allIds = notifications.map((n: NotificationItem) => n.id);
-    setReadNotifIds((prev) => Array.from(new Set([...prev, ...allIds])));
-    setRemovedNotifIds((prev) => Array.from(new Set([...prev, ...allIds])));
+    const allIds = notifications.map((n) => n.id);
+    
+    const updatedRead = Array.from(new Set([...readNotifIds, ...allIds]));
+    const updatedRemoved = Array.from(new Set([...removedNotifIds, ...allIds]));
+
+    setReadNotifIds(updatedRead);
+    setRemovedNotifIds(updatedRemoved);
+    
+    localStorage.setItem("sa_read_notifs", JSON.stringify(updatedRead));
+    localStorage.setItem("sa_removed_notifs", JSON.stringify(updatedRemoved));
+
     setNotifications([]);
+    setSystemAlertCount(0);
   };
 
   const handleMarkAsRead = (id: string) => {
-    setReadNotifIds((prev) => [...prev, id]);
-    setNotifications((prev) =>
-      prev.map((n: NotificationItem) => (n.id === id ? { ...n, isUnread: false } : n))
-    );
-  };
+    if (readNotifIds.includes(id)) return;
 
-  // 🌟 FIX: Explicitly typed 'n' as NotificationItem to fix line 64 parameter rule
+    const updatedRead = [...readNotifIds, id];
+    setReadNotifIds(updatedRead);
+    localStorage.setItem("sa_read_notifs", JSON.stringify(updatedRead));
+
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isUnread: false } : n))
+    );
+    setSystemAlertCount((prev) => Math.max(0, prev - 1));
+  };
 
   const handleHomeClick = () => {
     router.push("/superadmin/dashboard");
@@ -137,7 +216,11 @@ export default function NavbarApp({ onHome, openNotifs }: NavbarSuperAdminProps)
 
           {/* Notifications with Real-time Count */}
           <div className="relative flex items-center justify-center">
-            <button onClick={() => { if (openNotifs) openNotifs(); else setIsNotifModalOpen(true); }} className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer" title="Notifications">
+            <button 
+              onClick={() => { if (openNotifs) openNotifs(); else setIsNotifModalOpen(true); }} 
+              className="w-8 h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer" 
+              title="Notifications"
+            >
               <img src="/navbar-notif.svg" alt="Notifications" className="w-full h-full object-contain" />
             </button>
             

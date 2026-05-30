@@ -49,7 +49,7 @@ export default function NotificationModal({
   onClose,
   role = "client",
   tenantId = null,
-  onClear, // Destructured properly here
+  onClear,
   colors,
 }: NotificationModalProps) {
   const supabase = createClient();
@@ -63,15 +63,9 @@ export default function NotificationModal({
     return () => setMounted(false);
   }, []);
 
-  // Reset expanded index when modal opens/closes
   useEffect(() => {
     setExpandedIndex(null);
   }, [isOpen]);
-
-  // Store lists of explicitly deleted notification IDs to keep them hidden locally
-  const [deletedIds, setDeletedIds] = useState<string[]>([]);
-  // Keep track of which notification IDs have been read locally
-  const [readIds, setReadIds] = useState<string[]>([]);
 
   const applyNotifications = useCallback((collected: NotificationItem[]) => {
     let dismissed: string[] = [];
@@ -83,7 +77,6 @@ export default function NotificationModal({
       dismissed = [];
     }
 
-    // Self-cleaning: only keep dismissed IDs that are still present in collected alerts
     const collectedIds = collected.map(c => c.id);
     const prunedDismissed = dismissed.filter(id => collectedIds.includes(id));
     try {
@@ -111,7 +104,6 @@ export default function NotificationModal({
           supabase.from("orders").select("order_id, created_at, fulfillment_status").eq("tenant_id", tenantId).in("fulfillment_status", ["Pending", "Reported"])
         ]);
 
-        // 1. Map Food and Beverage Low Stock alerts
         if (fnbResult.data) {
           fnbResult.data.forEach((item: { item_name: string; stock: any; alert_limit: any; created_at: string }) => {
             const currentStock = Number(item.stock || 0);
@@ -133,7 +125,6 @@ export default function NotificationModal({
           });
         }
 
-        // 2. Map Non-Food Products alerts
         if (nfbResult.data) {
           nfbResult.data.forEach((item: { product_name: string; quantity: any; reorder_threshold: any; created_at: string }) => {
             const currentQty = Number(item.quantity || 0);
@@ -155,7 +146,6 @@ export default function NotificationModal({
           });
         }
 
-        // 3. Map Pending and Reported Sales Orders
         if (orderResult.data) {
           orderResult.data.forEach((order: { order_id: string; created_at: string; fulfillment_status: string }) => {
             if (order.fulfillment_status === "Reported") {
@@ -181,7 +171,7 @@ export default function NotificationModal({
         }
 
         applyNotifications(collectedAlerts);
-        return; // done for employee
+        return;
       }
 
       // ── CLIENT / ADMIN: billing + subscription alerts ──────────────────────
@@ -189,7 +179,6 @@ export default function NotificationModal({
         if (!tenantId) return;
         const collectedAlerts: NotificationItem[] = [];
 
-        // 1. Fetch tenant details (suspension & trial) from DB
         const { data: tenantRow } = await supabase
           .from("tenants")
           .select("is_suspended, subscription_status, trial_ends_at")
@@ -204,17 +193,12 @@ export default function NotificationModal({
               subject: "⛔ Account Suspended by Superadmin",
               body: "Your business account has been suspended due to unresolved subscription billing or compliance issues. Please contact billing/support at support@stockify.com immediately to restore access.",
               timestamp: new Date().toLocaleString("en-US", {
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
+                month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true,
               }),
               isRead: false,
             });
           }
 
-          // Check if trial has ended or is ending soon
           if (tenantRow.subscription_status === "Trial" && tenantRow.trial_ends_at) {
             const trialEnd = new Date(tenantRow.trial_ends_at);
             const now = new Date();
@@ -243,10 +227,10 @@ export default function NotificationModal({
           }
         }
 
-        // 2. Fetch billing notifications (sent by superadmin)
+        // 🌟 FIX 1: Included "message" column within select criteria payload query scope
         const { data: billingData } = await supabase
           .from("billing_notifications")
-          .select("id, notification_type, subject, sent_at")
+          .select("id, notification_type, subject, message, sent_at") 
           .eq("tenant_id", tenantId)
           .order("sent_at", { ascending: false });
 
@@ -254,22 +238,18 @@ export default function NotificationModal({
           billingData.forEach((notif: any) => {
             collectedAlerts.push({
               id: notif.id || `billing-notif-${notif.sent_at}`,
-              title: notif.notification_type === "reminder" ? "Billing Reminder" : "Trial Started",
-              subject: notif.subject || "Billing Notification",
-              body: getDetailedBody(notif.notification_type || "", notif.subject || ""),
+              title: notif.notification_type === "reminder" ? "Billing Reminder" : "BroadCast Notification",
+              subject: notif.subject || "Platform Message Alert",
+              // 🌟 FIX 2: Render live typed admin messages, falling back to helper structures if empty
+              body: notif.message || getDetailedBody(notif.notification_type || "", notif.subject || ""),
               timestamp: new Date(notif.sent_at).toLocaleString("en-US", {
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
+                month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true,
               }),
               isRead: false,
             });
           });
         }
 
-        // 3. Fetch subscription records for pending/overdue/missed warnings
         const { data: subData } = await supabase
           .from("subscription_records")
           .select("subscription_id, billing_period, payment_status, amount, overdue_at")
@@ -304,7 +284,6 @@ export default function NotificationModal({
               const diffTime = overdueDate.getTime() - now.getTime();
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-              // Show warning if 2 or 3 days before overdue_at
               if (diffDays >= 0 && diffDays <= 3) {
                 collectedAlerts.push({
                   id: `sub-pending-warning-${record.subscription_id}`,
@@ -312,11 +291,7 @@ export default function NotificationModal({
                   subject: "⚠️ Subscription Overdue Warning",
                   body: `Your subscription payment of ₱${record.amount} for period ending ${record.billing_period} is pending. Overdue in ${diffDays} day(s) on ${overdueDate.toLocaleDateString()}. Please settle this charge.`,
                   timestamp: overdueDate.toLocaleString("en-US", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
+                    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true,
                   }),
                   isRead: false,
                 });
@@ -325,7 +300,6 @@ export default function NotificationModal({
           });
         }
 
-        // Sort by date/timestamp desc
         collectedAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         applyNotifications(collectedAlerts);
       } else {
@@ -345,7 +319,6 @@ export default function NotificationModal({
             .or("payment_status.eq.Paid,payment_status.eq.Overdue,payment_status.eq.Missed")
         ]);
 
-        // 1. Process pending and suspended tenants
         if (tenantsResult.data) {
           tenantsResult.data.forEach((tenant: any) => {
             const dateString = new Date(tenant.created_at).toLocaleString("en-US", {
@@ -374,7 +347,6 @@ export default function NotificationModal({
           });
         }
 
-        // 2. Process paid, overdue, and missed subscription records
         if (subResult.data) {
           subResult.data.forEach((record: any) => {
             const businessName = record.tenants?.business_name || "Unknown Tenant";
@@ -418,7 +390,6 @@ export default function NotificationModal({
           });
         }
 
-        // Sort combined list desc by timestamp date value
         collectedAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         applyNotifications(collectedAlerts);
       }
@@ -429,17 +400,14 @@ export default function NotificationModal({
     }
   }, [supabase, tenantId, role, applyNotifications]);
 
-  // Click handler to toggle read status (Facebook style background tint)
   const handleToggleRead = (id: string) => {
-    setReadIds(prev => [...prev, id]);
     setNotifications(prev =>
       prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
     );
   };
 
-  // Delete a single notification element manually
   const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Stops row click event from firing simultaneously
+    e.stopPropagation(); 
     let dismissed: string[] = [];
     try {
       const stored = localStorage.getItem("stockify_dismissed_alerts");
@@ -459,7 +427,6 @@ export default function NotificationModal({
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  // Mass action to clear out the active lists immediately
   const handleClearAll = () => {
     const currentIds = notifications.map(n => n.id);
     let dismissed: string[] = [];
@@ -478,7 +445,6 @@ export default function NotificationModal({
     }
     setNotifications([]);
     
-    // Fire up the sync callback to reset the Navbar counter
     if (onClear) {
       onClear();
     }
@@ -490,7 +456,6 @@ export default function NotificationModal({
     }
   }, [isOpen, fetchLiveBillingAlerts]);
 
-  // Real-time postgres pipeline listener setup targeted at the billing table
   useEffect(() => {
     if (!isOpen) return;
 
@@ -515,12 +480,11 @@ export default function NotificationModal({
       if (!tenantId) return;
       const monitoredTables = ["billing_notifications", "subscription_records", "tenants"];
       const channels = monitoredTables.map((tableName) => {
-        const filterStr = tableName === "tenants" ? `tenant_id=eq.${tenantId}` : `tenant_id=eq.${tenantId}`;
         return supabase
           .channel(`modal-live-${tableName}`)
           .on(
             "postgres_changes",
-            { event: "*", schema: "public", table: tableName, filter: filterStr },
+            { event: "*", schema: "public", table: tableName, filter: `tenant_id=eq.${tenantId}` },
             () => fetchLiveBillingAlerts(false)
           )
           .subscribe();
@@ -563,7 +527,6 @@ export default function NotificationModal({
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="w-[600px] rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ backgroundColor: modalBg }}>
-        {/* Header */}
         <header className="px-8 py-5 flex justify-between items-center shrink-0" style={{ borderBottom: `1px solid ${borderColor}` }}>
           <h2 className="text-2xl font-bold uppercase tracking-widest font-['Inter']" style={{ color: primaryColor }}>
             Notifications
@@ -573,7 +536,6 @@ export default function NotificationModal({
           </button>
         </header>
 
-        {/* Notification list view */}
         <div className="flex flex-col max-h-[440px] overflow-y-auto flex-1">
           {loading ? (
             <div className="px-8 py-12 text-center text-sm font-medium font-['Inter']" style={{ color: primaryColor, opacity: 0.6 }}>
@@ -668,7 +630,6 @@ export default function NotificationModal({
           )}
         </div>
 
-        {/* Action Controls Footer */}
         {notifications.length > 0 && (
           <footer className="px-8 py-4 flex justify-end items-center shrink-0 bg-black/[0.01]" style={{ borderTop: `1px solid ${borderColor}` }}>
             <button 

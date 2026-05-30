@@ -9,7 +9,6 @@ interface NavbarEmployeeProps {
   openProfile: () => void;
   openNotifs: () => void;
   openSettings: () => void;
-  // Expose this so the parent can pass it to the Modal
   setResetNotificationBadge?: (fn: () => void) => void; 
 }
 
@@ -26,23 +25,73 @@ export default function NavbarEmployee({
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [hasSeenNotifs, setHasSeenNotifs] = useState<boolean>(false);
 
-  // ── NEW BRAND STATES ────────────────────────────────────────────────────────
+  // ── BRAND STATES ────────────────────────────────────────────────────────────
   const [businessName, setBusinessName] = useState<string>("STOCKIFY");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
-  // Function to be called by the parent (via Modal's "Clear All")
-  const resetBadge = useCallback(() => {
+  // Function to build and fetch current live alert items from the database
+  // Function to build and fetch current live alert items from the database
+  const getLiveAlertIds = useCallback(async (tId: string) => {
+    try {
+      const [fnbResult, nfbResult, orderResult] = await Promise.all([
+        supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("nfb_products").select("product_name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("orders").select("order_id, fulfillment_status").eq("tenant_id", tId).in("fulfillment_status", ["Pending", "Reported"])
+      ]);
+
+      const ids: string[] = [];
+
+      fnbResult.data?.forEach((item: { item_name: string; stock: number; alert_limit: number | null }) => {
+        const isLow = item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit);
+        if (isLow) ids.push(`fnb-stock-${item.item_name}-${item.stock}`);
+      });
+
+      nfbResult.data?.forEach((item: { product_name: string; quantity: number | string; reorder_threshold: any }) => {
+        const isLow = Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold));
+        if (isLow) ids.push(`nfb-stock-${item.product_name}-${item.quantity}`);
+      });
+
+      orderResult.data?.forEach((order: { order_id: string; fulfillment_status: string }) => {
+        const prefix = order.fulfillment_status === "Reported" ? "order-reported-" : "order-pending-";
+        ids.push(`${prefix}${order.order_id}`);
+      });
+
+      return ids;
+    } catch {
+      return [];
+    }
+  }, [supabase]);
+
+  // FIX: Clear All now securely commits active items to localStorage so they stay gone on refresh!
+  const resetBadge = useCallback(async () => {
     setOperationalAlerts(0);
     setHasSeenNotifs(true);
-  }, []);
 
-  // Sync the reset function with the parent component if provided
-  // NOTE: Must wrap in arrow fn — React useState setter calls functions directly as updaters
+    if (!tenantId) return;
+    const activeAlertIds = await getLiveAlertIds(tenantId);
+
+    if (activeAlertIds.length > 0) {
+      let dismissed: string[] = [];
+      try {
+        const stored = localStorage.getItem("stockify_dismissed_alerts");
+        dismissed = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(dismissed)) dismissed = [];
+      } catch {
+        dismissed = [];
+      }
+
+      // Merge current active alerts with any previously dismissed items
+      const updatedDismissed = Array.from(new Set([...dismissed, ...activeAlertIds]));
+      localStorage.setItem("stockify_dismissed_alerts", JSON.stringify(updatedDismissed));
+    }
+  }, [tenantId, getLiveAlertIds]);
+
   useEffect(() => {
     if (setResetNotificationBadge) {
       setResetNotificationBadge(() => resetBadge);
     }
   }, [setResetNotificationBadge, resetBadge]);
+
   const calculateOperationalMetrics = useCallback(async (tId: string) => {
     try {
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
@@ -102,7 +151,6 @@ export default function NavbarEmployee({
         setTenantId(tid);
         calculateOperationalMetrics(tid);
 
-        // ── FETCH BRAND INFORMATION FROM THE TENANTS TABLE ───────────────────
         const { data: tenantBrand } = await supabase
           .from("tenants")
           .select("business_name, logo_url")
@@ -141,7 +189,6 @@ export default function NavbarEmployee({
         .subscribe();
     });
 
-    // Real-time listener specifically watching the tenants table for changes to branding elements
     const brandChannel = supabase
       .channel("realtime-employee-brand")
       .on(
