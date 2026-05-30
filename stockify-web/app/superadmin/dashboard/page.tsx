@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
@@ -236,7 +236,7 @@ function DashboardHome({ stats, mrrData, auditLogs, logsLoading }: any) {
 
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
-export default function SuperadminDashboard() {
+function SuperadminDashboardContent() {
   const searchParams = useSearchParams();
   
   // ── State Management ──
@@ -403,5 +403,13 @@ export default function SuperadminDashboard() {
       <NotificationModal  isOpen={isNotifsOpen}  onClose={() => setIsNotifsOpen(false)} role="superadmin" />
       <ClientProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </div>
+  );
+}
+
+export default function SuperadminDashboard() {
+  return (
+    <Suspense fallback={<LoadingScreen fullScreen={true} />}>
+      <SuperadminDashboardContent />
+    </Suspense>
   );
 }
