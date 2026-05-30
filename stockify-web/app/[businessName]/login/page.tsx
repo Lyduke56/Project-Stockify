@@ -100,15 +100,21 @@ export default function BusinessLoginPage() {
         if (!businessName) return;
         const { data: allTenants } = await supabase
           .from("tenants")
-          .select("tenant_id, business_name");
+          .select("tenant_id, business_name, subscription_status, is_suspended");
         
         const tenant = allTenants?.find((t: any) => 
           t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
         );
         
-        if (tenant?.tenant_id) {
-          const cfg = await fetchStorefrontConfig(tenant.tenant_id);
-          setSfConfig(cfg);
+        if (tenant) {
+          if (tenant.subscription_status === "Suspended" || tenant.is_suspended === true) {
+            router.push(`/${businessName}/suspended`);
+            return;
+          }
+          if (tenant.tenant_id) {
+            const cfg = await fetchStorefrontConfig(tenant.tenant_id);
+            setSfConfig(cfg);
+          }
         }
       } catch (err) {
         console.error("Failed to load storefront config:", err);
@@ -118,7 +124,7 @@ export default function BusinessLoginPage() {
       }
     };
     loadConfig();
-  }, [businessName, supabase]);
+  }, [businessName, supabase, router]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -151,7 +157,7 @@ export default function BusinessLoginPage() {
       if (data?.user) {
         const { data: allTenants } = await supabase
           .from("tenants")
-          .select("tenant_id, business_name, business_type, is_active, subscription_status");
+          .select("tenant_id, business_name, business_type, is_active, subscription_status, is_suspended");
 
         const tenant = allTenants?.find((t: any) => 
           t.business_name.toLowerCase().replace(/[\s-]/g, "") === businessName.toLowerCase().replace(/[\s-]/g, "")
@@ -164,7 +170,14 @@ export default function BusinessLoginPage() {
           return;
         }
 
-        if (!tenant.is_active || tenant.subscription_status === "Suspended") {
+        if (tenant.subscription_status === "Suspended" || tenant.is_suspended === true) {
+          await supabase.auth.signOut();
+          setLoading(false);
+          router.push(`/${businessName}/suspended`);
+          return;
+        }
+
+        if (!tenant.is_active) {
           await supabase.auth.signOut();
           setLoading(false);
           setError("This store is currently unavailable.");
@@ -204,7 +217,11 @@ export default function BusinessLoginPage() {
         if (!userProfile.is_active) {
           await supabase.auth.signOut();
           setLoading(false);
-          router.push("/auth/account/waiting-approved");
+          if (!tenant.is_active) {
+            router.push("/auth/account/waiting-approved");
+          } else {
+            setError("Your account is currently inactive. Please contact support.");
+          }
           return;
         }
 

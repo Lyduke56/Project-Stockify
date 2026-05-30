@@ -130,15 +130,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tenant not found." }, { status: 404 });
   }
 
+  // ── Load billing settings ────────────────────────────────────────────────
+  const { data: settings } = await supabase
+    .from("billing_settings")
+    .select("monthly_price, billing_due_days, grace_period_days")
+    .single();
+
+  const monthlyPrice    = Number(settings?.monthly_price    ?? 1000);
+  const billingDueDays  = Number(settings?.billing_due_days  ?? 30);
+  const gracePeriodDays = Number(settings?.grace_period_days ?? 7);
+
   const now = new Date();
 
-  // billing_period = today's date (YYYY-MM-DD), no UTC shift
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const billingPeriod = `${y}-${m}-${d}`;
+  // billing_period = first day of current month (YYYY-MM-DD)
+  const billingPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
-  // Check for existing billing record on this exact date
+  // Check for existing billing record for this period
   const { data: existing } = await supabase
     .from("subscription_records")
     .select("subscription_id")
@@ -153,10 +160,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // overdue_at = exactly 1 month from today
+  // overdue_at = today + billing_due_days (from settings)
   const overdueDate = new Date(now);
-  overdueDate.setMonth(overdueDate.getMonth() + 1);
+  overdueDate.setDate(overdueDate.getDate() + billingDueDays);
   const overdueAt = overdueDate.toISOString();
+
+  // grace_ends_at = overdue_at + grace_period_days (from settings)
+  const graceEndsDate = new Date(overdueDate);
+  graceEndsDate.setDate(graceEndsDate.getDate() + gracePeriodDays);
+  const graceEndsAt = graceEndsDate.toISOString();
 
   const { data: newRecord, error: insertError } = await supabase
     .from("subscription_records")
@@ -164,8 +176,9 @@ export async function POST(req: NextRequest) {
       tenant_id:      tenantId,
       billing_period: billingPeriod,
       payment_status: "Pending",
-      amount:         1000.0,
+      amount:         monthlyPrice,
       overdue_at:     overdueAt,
+      grace_ends_at:  graceEndsAt,
     })
     .select()
     .single();
@@ -174,7 +187,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  // End trial — set to Active and clear trial_ends_at
+  // ── Activate tenant (end trial) ──────────────────────────────────────────
   await supabase
     .from("tenants")
     .update({
@@ -183,5 +196,43 @@ export async function POST(req: NextRequest) {
     })
     .eq("tenant_id", tenantId);
 
+  // ── Send invoice email ───────────────────────────────────────────────────
+  try {
+    const { sendBillingInvoiceEmail } = await import("@/lib/mailer");
+    await sendBillingInvoiceEmail(
+      tenant.owner_email,
+      tenant.business_name,
+      billingPeriod,
+      monthlyPrice
+    );
+  } catch (e) {
+    console.error("[active-trial POST] Invoice email failed:", e);
+  }
+
+  // ── Insert in-app billing notification (visible on notification bell) ────
+  await supabase.from("billing_notifications").insert({
+    tenant_id:         tenantId,
+    notification_type: "invoice_generated",
+    recipient_email:   tenant.owner_email,
+    subject:           `Your free trial has ended — First invoice generated for ${tenant.business_name}`,
+  });
+
+  // ── Audit log ────────────────────────────────────────────────────────────
+  const { logAudit, AuditEvent } = await import("@/lib/audit");
+  await logAudit({
+    performedBy:  "Superadmin",
+    eventType:    AuditEvent.TRIAL_CONVERTED,
+    tenantId,
+    businessName: tenant.business_name,
+    description:  `Free trial ended early by superadmin. First billing record created for period ${billingPeriod}. Amount: ₱${monthlyPrice}. Due: ${overdueAt.split("T")[0]}.`,
+    metadata: {
+      subscriptionId: newRecord.subscription_id,
+      billingPeriod,
+      amount:       monthlyPrice,
+      overdueAt,
+      graceEndsAt,
+    },
+  });
+
   return NextResponse.json({ success: true, data: newRecord });
-}
+}

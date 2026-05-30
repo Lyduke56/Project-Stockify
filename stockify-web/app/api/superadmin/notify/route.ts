@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     .from("tenants")
     .select(
       `business_name, owner_full_name, owner_email,
-       subscription_records ( billing_period, payment_status, amount )`
+       subscription_records ( billing_period, payment_status, amount, overdue_at )`
     )
     .eq("tenant_id", tenantId)
     .single();
@@ -48,8 +48,8 @@ export async function POST(req: Request) {
   const businessName   = (tenant as any).business_name  as string;
   const ownerName      = (tenant as any).owner_full_name as string;
 
-  // ── 2. Resolve earliest unpaid billing period ─────────────────────────
-  const records: { billing_period: string; payment_status: string; amount: number }[] =
+  // ── 2. Resolve earliest unpaid billing record (with actual due date) ─────
+  const records: { billing_period: string; payment_status: string; amount: number; overdue_at: string | null }[] =
     (tenant as any).subscription_records ?? [];
 
   const unpaidRecords = records
@@ -58,9 +58,10 @@ export async function POST(req: Request) {
       (a, b) => new Date(a.billing_period).getTime() - new Date(b.billing_period).getTime()
     );
 
+  // Use overdue_at (the actual due date) for the label — not the billing start date.
   const dueDateLabel =
-    unpaidRecords.length > 0
-      ? new Date(unpaidRecords[0].billing_period + "T00:00:00").toLocaleDateString("en-PH", {
+    unpaidRecords.length > 0 && unpaidRecords[0].overdue_at
+      ? new Date(unpaidRecords[0].overdue_at).toLocaleDateString("en-PH", {
           month: "long", day: "numeric", year: "numeric",
         })
       : "your upcoming billing date";

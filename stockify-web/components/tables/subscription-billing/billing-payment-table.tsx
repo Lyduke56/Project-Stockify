@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import SendNotificationModal from "@/components/modals/superadmin/send-notification-modal";
 import ConfirmActionModal    from "@/components/modals/confirm-tenant-action-modal";
 import RecordPaymentModal   from "@/components/modals/superadmin/subscription-billing/record-payment-modal";
+import TenantProfileModal   from "@/components/modals/superadmin/tenant-profile/tenant-profile-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ export interface BillingRow {
   due_date:            string | null;
   grace_ends_at:       string | null;
   last_paid_at:        string | null;
+  termination_date:    string | null;
   balance:             number;
   subscription_id:     string | null;
   next_billing_date:   string | null;
@@ -58,6 +60,7 @@ const getTabConfig = (tab: string) => {
     case "Paid":      return { bg: "bg-[#2D7A1E]", text: "text-[#FFFCEB]" };
     case "Overdue":   return { bg: "bg-[#D97706]", text: "text-[#FFFCEB]" };
     case "Missed":    return { bg: "bg-[#CE0000]", text: "text-[#FFFCEB]" };
+    case "Suspended": return { bg: "bg-[#64748B]", text: "text-[#FFFCEB]" };
     default:          return { bg: "bg-[#385E31]", text: "text-[#FFFCEB]" };
   }
 };
@@ -68,6 +71,7 @@ const getPillStyles = (status: string) => {
     case "Pending":   return { bg: "bg-[#E5AD24]", text: "text-[#385E31]" };
     case "Overdue":   return { bg: "bg-[#FFD980]", text: "text-[#385E31]" };
     case "Missed":    return { bg: "bg-[#E91F22]", text: "text-[#FFFCEB]" };
+    case "Suspended": return { bg: "bg-[#64748B]", text: "text-[#FFFCEB]" };
     default:          return { bg: "bg-[#E2E8F0]", text: "text-[#475569]" };
   }
 };
@@ -140,10 +144,11 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
   // Selected tenant for modals
   const [selectedRow, setSelectedRow] = useState<BillingRow | null>(null);
 
-  // Modal visibility
   const [showNotifyModal,  setShowNotifyModal]  = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileTenantId,  setProfileTenantId]  = useState<string | null>(null);
 
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -158,12 +163,8 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Pre-filter: Exclude Suspended Tenants completely ─────────────────────────
-  const activeRows = rows.filter(
-    (r) =>
-      r.display_status !== "Suspended" &&
-      r.subscription_status?.toLowerCase() !== "suspended"
-  );
+  // ── Pre-filter: Keep all rows so suspended/missed tenants are visible and manageable
+  const activeRows = rows;
 
   // ── Client-side filtering ──────────────────────────────────────────────────
 
@@ -332,11 +333,28 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
         {/* Header */}
         <div className="w-full grid px-4 py-3 rounded-t-[8px] bg-[#385E31]"
           style={{ gridTemplateColumns: "2fr 1.5fr 1.2fr 1.2fr 1.2fr 1.1fr 1.1fr 1fr" }}>
-          {COLUMNS.map((col) => (
-            <div key={col} className="text-center text-[#FFFCEB] text-[12px] font-bold">
-              {col}
-            </div>
-          ))}
+          {COLUMNS.map((col, colIdx) => {
+            let headerText = col;
+            let tooltip = undefined;
+            if (colIdx === 4) {
+              if (activeTab === "Overdue") {
+                headerText = "GPE";
+                tooltip = "Grace Period Ends";
+              } else if (activeTab === "Missed") {
+                headerText = "TD";
+                tooltip = "Termination Date";
+              }
+            }
+            return (
+              <div
+                key={col}
+                title={tooltip}
+                className={`text-center text-[#FFFCEB] text-[12px] font-bold ${tooltip ? "cursor-help underline decoration-dotted" : ""}`}
+              >
+                {headerText}
+              </div>
+            );
+          })}
         </div>
 
         {/* Rows */}
@@ -372,14 +390,17 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
                 {/* Business Name */}
                 <div className="text-center px-1">
                   <span
-                    onClick={() => router.push(`/superadmin/tenant-profile/${row.tenant_id}`)}
+                    onClick={() => {
+                      setProfileTenantId(row.tenant_id);
+                      setShowProfileModal(true);
+                    }}
                     className="text-[#3A6131] text-[12px] font-bold cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
                   </span>
-                  {inGrace && graceDaysLeft !== null && graceDaysLeft <= 3 && (
+                  {inGrace && graceDaysLeft !== null && graceDaysLeft > 0 && graceDaysLeft <= 3 && (
                     <p className="text-[#E91F22] text-[9px] font-bold mt-0.5">
-                      ⚠ {graceDaysLeft <= 0 ? "Grace expired!" : `${graceDaysLeft}d grace left`}
+                      ⚠ {graceDaysLeft}d grace left
                     </p>
                   )}
                 </div>
@@ -403,9 +424,13 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
                   {fmtDate(row.due_date)}
                 </div>
 
-                {/* Last Paid */}
+                {/* Last Paid / GPE / Termination Date */}
                 <div className="text-center text-[#3A6131] text-[12px] font-bold">
-                  {fmtDate(row.last_paid_at)}
+                  {activeTab === "Overdue"
+                    ? fmtDate(row.grace_ends_at)
+                    : activeTab === "Missed"
+                    ? fmtDate(row.termination_date)
+                    : fmtDate(row.last_paid_at)}
                 </div>
 
                 {/* Status pill */}
@@ -570,6 +595,19 @@ export default function BillingPaymentTable({ rows, onRefresh, isLoading = false
         isLoading={actionLoading}
         onConfirm={handleSuspend}
         onClose={() => { setShowSuspendModal(false); setSelectedRow(null); setActionError(""); }}
+      />
+
+      {/* Tenant Profile Modal */}
+      <TenantProfileModal
+        isOpen={showProfileModal}
+        tenantId={profileTenantId}
+        onClose={() => {
+          setShowProfileModal(false);
+          setProfileTenantId(null);
+        }}
+        onSuccess={() => {
+          onRefresh();
+        }}
       />
     </>
   );

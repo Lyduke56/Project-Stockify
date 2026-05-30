@@ -227,10 +227,9 @@ export default function NotificationModal({
           }
         }
 
-        // 🌟 FIX 1: Included "message" column within select criteria payload query scope
         const { data: billingData } = await supabase
           .from("billing_notifications")
-          .select("id, notification_type, subject, message, sent_at") 
+          .select("id, notification_type, subject, sent_at") 
           .eq("tenant_id", tenantId)
           .order("sent_at", { ascending: false });
 
@@ -240,8 +239,7 @@ export default function NotificationModal({
               id: notif.id || `billing-notif-${notif.sent_at}`,
               title: notif.notification_type === "reminder" ? "Billing Reminder" : "BroadCast Notification",
               subject: notif.subject || "Platform Message Alert",
-              // 🌟 FIX 2: Render live typed admin messages, falling back to helper structures if empty
-              body: notif.message || getDetailedBody(notif.notification_type || "", notif.subject || ""),
+              body: getDetailedBody(notif.notification_type || "", notif.subject || ""),
               timestamp: new Date(notif.sent_at).toLocaleString("en-US", {
                 month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true,
               }),
@@ -315,7 +313,7 @@ export default function NotificationModal({
           
           supabase
             .from("subscription_records")
-            .select("subscription_id, billing_period, payment_status, amount, amount_paid, paid_at, overdue_at, tenants(business_name)")
+            .select("subscription_id, tenant_id, billing_period, payment_status, amount, amount_paid, paid_at, overdue_at")
             .or("payment_status.eq.Paid,payment_status.eq.Overdue,payment_status.eq.Missed")
         ]);
 
@@ -347,9 +345,28 @@ export default function NotificationModal({
           });
         }
 
+        // Build a map of tenant_id → business_name from the tenants query above
+        const tenantMap = new Map<string, string>();
+        if (tenantsResult.data) {
+          tenantsResult.data.forEach((t: any) => tenantMap.set(t.tenant_id, t.business_name || "Unknown Tenant"));
+        }
+
         if (subResult.data) {
+          // Fetch business names for any subscription tenants not already in our map
+          const missingIds = (subResult.data as any[])
+            .map((r: any) => r.tenant_id)
+            .filter((id: string) => id && !tenantMap.has(id));
+
+          if (missingIds.length > 0) {
+            const { data: extraTenants } = await supabase
+              .from("tenants")
+              .select("tenant_id, business_name")
+              .in("tenant_id", missingIds);
+            (extraTenants || []).forEach((t: any) => tenantMap.set(t.tenant_id, t.business_name || "Unknown Tenant"));
+          }
+
           subResult.data.forEach((record: any) => {
-            const businessName = record.tenants?.business_name || "Unknown Tenant";
+            const businessName = tenantMap.get(record.tenant_id) || "Unknown Tenant";
             const dateVal = record.payment_status === "Paid" ? record.paid_at : record.overdue_at;
             const dateString = dateVal 
               ? new Date(dateVal).toLocaleString("en-US", {
@@ -406,8 +423,22 @@ export default function NotificationModal({
     );
   };
 
-  const handleDeleteNotification = (id: string, e: React.MouseEvent) => {
+  const handleDeleteNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation(); 
+
+    // If it's a database notification (not derived), delete it from the DB
+    const isDbNotif = !id.startsWith("suspension-") && !id.startsWith("trial-") && !id.startsWith("sub-") && !id.startsWith("fnb-") && !id.startsWith("nfb-") && !id.startsWith("order-");
+    if (isDbNotif) {
+      try {
+        await supabase
+          .from("billing_notifications")
+          .delete()
+          .eq("id", id);
+      } catch (err) {
+        console.error("Failed to delete notification from DB:", err);
+      }
+    }
+
     let dismissed: string[] = [];
     try {
       const stored = localStorage.getItem("stockify_dismissed_alerts");
@@ -427,7 +458,22 @@ export default function NotificationModal({
     setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
+    const dbNotifIds = notifications
+      .filter(n => !n.id.startsWith("suspension-") && !n.id.startsWith("trial-") && !n.id.startsWith("sub-") && !n.id.startsWith("fnb-") && !n.id.startsWith("nfb-") && !n.id.startsWith("order-"))
+      .map(n => n.id);
+
+    if (dbNotifIds.length > 0) {
+      try {
+        await supabase
+          .from("billing_notifications")
+          .delete()
+          .in("id", dbNotifIds);
+      } catch (err) {
+        console.error("Failed to clear notifications from DB:", err);
+      }
+    }
+
     const currentIds = notifications.map(n => n.id);
     let dismissed: string[] = [];
     try {
@@ -517,12 +563,11 @@ export default function NotificationModal({
 
   if (!isOpen || !mounted) return null;
 
-  const isClient = role === "client";
-  const primaryColor = colors?.color_primary ?? (isClient ? "#F7B71D" : "#385E31");
+  const primaryColor = colors?.color_primary ?? "#385E31";
   const modalBg = colors?.color_background ?? "#FFFCF0";
-  const borderColor = isClient ? "rgba(247,183,29,0.15)" : `${primaryColor}26`;
-  const itemBorderColor = isClient ? "rgba(247,183,29,0.10)" : `${primaryColor}1A`;
-  const hoverBg = isClient ? "hover:bg-[#F7B71D]/[0.02]" : "hover:bg-black/[0.02]";
+  const borderColor = `${primaryColor}26`;
+  const itemBorderColor = `${primaryColor}1A`;
+  const hoverBg = "hover:bg-black/[0.02]";
 
   return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
@@ -559,7 +604,7 @@ export default function NotificationModal({
               const isRedAlert = titleLower.includes("suspended") || titleLower.includes("suspension") || titleLower.includes("missed") || titleLower.includes("expired");
               const isOrangeAlert = titleLower.includes("overdue") || titleLower.includes("warning") || titleLower.includes("limit") || titleLower.includes("low");
               
-              let tagBg = isClient ? "rgba(247,183,29,0.10)" : `${primaryColor}1A`;
+              let tagBg = `${primaryColor}1A`;
               let tagColor = primaryColor;
               let rowBg = "transparent";
 
@@ -572,7 +617,7 @@ export default function NotificationModal({
                 tagColor = "#d97706";
                 rowBg = "rgba(245,158,11,0.04)";
               } else if (!notif.isRead) {
-                rowBg = isClient ? "rgba(247,183,29,0.04)" : `${primaryColor}0A`;
+                rowBg = `${primaryColor}0A`;
               }
 
               return (
@@ -615,13 +660,29 @@ export default function NotificationModal({
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex flex-col items-end gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <span className="text-sm font-normal font-['Inter']" style={{ color: primaryColor, opacity: 0.6 }}>
                         {notif.timestamp}
                       </span>
-                      <span className="text-[10px] font-bold select-none" style={{ color: primaryColor, opacity: 0.4 }}>
-                        {isExpanded ? "▲ Collapse" : "▼ Expand"}
-                      </span>
+                      <div className="flex gap-2.5 items-center">
+                        <button 
+                          onClick={() => {
+                            setExpandedIndex(isExpanded ? null : i);
+                            if (!notif.isRead) handleToggleRead(notif.id);
+                          }}
+                          className="text-[10px] font-bold hover:underline"
+                          style={{ color: `${primaryColor}aa` }}
+                        >
+                          {isExpanded ? "Collapse" : "Expand"}
+                        </button>
+                        <span style={{ color: primaryColor, opacity: 0.2 }}>|</span>
+                        <button 
+                          onClick={(e) => handleDeleteNotification(notif.id, e)}
+                          className="text-[10px] font-bold text-red-600 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

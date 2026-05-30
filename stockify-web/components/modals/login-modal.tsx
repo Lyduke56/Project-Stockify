@@ -85,11 +85,47 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     // Administrator path
     const { data: userData } = await supabase
       .from("users")
-      .select("is_active")
+      .select("tenant_id, is_active")
       .eq("user_id", data.user.id)
       .single();
 
-    if (!userData?.is_active) {
+    let isTenantSuspended = false;
+
+    if (userData?.tenant_id) {
+      const { data: tenantData } = await supabase
+        .from("tenants")
+        .select("is_active, subscription_status, is_suspended")
+        .eq("tenant_id", userData.tenant_id)
+        .single();
+
+      if (tenantData) {
+        const { data: missedRecords } = await supabase
+          .from("subscription_records")
+          .select("subscription_id")
+          .eq("tenant_id", userData.tenant_id)
+          .in("payment_status", ["Missed", "Overdue"])
+          .limit(1);
+
+        const hasMissedOrOverdue = missedRecords && missedRecords.length > 0;
+
+        if (
+          tenantData.subscription_status === "Suspended" ||
+          tenantData.is_suspended === true ||
+          hasMissedOrOverdue
+        ) {
+          isTenantSuspended = true;
+        } else if (!tenantData.is_active) {
+          await supabase.auth.signOut();
+          setLoading(false);
+          setError("This business account is currently unavailable.");
+          return;
+        }
+      }
+    }
+
+    // If the tenant is suspended or has outstanding/missed billing, we allow the administrator to log in to settle billing.
+    // Therefore, we only enforce the !userData?.is_active check if the tenant is NOT suspended.
+    if (!isTenantSuspended && !userData?.is_active) {
       await supabase.auth.signOut();
       onClose();
       router.push("/auth/account/waiting-approved");
