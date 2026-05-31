@@ -30,7 +30,6 @@ export default function NavbarEmployee({
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   // Function to build and fetch current live alert items from the database
-  // Function to build and fetch current live alert items from the database
   const getLiveAlertIds = useCallback(async (tId: string) => {
     try {
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
@@ -151,20 +150,25 @@ export default function NavbarEmployee({
         setTenantId(tid);
         calculateOperationalMetrics(tid);
 
+        // ── FETCH BRAND AND STOREFRONT CONFIG ───────────────────
         const { data: tenantBrand } = await supabase
           .from("tenants")
           .select("business_name, logo_url")
           .eq("tenant_id", tid)
           .single();
 
-        if (tenantBrand) {
-          if (tenantBrand.business_name) {
-            setBusinessName(tenantBrand.business_name.toUpperCase());
-          }
-          if (tenantBrand.logo_url) {
-            setLogoUrl(tenantBrand.logo_url);
-          }
+        const { data: sfConfig } = await supabase
+          .from("tenant_storefront")
+          .select("logo_url")
+          .eq("tenant_id", tid)
+          .single();
+
+        if (tenantBrand?.business_name) {
+          setBusinessName(tenantBrand.business_name.toUpperCase());
         }
+        
+        // FIX: Prioritize Storefront Config logo over the base tenant table
+        setLogoUrl(sfConfig?.logo_url || tenantBrand?.logo_url || null);
       }
     };
 
@@ -189,23 +193,30 @@ export default function NavbarEmployee({
         .subscribe();
     });
 
+    // Extract brand updates instantly from the Realtime payload
     const brandChannel = supabase
       .channel("realtime-employee-brand")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` },
-        () => {
-          supabase
-            .from("tenants")
-            .select("business_name, logo_url")
-            .eq("tenant_id", tenantId)
-            .single()
-            .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
-              if (data) {
-                if (data.business_name) setBusinessName(data.business_name.toUpperCase());
-                if (data.logo_url) setLogoUrl(data.logo_url);
-              }
-            });
+        { event: "UPDATE", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` },
+        (payload: { new: { business_name?: string; logo_url?: string | null } }) => {
+          if (payload.new?.business_name) {
+            setBusinessName(payload.new.business_name.toUpperCase());
+          }
+        }
+      )
+      .subscribe();
+
+    // Listen to the storefront config table to catch logo updates instantly
+    const sfChannel = supabase
+      .channel("realtime-employee-storefront")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tenant_storefront", filter: `tenant_id=eq.${tenantId}` },
+        (payload: { new: { logo_url?: string | null } }) => {
+          if (payload.new && payload.new.logo_url !== undefined) {
+            setLogoUrl(payload.new.logo_url);
+          }
         }
       )
       .subscribe();
@@ -213,6 +224,7 @@ export default function NavbarEmployee({
     return () => {
       channels.forEach((channel) => supabase.removeChannel(channel));
       supabase.removeChannel(brandChannel);
+      supabase.removeChannel(sfChannel);
     };
   }, [tenantId, calculateOperationalMetrics, supabase]);
 
@@ -229,7 +241,7 @@ export default function NavbarEmployee({
           <img 
             src={logoUrl || "/stockify-logo-1.svg"} 
             alt={`${businessName} Logo`} 
-            className="h-full w-full object-contain" 
+            className="h-full w-full object-cover" 
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = "/stockify-logo-1.svg";
             }}

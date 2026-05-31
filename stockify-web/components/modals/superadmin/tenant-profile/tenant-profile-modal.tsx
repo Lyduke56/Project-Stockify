@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 import BusinessDetailsTab, { TenantDetail } from "./business-details-tab";
 import PaymentHistoryTab from "./payment-history-tab";
@@ -107,6 +108,7 @@ export default function TenantProfileModal({
 
   const [activeTab,      setActiveTab]      = useState<TabId>("details");
   const [tenant,         setTenant]         = useState<TenantDetail | null>(null);
+  const [sfLogoUrl,      setSfLogoUrl]      = useState<string | null>(null);
   const [loading,        setLoading]        = useState(false);
   const [fetchError,     setFetchError]     = useState("");
 
@@ -127,6 +129,7 @@ export default function TenantProfileModal({
     if (!isOpen || !tenantId) {
       // Reset when closing
       setTenant(null);
+      setSfLogoUrl(null);
       setFetchError("");
       setActiveTab("details");
       setActiveAction(null);
@@ -143,6 +146,19 @@ export default function TenantProfileModal({
         const result = await res.json();
         if (!res.ok || result.error) throw new Error(result.error ?? "Failed to load tenant.");
         setTenant(result.data ?? result);
+
+        // Fetch the prioritized logo from the storefront config table
+        const supabase = createClient();
+        const { data: sfData } = await supabase
+          .from("tenant_storefront")
+          .select("logo_url")
+          .eq("tenant_id", tenantId)
+          .single();
+
+        if (sfData?.logo_url) {
+          setSfLogoUrl(sfData.logo_url);
+        }
+
       } catch (err: unknown) {
         setFetchError(err instanceof Error ? err.message : "Failed to load tenant.");
       } finally {
@@ -215,6 +231,9 @@ export default function TenantProfileModal({
     setTimeout(() => setSuccessMsg(""), 4000);
   };
 
+  // Determine the display logo (Storefront Config > Base Tenant Table)
+  const displayLogo = sfLogoUrl || tenant?.logo_url;
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   if (!isOpen || !mounted) return null;
@@ -248,9 +267,9 @@ export default function TenantProfileModal({
             {/* Tenant Meta Info */}
             <div className="mb-10">
               <div className="w-20 h-20 rounded-[20px] bg-white/10 border border-white/20 p-1 mb-5 relative shrink-0 shadow-lg">
-                {tenant?.logo_url ? (
+                {displayLogo ? (
                   <img
-                    src={tenant.logo_url}
+                    src={displayLogo}
                     alt="Logo"
                     className="w-full h-full object-cover rounded-[16px]"
                   />

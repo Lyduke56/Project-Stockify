@@ -8,7 +8,6 @@ interface NavbarAdminProps {
   setActiveSection: (section: SectionKey) => void;
   openProfile: () => void;
   openNotifs: () => void;
-  // Added optional prop to clear counts if handled by modal trigger pipelines
   setResetNotificationBadge?: (fn: () => void) => void; 
 }
 
@@ -22,7 +21,6 @@ export default function NavbarAdmin({
   const [notifCount, setNotifCount] = useState<number>(0);
   const [tenantId, setTenantId] = useState<string | null>(null);
   
-  // Local interaction tracking to prevent badge re-inflation bugs upon reloading browser tabs
   const [hasDismissedCurrentNotifs, setHasDismissedCurrentNotifs] = useState<boolean>(false);
 
   // ── BRAND STATES ────────────────────────────────────────────────────────────
@@ -42,7 +40,6 @@ export default function NavbarAdmin({
 
       let totalCount = 0;
 
-      // 1. Fetch billing notifications IDs
       const { data: billingData } = await supabase
         .from("billing_notifications")
         .select("id")
@@ -50,13 +47,10 @@ export default function NavbarAdmin({
 
       if (billingData) {
         billingData.forEach((notif: any) => {
-          if (!dismissed.includes(notif.id)) {
-            totalCount += 1;
-          }
+          if (!dismissed.includes(notif.id)) totalCount += 1;
         });
       }
 
-      // 2. Fetch tenant status for suspension/trial alerts
       const { data: tenantRow } = await supabase
         .from("tenants")
         .select("is_suspended, subscription_status, trial_ends_at")
@@ -82,7 +76,6 @@ export default function NavbarAdmin({
         }
       }
 
-      // 3. Fetch pending, overdue, or missed subscription records
       const { data: subData } = await supabase
         .from("subscription_records")
         .select("subscription_id, payment_status, overdue_at")
@@ -113,7 +106,6 @@ export default function NavbarAdmin({
     }
   }, [supabase]);
 
-  // Expose an interactive cleanup method directly to parent views via reference hooks
   const clearBadgeStateLocally = useCallback(() => {
     setNotifCount(0);
     setHasDismissedCurrentNotifs(true);
@@ -144,39 +136,42 @@ export default function NavbarAdmin({
         setTenantId(tid);
         fetchNotificationCount(tid);
 
-        // Check if user has previously dismissed notifications within localStorage
         const wasDismissed = localStorage.getItem(`admin_dismissed_notifs_${tid}`) === "true";
         setHasDismissedCurrentNotifs(wasDismissed);
 
-        // ── FETCH BRAND INFORMATION FROM THE TENANTS TABLE ───────────────────
+        // ── FETCH BRAND AND STOREFRONT CONFIG ───────────────────
         const { data: tenantBrand } = await supabase
           .from("tenants")
           .select("business_name, logo_url")
           .eq("tenant_id", tid)
           .single();
 
-        if (tenantBrand) {
-          if (tenantBrand.business_name) {
-            setBusinessName(tenantBrand.business_name.toUpperCase());
-          }
-          if (tenantBrand.logo_url) {
-            setLogoUrl(tenantBrand.logo_url);
-          }
+        const { data: sfConfig } = await supabase
+          .from("tenant_storefront")
+          .select("logo_url")
+          .eq("tenant_id", tid)
+          .single();
+
+        if (tenantBrand?.business_name) {
+          setBusinessName(tenantBrand.business_name.toUpperCase());
         }
+        
+        // FIX: Force the navbar to prioritize the Storefront Config logo
+        setLogoUrl(sfConfig?.logo_url || tenantBrand?.logo_url || null);
       }
     };
 
     initNotifications();
   }, [fetchNotificationCount, supabase]);
 
-  // Listen to incoming billing logs, subscriptions, and tenant details in real-time
+  // ── REALTIME LISTENERS ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!tenantId) return;
 
     const channel1 = supabase
       .channel("realtime-admin-billing")
       .on("postgres_changes", { event: "*", schema: "public", table: "billing_notifications", filter: `tenant_id=eq.${tenantId}` }, () => {
-        setHasDismissedCurrentNotifs(false); // New data arrived! Show badge again
+        setHasDismissedCurrentNotifs(false);
         localStorage.removeItem(`admin_dismissed_notifs_${tenantId}`);
         fetchNotificationCount(tenantId);
       })
@@ -193,22 +188,26 @@ export default function NavbarAdmin({
 
     const channel3 = supabase
       .channel("realtime-admin-tenants")
-      .on("postgres_changes", { event: "*", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` }, () => {
-        setHasDismissedCurrentNotifs(false);
-        localStorage.removeItem(`admin_dismissed_notifs_${tenantId}`);
-        fetchNotificationCount(tenantId);
-        
-        supabase
-          .from("tenants")
-          .select("business_name, logo_url")
-          .eq("tenant_id", tenantId)
-          .single()
-          .then(({ data }: { data: { business_name: string | null; logo_url: string | null } | null }) => {
-            if (data) {
-              if (data.business_name) setBusinessName(data.business_name.toUpperCase());
-              if (data.logo_url) setLogoUrl(data.logo_url);
-            }
-          });
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tenants", filter: `tenant_id=eq.${tenantId}` }, 
+        (payload: { new: { business_name?: string; logo_url?: string | null } }) => {
+          setHasDismissedCurrentNotifs(false);
+          localStorage.removeItem(`admin_dismissed_notifs_${tenantId}`);
+          fetchNotificationCount(tenantId);
+          
+          if (payload.new?.business_name) {
+            setBusinessName(payload.new.business_name.toUpperCase());
+          }
+      })
+      .subscribe();
+
+    // FIX: Add listener for the Storefront Config table to instantly catch logo updates
+    const channel4 = supabase
+      .channel("realtime-admin-storefront")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tenant_storefront", filter: `tenant_id=eq.${tenantId}` }, 
+        (payload: { new: { logo_url?: string | null } }) => {
+          if (payload.new && payload.new.logo_url !== undefined) {
+            setLogoUrl(payload.new.logo_url);
+          }
       })
       .subscribe();
 
@@ -216,6 +215,7 @@ export default function NavbarAdmin({
       supabase.removeChannel(channel1);
       supabase.removeChannel(channel2);
       supabase.removeChannel(channel3);
+      supabase.removeChannel(channel4);
     };
   }, [tenantId, fetchNotificationCount, supabase]);
 
@@ -239,7 +239,7 @@ export default function NavbarAdmin({
           <img 
             src={logoUrl || "/stockify-logo-1.svg"} 
             alt={`${businessName} Logo`} 
-            className="h-full w-full object-contain" 
+            className="h-full w-full object-cover" 
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = "/stockify-logo-1.svg";
             }}
@@ -274,7 +274,6 @@ export default function NavbarAdmin({
           />
         </button>
 
-        {/* Notifications Icon */}
         <div className="relative flex items-center justify-center">
           <button
             onClick={handleNotifClick} 
@@ -305,15 +304,12 @@ export default function NavbarAdmin({
           )}
         </div>
 
-        {/* Profile Settings Icon */}
         <button
           onClick={openProfile} 
           className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center hover:opacity-75 hover:scale-105 transition-all cursor-pointer"
           title="Profile Settings"
         >
-          <div
-            className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-primary p-0.5 flex items-center justify-center"
-          >
+          <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-primary p-0.5 flex items-center justify-center">
             <div
               className="w-full h-full bg-current"
               style={{
