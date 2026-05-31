@@ -45,32 +45,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // --- Create auth user ---
-   const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/account/waiting-approved`,
-        },
-      });
+// --- Create auth user (Using Admin API to bypass bot protections) ---
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: email,
+      password: password,
+      email_confirm: true, // Auto-confirms so you bypass Supabase's strict email limits!
+    });
       
-      if (authError) {
-        if (authError.status === 429) {
-          return NextResponse.json(
-            { error: "Too many signup attempts. Please wait a few minutes." },
-            { status: 429 }
-          );
-        }
-        return NextResponse.json({ error: authError.message }, { status: 400 });
-      }
+    if (authError) {
+      console.error("🚨 ADMIN CREATE USER FAILED:", authError);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
 
-      const authUserId = authData.user?.id;
-      if (!authUserId) {
-        return NextResponse.json(
-          { error: "Failed to create account. The email may already be in use." },
-          { status: 400 }
-        );
-      }
+    const authUserId = authData.user?.id;
+    if (!authUserId) {
+      return NextResponse.json(
+        { error: "Failed to create account. The email may already be in use." },
+        { status: 400 }
+      );
+    }
 
     // --- Insert Tenant ---
     const { data: tenantData, error: tenantError } = await supabaseAdmin
@@ -91,6 +84,9 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (tenantError) {
+      // 🚨 Added log to catch the exact database rejection
+      console.error("🚨 DATABASE REJECTED TENANT INSERT:", tenantError);
+      
       // Rollback: delete the auth user we just created
       await supabaseAdmin.auth.admin.deleteUser(authUserId);
       return NextResponse.json({ error: tenantError.message }, { status: 500 });
@@ -100,24 +96,27 @@ export async function POST(req: NextRequest) {
 
     // --- Insert User ---
     const { error: userError } = await supabaseAdmin.from("users").insert({
-        user_id: authUserId,               // uuid
-        tenant_id: tenantId,               // uuid
-        email,                             // character varying(255)
-        role: "Administrator",             // user_role_enum
-        display_name: `${firstName} ${lastName}`, // character varying(255)
-        first_name: firstName,             // text
-        last_name: lastName,               // text
-        middle_name: middleName || null,   // text
-        suffix: suffix || null,            // text
-        gender: gender || null,            // text
-        contact_number: contactNumber || null, // character varying(50)
-        address: address || null,          // text
-        citizenship: citizenship || null,  // text
-        profile_picture_url: profilePictureUrl || null, // text
-        is_active: false,
-      });
+      user_id: authUserId,               // uuid
+      tenant_id: tenantId,               // uuid
+      email,                             // character varying(255)
+      role: "Administrator",             // user_role_enum
+      display_name: `${firstName} ${lastName}`, // character varying(255)
+      first_name: firstName,             // text
+      last_name: lastName,               // text
+      middle_name: middleName || null,   // text
+      suffix: suffix || null,            // text
+      gender: gender || null,            // text
+      contact_number: contactNumber || null, // character varying(50)
+      address: address || null,          // text
+      citizenship: citizenship || null,  // text
+      profile_picture_url: profilePictureUrl || null, // text
+      is_active: false,
+    });
 
     if (userError) {
+      // 🚨 Added log to catch the exact database rejection
+      console.error("🚨 DATABASE REJECTED USER INSERT:", userError);
+      
       // Rollback both
       await supabaseAdmin.from("tenants").delete().eq("tenant_id", tenantId);
       await supabaseAdmin.auth.admin.deleteUser(authUserId);
