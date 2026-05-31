@@ -189,8 +189,12 @@ export default function StorefrontSection() {
   const handleSave = async () => {
     if (!config || !tenantId) return;
     setSaving(true);
-    let updated = { ...config };
-
+    
+    // 🚨 FIX: Force explicitly inject tenant_id to prevent null upserts
+    let updated = { 
+      ...config,
+      tenant_id: tenantId 
+    };
     if (logoFile) {
       const { url, error } = await uploadStorefrontAsset(logoFile, "logos");
       if (error) {
