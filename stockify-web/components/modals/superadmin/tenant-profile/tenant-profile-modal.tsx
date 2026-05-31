@@ -15,11 +15,14 @@ type ActionType = "suspend" | "terminate";
 type TabId      = "details" | "payments";
 
 interface TenantProfileModalProps {
-  isOpen:    boolean;
-  tenantId:  string | null;
-  onClose:   () => void;
-  onSuccess?: (tenantId: string, action: ActionType) => void;
+  isOpen: boolean;
+  tenantId: string | null;
+  onClose: () => void;
+  onSuccess?: (tenantId: string, action: string) => void;
+  // Add the variant prop to determine which UI to show
+  variant?: "active" | "pending"; 
 }
+
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -97,11 +100,12 @@ function getPill(status: string | undefined) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function TenantProfileModal({
-  isOpen,
-  tenantId,
-  onClose,
+export default function TenantProfileModal({ 
+  isOpen, 
+  tenantId, 
+  onClose, 
   onSuccess,
+  variant = "active" // Default to active so your trial/active tabs don't break
 }: TenantProfileModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); return () => setMounted(false); }, []);
