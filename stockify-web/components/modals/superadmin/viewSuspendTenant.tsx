@@ -266,18 +266,6 @@ export function ViewSuspendModal({
                   </div>
                   <span className="text-sm font-bold tracking-wide text-[#FFFCEB]">Tenant Profile</span>
                 </div>
-                <div className="flex items-center gap-4 transition-all duration-300 opacity-60">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10 text-white">
-                    <AlertCircle size={18} strokeWidth={2.5} />
-                  </div>
-                  <span className="text-sm font-bold tracking-wide text-white">Suspension Rules</span>
-                </div>
-                <div className="flex items-center gap-4 transition-all duration-300 opacity-60">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10 text-white">
-                    <CreditCard size={18} strokeWidth={2.5} />
-                  </div>
-                  <span className="text-sm font-bold tracking-wide text-white">Billing Snapshot</span>
-                </div>
               </nav>
             </div>
             
