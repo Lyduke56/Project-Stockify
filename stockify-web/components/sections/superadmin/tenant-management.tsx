@@ -200,7 +200,7 @@ export default function TenantManagementSection({ onReviewTenant }: TenantManage
             <TrialTenantsTab onReview={onReviewTenant} />
           </>
         )}
-        {activeTab === "Pending"    && <PendingTenantsTab onReview={onReviewTenant} />}
+        {activeTab === "Pending"    && <PendingTenantsTab />}
         {activeTab === "Terminated" && <TerminatedTenantsTab onReview={onReviewTenant} />}
         {activeTab === "Suspended"  && <SuspendedTenantsTab onReview={onReviewTenant} />}
       </motion.div>

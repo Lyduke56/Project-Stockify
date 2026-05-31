@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import PendingTenantReviewModal from "@/components/modals/superadmin/PendingTenantReviewModal";
 
-
 interface TabProps {
-  onReview: (id: string) => void;
+  onReview?: (id: string) => void;
 }
 
 interface PendingTenant {
@@ -53,6 +52,7 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Local state to control the specific review modal
   const [reviewingId, setReviewingId] = useState<string | null>(null);
 
   // Pagination limit
@@ -86,6 +86,8 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
     });
     const result = await res.json();
     if (!result.success) throw new Error(result.error || "Approve failed.");
+    
+    // Remove approved tenant from the UI table
     setPendingData((prev) => prev.filter((t) => t.tenant_id !== tenantId));
   };
 
@@ -97,6 +99,8 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
     });
     const result = await res.json();
     if (!result.success) throw new Error(result.error || "Reject failed.");
+    
+    // Remove rejected tenant from the UI table
     setPendingData((prev) => prev.filter((t) => t.tenant_id !== tenantId));
   };
 
@@ -109,10 +113,6 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
       year: "numeric",
     });
 
-  /**
-   * Truncates email at the "@" symbol.
-   * e.g. "benideck@cit.edu" -> "benideck@..."
-   */
   const truncateEmail = (email: string) => {
     const parts = email.split("@");
     if (parts.length < 2) return email;
@@ -131,7 +131,7 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
         </p>
       )}
 
-      <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm">
+      <div className="w-full bg-[#FFFCEB] rounded-[10px] border border-[#385E31] flex flex-col overflow-visible shadow-sm mt-5">
         {/* Table header */}
         <div className="w-full flex bg-[#385E31] px-4 py-3 rounded-t-[8px]">
           {COLUMNS.map((col) => (
@@ -161,7 +161,7 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
               >
                 <div className="flex-1 text-center text-[#3A6131] text-[13px] font-bold">
                   <span
-                    onClick={() => onReview(row.tenant_id)}
+                    onClick={() => setReviewingId(row.tenant_id)}
                     className="cursor-pointer hover:text-[#E5AD24] hover:underline transition-colors"
                   >
                     {row.business_name}
@@ -192,7 +192,7 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
 
                 <div className="flex-1 flex justify-center items-center">
                   <button
-                    onClick={() => onReview(row.tenant_id)}
+                    onClick={() => setReviewingId(row.tenant_id)}
                     className="bg-[#F7B71D] text-[#3A6131] px-5 py-1.5 rounded-full text-[10px] font-bold hover:bg-[#385E31]/80 hover:text-[#FFFCEB] transition-colors"
                   >
                     Review
@@ -224,6 +224,7 @@ export default function PendingTenantsTab({ onReview }: TabProps) {
         )}
       </div>
 
+      {/* Call the dedicated pending modal and pass the handlers */}
       <PendingTenantReviewModal
         tenantId={reviewingId}
         onClose={() => setReviewingId(null)}
