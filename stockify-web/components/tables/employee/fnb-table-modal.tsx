@@ -331,6 +331,7 @@ export default function FnbIngredientsTable({ tenantId, onLoadComplete, colors }
               setDropdownPos(null);
             }}
             className="px-3 py-2 hover:bg-accent text-left transition-colors"
+            style={{ color: colors?.color_primary || '#385E31' }}
           >
             Edit Item
           </button>
@@ -341,6 +342,7 @@ export default function FnbIngredientsTable({ tenantId, onLoadComplete, colors }
               setDropdownPos(null);
             }}
             className="px-3 py-2 hover:bg-accent text-left transition-colors"
+            style={{ color: colors?.color_primary || '#385E31' }}
           >
             Restock
           </button>

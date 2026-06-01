@@ -71,7 +71,18 @@ function ColorRow({
 
 type TabType = "colors" | "typography" | "banners";
 
-export default function StorefrontSection() {
+interface StorefrontSectionProps {
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
+}
+
+export default function StorefrontSection({ colors }: StorefrontSectionProps) {
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [businessType, setBusinessType] = useState<"fnb" | "nfb" | null>(null);
   const [businessName, setBusinessName] = useState<string>("");
@@ -282,7 +293,7 @@ export default function StorefrontSection() {
 
   if (loading) {
     return (
-     <LoadingScreen fullScreen={false} />
+     <LoadingScreen fullScreen={false} bgColor={colors?.color_background} />
     );
   }
 

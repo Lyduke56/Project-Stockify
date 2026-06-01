@@ -99,25 +99,25 @@ export default function NotificationModal({
         const collectedAlerts: NotificationItem[] = [];
 
         const [fnbResult, nfbResult, orderResult] = await Promise.all([
-          supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit, created_at").eq("tenant_id", tenantId).eq("is_active", true),
-          supabase.from("nfb_products").select("product_name, quantity, reorder_threshold, created_at").eq("tenant_id", tenantId).eq("is_active", true),
+          supabase.from("fnb_inventory_items").select("name, stock, alert_limit, created_at").eq("tenant_id", tenantId).eq("is_active", true),
+          supabase.from("nfb_products").select("name, quantity, reorder_threshold, created_at").eq("tenant_id", tenantId).eq("is_active", true),
           supabase.from("orders").select("order_id, created_at, fulfillment_status").eq("tenant_id", tenantId).in("fulfillment_status", ["Pending", "Reported"])
         ]);
 
         if (fnbResult.data) {
-          fnbResult.data.forEach((item: { item_name: string; stock: any; alert_limit: any; created_at: string }) => {
+          fnbResult.data.forEach((item: { name: string; stock: any; alert_limit: any; created_at: string }) => {
             const currentStock = Number(item.stock || 0);
             const limit = Number(item.alert_limit || 0);
 
             if (currentStock <= 0 || currentStock <= limit) {
               const isOut = currentStock <= 0;
               collectedAlerts.push({
-                id: `fnb-stock-${item.item_name}-${currentStock}`,
+                id: `fnb-stock-${item.name}-${currentStock}`,
                 title: "Inventory Alert",
                 subject: isOut ? "⚠️ F&B Item Out of Stock" : "⚠️ Low F&B Stock Warning",
                 body: isOut 
-                  ? `Critical: "${item.item_name}" has run out completely. Reorder stock immediately.` 
-                  : `Warning: "${item.item_name}" is running low (${currentStock} left). Please restock soon.`,
+                  ? `Critical: "${item.name}" has run out completely. Reorder stock immediately.` 
+                  : `Warning: "${item.name}" is running low (${currentStock} left). Please restock soon.`,
                 timestamp: new Date(item.created_at || new Date()).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }),
                 isRead: false,
               });
@@ -126,19 +126,19 @@ export default function NotificationModal({
         }
 
         if (nfbResult.data) {
-          nfbResult.data.forEach((item: { product_name: string; quantity: any; reorder_threshold: any; created_at: string }) => {
+          nfbResult.data.forEach((item: { name: string; quantity: any; reorder_threshold: any; created_at: string }) => {
             const currentQty = Number(item.quantity || 0);
             const threshold = Number(item.reorder_threshold || 0);
 
             if (currentQty <= 0 || currentQty <= threshold) {
               const isOut = currentQty <= 0;
               collectedAlerts.push({
-                id: `nfb-stock-${item.product_name}-${currentQty}`,
+                id: `nfb-stock-${item.name}-${currentQty}`,
                 title: "Inventory Alert",
                 subject: isOut ? "⚠️ Product Out of Stock" : "⚠️ Product Low Stock Warning",
                 body: isOut 
-                  ? `Critical: "${item.product_name}" has run out completely. Restock items.` 
-                  : `Warning: "${item.product_name}" is running low (${currentQty} left).`,
+                  ? `Critical: "${item.name}" has run out completely. Restock items.` 
+                  : `Warning: "${item.name}" is running low (${currentQty} left).`,
                 timestamp: new Date(item.created_at || new Date()).toLocaleString("en-US", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true }),
                 isRead: false,
               });

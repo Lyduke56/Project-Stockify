@@ -49,7 +49,7 @@ export default function IngredientsSection({ colors }: { colors?: StorefrontConf
 
   return (
     <>
-      {isLoading && <LoadingScreen fullScreen={false} />}
+      {isLoading && <LoadingScreen fullScreen={false} bgColor={colors?.color_background} />}
 
       <div
         className={`w-full flex flex-col font-['Inter'] pb-30 transition-all duration-700 ease-out ${

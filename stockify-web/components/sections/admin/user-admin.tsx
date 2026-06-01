@@ -119,7 +119,7 @@ export default function UserAdminSection({ colors }: UserAdminSectionProps) {
     loadAll();
   }, [tableKey]);
 
-  if (isLoading) return <LoadingScreen fullScreen = {false} />;
+  if (isLoading) return <LoadingScreen fullScreen={false} bgColor={colors?.color_background} />;
 
   function handleEmployeeCreated() {
     setTableKey((k) => k + 1);
