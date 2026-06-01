@@ -103,9 +103,9 @@ export default function CustomerProfilePage() {
       const fileExtension = file.name.split(".").pop();
       const filePath = `${profile.user_id}/${Date.now()}.${fileExtension}`;
 
-      // 1. Upload raw payload configuration parameters straight to Supabase Storage Buckets
+      // 1. Upload raw payload configuration parameters straight to your verified Supabase Storage Bucket
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("avatars")
+        .from("profile-assets")
         .upload(filePath, file, {
           cacheControl: "3600",
           upsert: true,
@@ -115,7 +115,7 @@ export default function CustomerProfilePage() {
 
       // 2. Fetch the newly constructed public URL pointer address configuration
       const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
+        .from("profile-assets")
         .getPublicUrl(filePath);
 
       // 3. Complete database string field mapping mutations
@@ -267,23 +267,29 @@ export default function CustomerProfilePage() {
             </div>
 
             {/* Edit / Save button */}
-            <button
-              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-              className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13.5px] font-bold transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95"
-              style={
-                isEditing
-                  ? { backgroundColor: c.primary, color: c.accent }
-                  : { backgroundColor: c.accent + "18", color: c.primary }
-              }
-            >
-              {isEditing ? (
-                saving
-                  ? <div className="w-4 h-4 rounded-full border-2 border-current/30 border-t-current animate-spin" />
-                  : <><Check size={15} strokeWidth={2.5} /> Save</>
-              ) : (
-                <><Edit2 size={15} strokeWidth={2.5} /> Edit Profile</>
-              )}
-            </button>
+<button
+  onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+  className="flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13.5px] font-bold transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+  style={
+    isEditing
+      ? { backgroundColor: c.primary, color: c.accent }
+      : { backgroundColor: c.accent + "18", color: c.primary }
+  }
+>
+  {isEditing ? (
+    saving ? (
+      <div className="w-4 h-4 rounded-full border-2 border-current/30 border-t-current animate-spin" />
+    ) : (
+      <>
+        <Check size={15} strokeWidth={2.5} /> Save
+      </>
+    )
+  ) : (
+    <>
+      <Edit2 size={15} strokeWidth={2.5} /> Edit Profile
+    </>
+  )}
+</button>
           </div>
 
           {/* Form fields */}
