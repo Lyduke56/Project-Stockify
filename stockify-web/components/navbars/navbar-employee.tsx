@@ -33,21 +33,21 @@ export default function NavbarEmployee({
   const getLiveAlertIds = useCallback(async (tId: string) => {
     try {
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
-        supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
-        supabase.from("nfb_products").select("product_name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("fnb_inventory_items").select("name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("nfb_products").select("name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
         supabase.from("orders").select("order_id, fulfillment_status").eq("tenant_id", tId).in("fulfillment_status", ["Pending", "Reported"])
       ]);
 
       const ids: string[] = [];
 
-      fnbResult.data?.forEach((item: { item_name: string; stock: number; alert_limit: number | null }) => {
+      fnbResult.data?.forEach((item: { name: string; stock: number; alert_limit: number | null }) => {
         const isLow = item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit);
-        if (isLow) ids.push(`fnb-stock-${item.item_name}-${item.stock}`);
+        if (isLow) ids.push(`fnb-stock-${item.name}-${item.stock}`);
       });
 
-      nfbResult.data?.forEach((item: { product_name: string; quantity: number | string; reorder_threshold: any }) => {
+      nfbResult.data?.forEach((item: { name: string; quantity: number | string; reorder_threshold: any }) => {
         const isLow = Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold));
-        if (isLow) ids.push(`nfb-stock-${item.product_name}-${item.quantity}`);
+        if (isLow) ids.push(`nfb-stock-${item.name}-${item.quantity}`);
       });
 
       orderResult.data?.forEach((order: { order_id: string; fulfillment_status: string }) => {
@@ -94,8 +94,8 @@ export default function NavbarEmployee({
   const calculateOperationalMetrics = useCallback(async (tId: string) => {
     try {
       const [fnbResult, nfbResult, orderResult] = await Promise.all([
-        supabase.from("fnb_inventory_items").select("item_name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
-        supabase.from("nfb_products").select("product_name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("fnb_inventory_items").select("name, stock, alert_limit").eq("tenant_id", tId).eq("is_active", true),
+        supabase.from("nfb_products").select("name, quantity, reorder_threshold").eq("tenant_id", tId).eq("is_active", true),
         supabase.from("orders").select("order_id, fulfillment_status").eq("tenant_id", tId).in("fulfillment_status", ["Pending", "Reported"])
       ]);
 
@@ -108,17 +108,17 @@ export default function NavbarEmployee({
         dismissed = [];
       }
 
-      const activeLowFnb = fnbResult.data?.filter((item: { item_name: string; stock: number; alert_limit: number }) => {
+      const activeLowFnb = fnbResult.data?.filter((item: { name: string; stock: number; alert_limit: number }) => {
         const isLow = item.stock <= 0 || (item.alert_limit !== null && item.stock <= item.alert_limit);
         if (!isLow) return false;
-        const alertId = `fnb-stock-${item.item_name}-${item.stock}`;
+        const alertId = `fnb-stock-${item.name}-${item.stock}`;
         return !dismissed.includes(alertId);
       }) || [];
 
-      const activeLowNfb = nfbResult.data?.filter((item: { product_name: string; quantity: number; reorder_threshold: any }) => {
+      const activeLowNfb = nfbResult.data?.filter((item: { name: string; quantity: number; reorder_threshold: any }) => {
         const isLow = Number(item.quantity) <= 0 || (item.reorder_threshold !== null && Number(item.quantity) <= Number(item.reorder_threshold));
         if (!isLow) return false;
-        const alertId = `nfb-stock-${item.product_name}-${item.quantity}`;
+        const alertId = `nfb-stock-${item.name}-${item.quantity}`;
         return !dismissed.includes(alertId);
       }) || [];
 

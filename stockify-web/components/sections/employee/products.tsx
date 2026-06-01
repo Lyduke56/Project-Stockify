@@ -45,7 +45,7 @@ export default function ProductsSection({ colors }: { colors?: StorefrontConfig 
 
   return (
     <>
-      {isLoading && !error && <LoadingScreen fullScreen={false} />}
+      {isLoading && !error && <LoadingScreen fullScreen={false} bgColor={colors?.color_background} />}
         <div
             className={`w-full flex flex-col font-['Inter'] transition-all duration-700 ease-out ${
               isLoading || error

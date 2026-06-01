@@ -37,7 +37,18 @@ const itemVariants: Variants = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function StoreSettingsSection() {
+interface StoreSettingsSectionProps {
+  colors?: {
+    color_primary?: string;
+    color_background?: string;
+    color_secondary?: string;
+    color_accent?: string;
+    color_text?: string;
+    color_sidebar_text?: string;
+  };
+}
+
+export default function StoreSettingsSection({ colors }: StoreSettingsSectionProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tenantId, setTenantId] = useState("");
@@ -102,7 +113,7 @@ export default function StoreSettingsSection() {
 
   if (loading) {
     return (
-      <LoadingScreen fullScreen={false}/>
+      <LoadingScreen fullScreen={false} bgColor={colors?.color_background}/>
     );
   }
 

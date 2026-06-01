@@ -17,7 +17,7 @@ export default function EmployeeAuditLogs({ colors }: { colors?: StorefrontConfi
 
   return (
     <>
-      {isLoading && <LoadingScreen fullScreen={false} />}
+      {isLoading && <LoadingScreen fullScreen={false} bgColor={colors?.color_background} />}
 
       <div
         className={`flex min-h-screen w-full bg-background font-['Inter'] transition-all duration-700 ease-out ${

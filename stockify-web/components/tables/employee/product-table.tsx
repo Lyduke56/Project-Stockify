@@ -237,7 +237,7 @@ export default function ProductsTable({ tenantId, onLoadComplete, colors }: Prod
                       style={{ backgroundColor: colors?.color_background || '#FFFCEB' }}
                       className="absolute top-8 right-[50%] translate-x-1/2 w-[140px] border border-primary shadow-lg rounded-[4px] z-50 py-1 overflow-hidden text-primary text-[11px] font-semibold flex flex-col text-left"
                     >
-                      <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-left transition-colors">Edit Product</button>
+                      <button onClick={() => { setEditTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-left transition-colors" style={{ color: colors?.color_primary || '#385E31' }}>Edit Product</button>
                       <button onClick={() => { setDeleteTarget(row); setOpenDropdownId(null); }} className="px-3 py-1.5 hover:bg-accent text-red-600 hover:text-primary text-left transition-colors">Delete Product</button>
                     </div>
                   )}

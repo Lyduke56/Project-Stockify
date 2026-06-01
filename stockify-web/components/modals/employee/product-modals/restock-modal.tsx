@@ -11,6 +11,7 @@ import { logAuditEvent } from "@/lib/employee/order-actions";
 import type { Product } from "@/lib/employee/products";
 import type { NfbProduct } from "@/lib/employee/nfb-products";
 import { type StorefrontConfig } from "@/lib/admin/storefront-actions";
+import ModalBackdrop from "@/components/modals/employee/ingredients-modals/modals-backdrop";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -289,234 +290,269 @@ export default function RestockModal({
   const hasVariants = !isFnb && nfbProduct.variants && nfbProduct.variants.length > 0;
 
   return (
-    <AnimatePresence>
-      {/* Backdrop */}
+    <ModalBackdrop onClose={onClose}>
       <motion.div
-        key="restock-backdrop"
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200]"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <motion.div
-        key="restock-modal"
-        initial={{ opacity: 0, scale: 0.94, y: 24 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 24 }}
-        transition={{ type: "spring", stiffness: 340, damping: 28 }}
-        className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none"
+        style={modalStyles}
+        initial={{ scale: 0.95, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ opacity: 0.95, scale: 0.95, y: 20 }}
+        className="w-full max-w-[960px] bg-background rounded-[32px] overflow-hidden border-[1.5px] border-accent/20 shadow-[0_32px_80px_rgba(0,0,0,0.15)] flex flex-col md:flex-row h-[680px] font-inter text-primary"
       >
-        <div style={modalStyles} className="bg-background rounded-[24px] w-full max-w-[520px] shadow-2xl pointer-events-auto overflow-hidden max-h-[90dvh] flex flex-col">
+        {/* SIDEBAR */}
+        <div className="w-full md:w-[300px] bg-primary p-10 flex flex-col relative overflow-hidden shrink-0">
+          <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-accent/10 rounded-full blur-3xl" />
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="bg-accent w-12 h-1 rounded-full mb-8" />
+            <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] font-raleway text-3xl font-black leading-tight mb-2">Restock Item</h2>
+            <p className="text-[var(--color-sidebar-text,#FFF9D7)]/60 text-xs font-medium leading-relaxed mb-6">
+              Update inventory levels for your products and ingredients to prevent stockouts.
+            </p>
 
-          {/* Header */}
-          <div className="bg-primary px-6 py-5 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                <PackagePlus size={18} className="text-accent" />
-              </div>
-              <div>
-                <h2 className="text-[var(--color-sidebar-text,#FFF9D7)] font-black text-[16px]">Restock</h2>
-                <p className="text-[var(--color-sidebar-text,#FFF9D7)]/60 text-[11px] font-medium truncate max-w-[280px]">
-                  {product.name}
-                </p>
+            {/* Product card preview */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 mt-4">
+              {product.image_url ? (
+                <img
+                  src={product.image_url}
+                  alt={product.name}
+                  className="w-full h-32 rounded-xl object-cover border border-white/10"
+                />
+              ) : (
+                <div className="w-full h-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[var(--color-sidebar-text,#FFF9D7)]/30">
+                  <PackagePlus size={36} strokeWidth={1.5} />
+                </div>
+              )}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-black text-accent uppercase tracking-wider">
+                  {product.category_name || (type === "fnb" ? "Food & Beverage" : "Retail")}
+                </span>
+                <span className="text-white font-bold text-sm truncate">{product.name}</span>
+                <span className="text-white/40 text-[10px] font-mono tracking-wider">{product.sku}</span>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-            >
-              <X size={16} />
-            </button>
-          </div>
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+            <div className="mt-auto pt-6 flex flex-col gap-2 border-t border-white/10">
+              <div className="flex justify-between text-xs font-medium">
+                <span className="text-white/50">Current Stock</span>
+                <span className="text-white font-bold">
+                  {type === "fnb" 
+                    ? "See ingredients" 
+                    : (product as any).variants && (product as any).variants.length > 0
+                      ? `${(product as any).quantity} ${(product as any).unit_of_measure || "pcs"} (total)`
+                      : `${(product as any).quantity} ${(product as any).unit_of_measure || "pcs"}`
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* CONTENT */}
+        <div className="flex-1 flex flex-col relative bg-background/50 backdrop-blur-sm">
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="absolute top-6 right-6 w-10 h-10 rounded-full bg-background border border-primary/10 flex items-center justify-center text-primary hover:bg-primary hover:text-[var(--color-sidebar-text,#FFF9D7)] transition-all z-20"
+          >
+            <X size={20} strokeWidth={2.5} />
+          </button>
+
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto p-10 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/15 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <div className="mb-6">
+              <span className="bg-accent/15 text-primary text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                Inventory Check
+              </span>
+              <h3 className="text-2xl font-black text-primary mt-2 font-raleway italic">
+                Restock Details
+              </h3>
+            </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-12 text-primary/40 gap-3">
-                <Loader2 size={22} className="animate-spin" />
-                <span className="text-[13px] font-semibold">Loading stock data…</span>
+              <div className="flex flex-col items-center justify-center py-20 text-primary/40 gap-3">
+                <Loader2 size={24} className="animate-spin" />
+                <span className="text-sm font-semibold">Loading stock status…</span>
               </div>
-
-            ) : isFnb ? (
-              /* ── F&B: Ingredient Restock ────────────────────────── */
-              <>
-                <div className="flex items-center gap-2 mb-1">
-                  <FlaskConical size={14} className="text-primary/60" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
-                    Restock Ingredients
-                  </p>
-                </div>
-
-                {ingredients.length === 0 ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                    <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-amber-700 text-[13px] font-medium">
-                      This product has no recipe ingredients configured. Add ingredients via the Edit Product modal first.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {ingredients.map((ing: any, idx) => (
-                      <div
-                        key={ing.item_id}
-                        className="bg-background border border-primary/10 rounded-2xl px-4 py-3 flex items-center gap-4 shadow-sm"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-primary font-bold text-[13px] truncate">{ing.name}</p>
-                          <p className="text-primary/50 text-[11px] font-medium mt-0.5">
-                            Current stock: <span className="font-black">{ing.stock}</span> {ing.unit}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-primary/40 text-[11px] font-bold">+</span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="0"
-                            value={ing.addAmount}
-                            onChange={(e) =>
-                              setIngredients((prev: any) =>
-                                prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
-                              )
-                            }
-                            className="w-[80px] border border-primary/20 focus:border-primary rounded-xl px-3 py-2 text-[13px] text-primary font-bold text-center outline-none transition-colors bg-background"
-                          />
-                          <span className="text-primary/50 text-[11px] font-medium w-[30px]">{ing.unit}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-
-            ) : !hasVariants ? (
-              /* ── NF&B Simple: single qty input ─────────────────── */
-              <>
-                <div className="flex items-center gap-2 mb-1">
-                  <PackagePlus size={14} className="text-primary/60" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
-                    Add Stock
-                  </p>
-                </div>
-                <div className="bg-background border border-primary/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm">
-                  <div className="flex-1">
-                    <p className="text-primary font-bold text-[13px]">{product.name}</p>
-                    <p className="text-primary/50 text-[11px] font-medium mt-0.5">
-                      Current qty: <span className="font-black">{nfbProduct.quantity}</span>{" "}
-                      {nfbProduct.unit_of_measure}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-primary/40 text-[13px] font-black">+</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      placeholder="0"
-                      value={simpleAdd}
-                      onChange={(e) => setSimpleAdd(e.target.value)}
-                      className="w-[90px] border border-primary/20 focus:border-primary rounded-xl px-3 py-2.5 text-[14px] text-primary font-black text-center outline-none transition-colors bg-background"
-                    />
-                    <span className="text-primary/50 text-[11px] font-medium">
-                      {nfbProduct.unit_of_measure}
-                    </span>
-                  </div>
-                </div>
-              </>
-
             ) : (
-              /* ── NF&B Variants: per-option stock inputs ─────────── */
-              <>
-                <div className="flex items-center gap-2 mb-1">
-                  <Layers size={14} className="text-primary/60" />
-                  <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
-                    Restock Variants
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {variantRows.map((row: any, idx) => (
-                    <div
-                      key={row.option_id}
-                      className="bg-background border border-primary/10 rounded-2xl px-4 py-3 flex items-center gap-4 shadow-sm"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-black text-primary/40 uppercase tracking-wider">{row.variant_type}</span>
-                          <ChevronRight size={10} className="text-primary/30" />
-                          <span className="text-primary font-bold text-[13px]">{row.label}</span>
-                        </div>
-                        <p className="text-primary/50 text-[11px] font-medium mt-0.5">
-                          Current stock: <span className="font-black">{row.stock}</span>{" "}
-                          {row.unit_of_measure}
+              <div className="space-y-4">
+                {isFnb ? (
+                  /* ── F&B: Ingredient Restock ────────────────────────── */
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <FlaskConical size={14} className="text-primary/60" />
+                      <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
+                        Restock Ingredients
+                      </p>
+                    </div>
+
+                    {ingredients.length === 0 ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+                        <AlertCircle size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-amber-700 text-xs font-semibold">
+                          This product has no recipe ingredients configured. Add ingredients via the Edit Product modal first.
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-primary/40 text-[11px] font-bold">+</span>
+                    ) : (
+                      <div className="space-y-3">
+                        {ingredients.map((ing: any, idx) => (
+                          <div
+                            key={ing.item_id}
+                            className="bg-background border border-primary/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-primary font-bold text-sm truncate">{ing.name}</p>
+                              <p className="text-primary/50 text-xs font-medium mt-0.5">
+                                Current stock: <span className="font-black">{ing.stock}</span> {ing.unit}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-primary/40 text-xs font-bold">+</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0"
+                                value={ing.addAmount}
+                                onChange={(e) =>
+                                  setIngredients((prev: any) =>
+                                    prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
+                                  )
+                                }
+                                className="w-[100px] border-[1.5px] border-primary/10 rounded-xl px-3 py-2 text-sm text-primary font-bold text-center outline-none focus:border-accent focus:ring-4 focus:ring-accent/5 transition-all bg-background"
+                              />
+                              <span className="text-primary/50 text-xs font-bold w-[35px]">{ing.unit}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : !hasVariants ? (
+                  /* ── NF&B Simple: single qty input ─────────────────── */
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <PackagePlus size={14} className="text-primary/60" />
+                      <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
+                        Add Stock
+                      </p>
+                    </div>
+                    <div className="bg-background border border-primary/10 rounded-2xl px-6 py-5 flex items-center gap-4 shadow-sm">
+                      <div className="flex-1">
+                        <p className="text-primary font-bold text-sm">{product.name}</p>
+                        <p className="text-primary/50 text-xs font-medium mt-0.5">
+                          Current qty: <span className="font-black">{nfbProduct.quantity}</span>{" "}
+                          {nfbProduct.unit_of_measure}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-primary/40 text-sm font-black">+</span>
                         <input
                           type="number"
                           min="0"
                           step="1"
                           placeholder="0"
-                          value={row.addAmount}
-                          onChange={(e) =>
-                            setVariantRows((prev: any) =>
-                              prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
-                            )
-                          }
-                          className="w-[80px] border border-primary/20 focus:border-primary rounded-xl px-3 py-2 text-[13px] text-primary font-bold text-center outline-none transition-colors bg-background"
+                          value={simpleAdd}
+                          onChange={(e) => setSimpleAdd(e.target.value)}
+                          className="w-[110px] border-[1.5px] border-primary/10 focus:border-accent focus:ring-4 focus:ring-accent/5 rounded-xl px-4 py-2.5 text-sm text-primary font-black text-center outline-none transition-all bg-background"
                         />
-                        <span className="text-primary/50 text-[11px] font-medium w-[30px]">
-                          {row.unit_of_measure}
+                        <span className="text-primary/50 text-xs font-bold">
+                          {nfbProduct.unit_of_measure}
                         </span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
+                  </>
+                ) : (
+                  /* ── NF&B Variants: per-option stock inputs ─────────── */
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers size={14} className="text-primary/60" />
+                      <p className="text-[11px] font-black uppercase tracking-wider text-primary/60">
+                        Restock Variants
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {variantRows.map((row: any, idx) => (
+                        <div
+                          key={row.option_id}
+                          className="bg-background border border-primary/10 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-sm"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-black text-primary/40 uppercase tracking-wider">{row.variant_type}</span>
+                              <ChevronRight size={10} className="text-primary/30" />
+                              <span className="text-primary font-bold text-sm">{row.label}</span>
+                            </div>
+                            <p className="text-primary/50 text-xs font-medium mt-0.5">
+                              Current stock: <span className="font-black">{row.stock}</span>{" "}
+                              {row.unit_of_measure}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-primary/40 text-xs font-bold">+</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              placeholder="0"
+                              value={row.addAmount}
+                              onChange={(e) =>
+                                setVariantRows((prev: any) =>
+                                  prev.map((r: any, i: number) => i === idx ? { ...r, addAmount: e.target.value } : r)
+                                )
+                              }
+                              className="w-[100px] border-[1.5px] border-primary/10 focus:border-accent focus:ring-4 focus:ring-accent/5 rounded-xl px-3 py-2 text-sm text-primary font-bold text-center outline-none transition-all bg-background"
+                            />
+                            <span className="text-primary/50 text-xs font-bold w-[35px]">
+                              {row.unit_of_measure}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
 
-            {/* Feedback */}
-            {feedback && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-medium ${feedback.ok
-                    ? "bg-green-50 border border-green-200 text-green-700"
-                    : "bg-red-50 border border-red-200 text-red-600"
-                  }`}
-              >
-                {feedback.ok
-                  ? <CheckCircle2 size={15} />
-                  : <AlertCircle size={15} />}
-                {feedback.msg}
-              </motion.div>
+                {/* Feedback */}
+                {feedback && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-semibold ${feedback.ok
+                        ? "bg-green-50 border border-green-200 text-green-700"
+                        : "bg-red-50 border border-red-200 text-red-600"
+                      }`}
+                  >
+                    {feedback.ok
+                      ? <CheckCircle2 size={16} />
+                      : <AlertCircle size={16} />}
+                    {feedback.msg}
+                  </motion.div>
+                )}
+              </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="px-6 pb-6 pt-4 border-t border-primary/10 flex gap-3 shrink-0">
+          <div className="px-8 py-5 border-t border-primary/10 bg-background/80 flex justify-between items-center z-20">
             <button
               onClick={onClose}
-              className="flex-1 py-3 rounded-2xl border border-primary/20 text-primary/60 font-bold text-[13px] hover:bg-primary/5 transition-colors"
+              className="text-primary/50 text-sm font-bold hover:text-primary transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving || loading || (isFnb && ingredients.length === 0)}
-              className="flex-1 bg-primary text-[var(--color-sidebar-text,#FFF9D7)] py-3 rounded-2xl font-black text-[13px] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition-opacity"
+              className="bg-primary text-[var(--color-sidebar-text,#FFF9D7)] px-8 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {saving
-                ? <><Loader2 size={15} className="animate-spin" /> Saving…</>
-                : <><PackagePlus size={15} /> Confirm Restock</>
-              }
+              {saving ? (
+                <><Loader2 size={16} className="animate-spin" /> Saving…</>
+              ) : (
+                <><PackagePlus size={16} /> Confirm Restock</>
+              )}
             </button>
           </div>
         </div>
       </motion.div>
-    </AnimatePresence>
+    </ModalBackdrop>
   );
 }

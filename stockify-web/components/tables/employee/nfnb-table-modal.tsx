@@ -489,22 +489,27 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 pb-2 border-b border-primary/10 mb-2">
-              <h4 className="text-[11px] font-black text-primary uppercase tracking-wider">{row.name} Variants</h4>
+              <h4 className="text-[11px] font-black uppercase tracking-wider" style={{ color: colors?.color_primary || '#385E31' }}>{row.name} Variants</h4>
             </div>
             <div className="max-h-[200px] overflow-y-auto px-2 space-y-1">
               {row.variants!.flatMap(vt => vt.options).map((opt, i) => {
                 const stock = Number(opt.stock) || 0;
                 const variantThreshold = Number(opt.reorder_threshold) || 0;
                 const isLow = stock <= variantThreshold && variantThreshold > 0;
+                const primaryColor = colors?.color_primary || '#385E31';
                 return (
                   <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-primary/5 transition-colors">
                     <div className="flex flex-col">
-                      <span className="text-[12px] font-bold text-primary">{opt.label}</span>
-                      <span className="text-[10px] text-primary/50 font-medium">Qty: {stock} {row.unit_of_measure}</span>
+                      <span className="text-[12px] font-bold" style={{ color: primaryColor }}>{opt.label}</span>
+                      <span className="text-[10px] font-medium" style={{ color: primaryColor, opacity: 0.55 }}>Qty: {stock} {row.unit_of_measure}</span>
                     </div>
-                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
-                      isLow ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
-                    }`}>
+                    <div
+                      className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter"
+                      style={{
+                        color: primaryColor,
+                        backgroundColor: isLow ? 'rgba(245,158,11,0.12)' : 'rgba(0,0,0,0.06)',
+                      }}
+                    >
                       {isLow ? "Low" : "Good"}
                     </div>
                   </div>
@@ -512,7 +517,7 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
               })}
             </div>
             <div className="mt-2 px-4 pt-2 border-t border-primary/5 flex justify-between items-center bg-primary/5 py-2">
-              <span className="text-[10px] font-bold text-primary/40 italic">Threshold: {threshold}</span>
+              <span className="text-[10px] font-bold italic" style={{ color: colors?.color_primary || '#385E31', opacity: 0.5 }}>Threshold: {threshold}</span>
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -548,12 +553,14 @@ export default function NfbProductsTable({ tenantId, onLoadComplete, colors }: N
             <button
               onClick={() => { setEditTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
               className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
+              style={{ color: colors?.color_primary || '#385E31' }}
             >
               Edit Product
             </button>
             <button
               onClick={() => { setRestockTarget(row); setOpenDropdownId(null); setDropdownPos(null); }}
               className="px-3 py-1.5 hover:bg-accent text-left transition-colors"
+              style={{ color: colors?.color_primary || '#385E31' }}
             >
               Restock
             </button>

@@ -123,6 +123,25 @@ export async function fetchDashboardData(tenantId: string): Promise<DashboardDat
     }
   }
 
+  // NFB products — check quantity vs reorder_threshold
+  const { data: nfbItems } = await supabase
+    .from("nfb_products")
+    .select("product_id, name, quantity, reorder_threshold, unit_of_measure")
+    .eq("tenant_id", tenantId)
+    .eq("is_active", true)
+    .order("quantity");
+
+  for (const item of nfbItems ?? []) {
+    const qty = Number(item.quantity) || 0;
+    const threshold = Number(item.reorder_threshold) || 0;
+    const unit = item.unit_of_measure || "pcs";
+    if (qty === 0) {
+      alerts.push({ id: `nfb-${item.product_id}`, label: "Out of Stock", severity: "critical", details: `${item.name} (0 ${unit} remaining)`, stock: qty, unit });
+    } else if (qty <= threshold) {
+      alerts.push({ id: `nfb-${item.product_id}`, label: "Low Stock", severity: "warning", details: `${item.name} (${qty} ${unit} remaining)`, stock: qty, unit });
+    }
+  }
+
   // Pending Orders alerts
   if ((pendingOrders ?? 0) > 0) {
     alerts.push({

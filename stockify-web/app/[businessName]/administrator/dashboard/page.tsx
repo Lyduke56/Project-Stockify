@@ -108,8 +108,8 @@ export default function AdminDashboard() {
       />
     ) : <div />,
     "user-admin":     <UserAdminSection colors={config || undefined} />,
-    "storefront":     <StorefrontSection />,
-    "store-settings": <StoreSettingsSection />,
+    "storefront":     <StorefrontSection colors={config || undefined} />,
+    "store-settings": <StoreSettingsSection colors={config || undefined} />,
     "admin-settings": <div />,
   };
 
