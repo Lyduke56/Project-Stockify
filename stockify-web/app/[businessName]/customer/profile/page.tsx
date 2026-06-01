@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -30,6 +30,9 @@ export default function CustomerProfilePage() {
   const businessName = params?.businessName as string;
   const supabase = createClient();
 
+  // Reference pointer to trigger the native hidden browser file picker
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [profile, setProfile] = useState<any>(null);
   const [tenant, setTenant] = useState<any>(null);
   const [sfConfig, setSfConfig] = useState<any>(null);
@@ -37,6 +40,7 @@ export default function CustomerProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [orderCount, setOrderCount] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchProfile = async () => {
     setLoading(true);
@@ -60,7 +64,7 @@ export default function CustomerProfilePage() {
       setSfConfig(sf);
     }
     if (!countRes.error) setOrderCount(countRes.count ?? 0);
-    setLoading(false);
+    loading && setLoading(false);
   };
 
   useEffect(() => { fetchProfile(); }, []);
@@ -80,6 +84,55 @@ export default function CustomerProfilePage() {
     }).eq("user_id", profile.user_id);
     if (!error) setIsEditing(false);
     setSaving(false);
+  };
+
+  // Triggers when the user clicks your floating camera button action
+  const handleCameraButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Handles bucket file uploading and database text mapping
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !profile?.user_id) return;
+
+    try {
+      setIsUploading(true);
+
+      // Create folder structures using a file path architecture template
+      const fileExtension = file.name.split(".").pop();
+      const filePath = `${profile.user_id}/${Date.now()}.${fileExtension}`;
+
+      // 1. Upload raw payload configuration parameters straight to Supabase Storage Buckets
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Fetch the newly constructed public URL pointer address configuration
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // 3. Complete database string field mapping mutations
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ profile_picture_url: publicUrl })
+        .eq("user_id", profile.user_id);
+
+      if (updateError) throw updateError;
+
+      // 4. Update local system memory arrays seamlessly without flashing screen breaks
+      setProfile((prev: any) => ({ ...prev, profile_picture_url: publicUrl }));
+    } catch (err) {
+      console.error("Error managing profile picture upload chain:", err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const c = {
@@ -155,16 +208,42 @@ export default function CustomerProfilePage() {
             {/* Avatar */}
             <div className="relative flex-shrink-0">
               <div
-                className="w-20 h-20 rounded-2xl flex items-center justify-center text-[28px] font-black shadow-md"
+                className="w-20 h-20 rounded-2xl flex items-center justify-center text-[28px] font-black shadow-md overflow-hidden"
                 style={{ backgroundColor: c.accent, color: c.primary }}
               >
-                {initials}
+                {/* Checks if profile picture url parameters exist in DB record state */}
+                {profile?.profile_picture_url ? (
+                  <img 
+                    src={profile.profile_picture_url} 
+                    alt="Profile Picture" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
               </div>
+              
+              {/* Native hidden filesystem utility input portal hook */}
+              <input 
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+                disabled={isUploading}
+              />
+
               <button
-                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg flex items-center justify-center shadow-md transition-transform hover:scale-110"
+                onClick={handleCameraButtonClick}
+                disabled={isUploading}
+                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-lg flex items-center justify-center shadow-md transition-transform hover:scale-110 disabled:opacity-50"
                 style={{ backgroundColor: c.primary, color: c.accent }}
               >
-                <Camera size={13} strokeWidth={2.5} />
+                {isUploading ? (
+                  <div className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
+                ) : (
+                  <Camera size={13} strokeWidth={2.5} />
+                )}
               </button>
             </div>
 
